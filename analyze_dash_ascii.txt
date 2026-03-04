@@ -1,0 +1,8 @@
+Analyzing dashboard_screen.dart...                              
+
+   info - The imported package 'intl' isn't a dependency of the importing package - lib\features\dashboard\dashboard_screen.dart:8:8 - depend_on_referenced_packages
+  error - Target of URI doesn't exist: 'package:intl/intl.dart' - lib\features\dashboard\dashboard_screen.dart:8:8 - uri_does_not_exist
+  error - Undefined name 'NumberFormat' - lib\features\dashboard\dashboard_screen.dart:65:26 - undefined_identifier
+   info - Unnecessary use of multiple underscores - lib\features\dashboard\dashboard_screen.dart:106:24 - unnecessary_underscores
+  error - The method 'DateFormat' isn't defined for the type 'DashboardScreen' - lib\features\dashboard\dashboard_screen.dart:138:21 - undefined_method
+

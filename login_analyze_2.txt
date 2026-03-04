@@ -1,0 +1,7 @@
+﻿Analyzing School_AI_ERP...                                      
+
+   info - Use the null-aware marker '?' rather than a null check via an 'if' - lib\core\theme\app_card_styles.dart:257:19 - use_null_aware_elements
+warning - The value of the local variable 'scheme' isn't used - lib\features\auth\login_screen.dart:45:11 - unused_local_variable
+  error - 'ChangeNotifierProvider' isn't a function - lib\main.dart:21:11 - invocation_of_non_function
+  error - The name 'ChangeNotifierProvider' is defined in the libraries 'package:flutter_riverpod/src/change_notifier_provider.dart (via package:flutter_riverpod/flutter_riverpod.dart)' and 'package:provider/src/change_notifier_provider.dart (via package:provider/provider.dart)' - lib\main.dart:21:11 - ambiguous_import
+

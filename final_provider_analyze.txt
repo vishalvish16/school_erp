@@ -1,0 +1,4 @@
+﻿Analyzing School_AI_ERP...                                      
+
+   info - Use the null-aware marker '?' rather than a null check via an 'if' - lib\core\theme\app_card_styles.dart:257:19 - use_null_aware_elements
+

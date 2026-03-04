@@ -1,0 +1,226 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model PlatformPlan {
+  id           BigInt   @id(map: "pk_platform_plans") @default(autoincrement()) @map("plan_id")
+  name         String   @unique(map: "idx_platform_plans_plan_name") @map("plan_name") @db.VarChar(100)
+  maxStudents  Int      @map("max_students")
+  maxTeachers  Int      @map("max_teachers")
+  maxBranches  Int      @default(1) @map("max_branches")
+  priceMonthly Decimal  @map("price_monthly") @db.Decimal(12, 2)
+  priceYearly  Decimal? @map("price_yearly") @db.Decimal(12, 2)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  schools      School[]
+  subscriptions SchoolSubscription[]
+
+  @@index([isActive], map: "idx_platform_plans_is_active")
+  @@map("platform_plans")
+}
+
+model School {
+  id                BigInt       @id(map: "pk_schools") @default(autoincrement()) @map("school_id")
+  planId            BigInt       @map("plan_id")
+  name              String       @map("school_name") @db.VarChar(255)
+  schoolCode        String       @unique(map: "uq_schools_school_code") @map("school_code") @db.VarChar(50)
+  subdomain         String       @unique(map: "uq_schools_subdomain") @db.VarChar(100)
+  contactEmail      String?      @map("contact_email") @db.VarChar(255)
+  contactPhone      String?      @map("contact_phone") @db.VarChar(20)
+  address           String?
+  city              String?      @db.VarChar(100)
+  state             String?      @db.VarChar(100)
+  country           String?      @db.VarChar(100)
+  pincode           String?      @db.VarChar(20)
+  subscriptionStart DateTime?    @map("subscription_start") @db.Date
+  subscriptionEnd   DateTime?    @map("subscription_end") @db.Date
+  isActive          Boolean      @default(true) @map("is_active")
+  currentSubscriptionId BigInt?  @map("current_subscription_id")
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  branches          Branch[]
+  roles             Role[]
+  plan              PlatformPlan         @relation(fields: [planId], references: [id], map: "fk_schools_plan_id")
+  users             User[]
+  subscriptions     SchoolSubscription[]
+
+  @@index([city, state], map: "idx_schools_city_state")
+  @@index([isActive], map: "idx_schools_is_active")
+  @@index([planId], map: "idx_schools_plan_id")
+  @@index([currentSubscriptionId], map: "idx_schools_current_subscription_id")
+  @@map("schools")
+}
+
+model Branch {
+  id         BigInt   @id(map: "pk_branches") @default(autoincrement()) @map("branch_id")
+  schoolId   BigInt   @map("school_id")
+  name       String   @map("branch_name") @db.VarChar(255)
+  branchCode String?  @map("branch_code") @db.VarChar(50)
+  address    String?
+  city       String?  @db.VarChar(100)
+  state      String?  @db.VarChar(100)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  school     School   @relation(fields: [schoolId], references: [id], onDelete: Cascade, map: "fk_branches_school_id")
+  users      User[]
+
+  @@unique([schoolId, branchCode], map: "uq_branches_school_code")
+  @@unique([schoolId, name], map: "uq_branches_school_name")
+  @@map("branches")
+}
+
+model Role {
+  id           BigInt           @id(map: "pk_roles") @default(autoincrement()) @map("role_id")
+  schoolId     BigInt?          @map("school_id")
+  name         String           @map("role_name") @db.VarChar(100)
+  roleType     RoleType         @map("role_type")
+  description  String?
+  isSystemRole Boolean          @default(false) @map("is_system_role")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  permissions  RolePermission[]
+  school       School?          @relation(fields: [schoolId], references: [id], onDelete: Cascade, map: "fk_roles_school_id")
+  users        User[]
+
+  @@unique([schoolId, name], map: "uq_roles_school_role_name")
+  @@index([roleType], map: "idx_roles_role_type")
+  @@map("roles")
+}
+
+model User {
+  id                  BigInt           @id(map: "pk_users") @default(autoincrement()) @map("user_id")
+  schoolId            BigInt?          @map("school_id")
+  branchId            BigInt?          @map("branch_id")
+  roleId              BigInt           @map("role_id")
+  firstName           String?          @map("first_name") @db.VarChar(100)
+  lastName            String?          @map("last_name") @db.VarChar(100)
+  email               String           @unique(map: "uq_users_email") @db.VarChar(255)
+  phone               String?          @db.VarChar(20)
+  passwordHash        String           @map("password_hash")
+  failedLoginAttempts Int              @default(0) @map("failed_login_attempts") @db.SmallInt
+  lockedUntil         DateTime?        @map("locked_until") @db.Timestamptz(6)
+  passwordChangedAt   DateTime?        @map("password_changed_at") @db.Timestamptz(6)
+  mustChangePassword  Boolean          @default(false) @map("must_change_password")
+  mfaEnabled          Boolean          @default(false) @map("mfa_enabled")
+  mfaSecret           String?          @map("mfa_secret")
+  isActive            Boolean          @default(true) @map("is_active")
+  emailVerified       Boolean          @default(false) @map("email_verified")
+  emailVerifiedAt     DateTime?        @map("email_verified_at") @db.Timestamptz(6)
+  lastLogin           DateTime?        @map("last_login") @db.Timestamptz(6)
+  lastLoginIp         String?          @map("last_login_ip") @db.Inet
+  deletedAt           DateTime?        @map("deleted_at") @db.Timestamptz(6)
+  createdAt           DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  resetPasswordToken  String?          @map("reset_password_token")
+  resetPasswordExpires DateTime?        @map("reset_password_expires") @db.Timestamptz(6)
+  grantedPermissions  RolePermission[] @relation("GrantedBy")
+  branch              Branch?          @relation(fields: [branchId], references: [id], map: "fk_users_branch_id")
+  role                Role             @relation(fields: [roleId], references: [id], map: "fk_users_role_id")
+  school              School?          @relation(fields: [schoolId], references: [id], onDelete: Cascade, map: "fk_users_school_id")
+
+  @@index([isActive], map: "idx_users_is_active")
+  @@index([roleId], map: "idx_users_role_id")
+  @@map("users")
+}
+
+model Module {
+  id              BigInt           @id(map: "pk_modules") @default(autoincrement()) @map("module_id")
+  name            String           @unique(map: "uq_modules_module_name") @map("module_name") @db.VarChar(150)
+  code            String           @unique(map: "uq_modules_module_code") @map("module_code") @db.VarChar(100)
+  description     String?
+  parentModuleId  BigInt?          @map("parent_module_id")
+  displayOrder    Int              @default(0) @map("display_order") @db.SmallInt
+  iconKey         String?          @map("icon_key") @db.VarChar(100)
+  routePath       String?          @map("route_path") @db.VarChar(255)
+  isPlatformLevel Boolean          @default(false) @map("is_platform_level")
+  isActive        Boolean          @default(true) @map("is_active")
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  parentModule    Module?          @relation("ParentChild", fields: [parentModuleId], references: [id], onDelete: Restrict, map: "fk_modules_parent_module_id")
+  childModules    Module[]         @relation("ParentChild")
+  permissions     RolePermission[]
+
+  @@index([isPlatformLevel], map: "idx_modules_is_platform_level")
+  @@index([isPlatformLevel, isActive, displayOrder], map: "idx_modules_platform_active_order")
+  @@map("modules")
+}
+
+model RolePermission {
+  id            BigInt   @id(map: "pk_role_permissions") @default(autoincrement()) @map("permission_id")
+  roleId        BigInt   @map("role_id")
+  moduleId      BigInt   @map("module_id")
+  canCreate     Boolean  @default(false) @map("can_create")
+  canRead       Boolean  @default(true) @map("can_read")
+  canUpdate     Boolean  @default(false) @map("can_update")
+  canDelete     Boolean  @default(false) @map("can_delete")
+  canExport     Boolean  @default(false) @map("can_export")
+  canApprove    Boolean  @default(false) @map("can_approve")
+  canPrint      Boolean  @default(false) @map("can_print")
+  grantedBy     BigInt?  @map("granted_by")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  grantedByUser User?    @relation("GrantedBy", fields: [grantedBy], references: [id], map: "fk_role_permissions_granted_by")
+  module        Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade, map: "fk_role_permissions_module_id")
+  role          Role     @relation(fields: [roleId], references: [id], onDelete: Cascade, map: "fk_role_permissions_role_id")
+
+  @@unique([roleId, moduleId], map: "idx_role_permissions_role_module")
+  @@unique([roleId, moduleId], map: "uq_role_permissions_role_module")
+  @@index([moduleId], map: "idx_role_permissions_module_id")
+  @@index([roleId], map: "idx_role_permissions_role_id")
+  @@map("role_permissions")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_sessions {
+  session_id         BigInt    @id(map: "pk_user_sessions") @default(autoincrement())
+  user_id            BigInt
+  token_hash         String    @unique(map: "uq_user_sessions_token_hash")
+  ip_address         String    @db.Inet
+  user_agent         String?
+  device_fingerprint String?
+  expires_at         DateTime  @db.Timestamptz(6)
+  revoked_at         DateTime? @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([expires_at], map: "idx_user_sessions_expires_at")
+  @@index([user_id], map: "idx_user_sessions_user_id")
+}
+
+enum RoleType {
+  PLATFORM
+  SCHOOL
+
+  @@map("role_type_enum")
+}
+
+model SchoolSubscription {
+  id           BigInt       @id @default(autoincrement()) @map("subscription_id")
+  schoolId     BigInt       @map("school_id")
+  planId       BigInt       @map("plan_id")
+  startDate    DateTime     @map("start_date") @db.Date
+  endDate      DateTime     @map("end_date") @db.Date
+  billingCycle String       @map("billing_cycle") @db.VarChar(20)
+  priceAmount  Decimal      @map("price_amount") @db.Decimal(12, 2)
+  currency     String       @default("INR") @db.VarChar(10)
+  status       String       @db.VarChar(20)
+  autoRenew    Boolean      @default(false) @map("auto_renew")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade, map: "fk_subscriptions_school_id")
+  plan         PlatformPlan @relation(fields: [planId], references: [id], onDelete: Restrict, map: "fk_subscriptions_plan_id")
+
+  @@index([schoolId], map: "idx_subscriptions_school_id")
+  @@index([planId], map: "idx_subscriptions_plan_id")
+  @@index([status], map: "idx_subscriptions_status")
+  @@index([schoolId, status], map: "idx_subscriptions_school_status")
+  @@index([endDate, status], map: "idx_subscriptions_end_date_status")
+  @@map("school_subscriptions")
+}

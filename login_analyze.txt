@@ -1,0 +1,20 @@
+﻿Analyzing School_AI_ERP...                                      
+
+   info - Use the null-aware marker '?' rather than a null check via an 'if' - lib\core\theme\app_card_styles.dart:257:19 - use_null_aware_elements
+  error - The function 'StateNotifierProvider' isn't defined - lib\features\auth\login_provider.dart:16:23 - undefined_function
+  error - Classes can only extend other classes - lib\features\auth\login_provider.dart:21:29 - extends_non_class
+  error - Too many positional arguments: 0 expected, but 1 found - lib\features\auth\login_provider.dart:22:43 - extra_positional_arguments
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:27:5 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:27:13 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:31:7 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:31:15 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:33:7 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:33:15 - undefined_identifier
+  error - Undefined name 'mounted' - lib\features\auth\login_provider.dart:41:13 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:41:22 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:41:30 - undefined_identifier
+  error - Undefined name 'state' - lib\features\auth\login_provider.dart:47:5 - undefined_identifier
+warning - The value of the local variable 'scheme' isn't used - lib\features\auth\login_screen.dart:45:11 - unused_local_variable
+  error - The constructor being called isn't a const constructor - lib\main.dart:18:14 - const_with_non_const
+  error - The constructor being called isn't a const constructor - lib\main.dart:21:11 - const_with_non_const
+
