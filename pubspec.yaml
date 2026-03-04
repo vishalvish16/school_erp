@@ -72,6 +72,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/images/logo2.png
     - assets/images/logo.png
     - assets/animations/logo_gif.gif
     - assets/images/auth_background.jpg
