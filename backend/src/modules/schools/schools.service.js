@@ -22,22 +22,35 @@ export const createSchool = async (data, adminUser) => {
 
 export const getSchools = async (query) => {
     // Scalable auto-suspend background sync 
-    // Lazily ensures expired get suspended without blocking reads
     schoolRepo.suspendExpiredSubscriptions().catch(err => console.error('Auto suspend failed', err));
 
     const page = parseInt(query.page, 10) || 1;
     const limit = parseInt(query.limit, 10) || 10;
     const skip = (page - 1) * limit;
 
-    const where = {};
-    if (query.search) {
-        where.name = { contains: query.search, mode: 'insensitive' };
+    const whereClauses = [];
+    // Single search: matches name OR schoolCode (merged search by name and code)
+    const searchTerm = (query.search || query.code || query.schoolCode || '').toString().trim();
+    if (searchTerm) {
+        whereClauses.push({
+            OR: [
+                { name: { contains: searchTerm, mode: 'insensitive' } },
+                { schoolCode: { contains: searchTerm, mode: 'insensitive' } }
+            ]
+        });
     }
     if (query.status) {
-        where.isActive = query.status === 'ACTIVE';
+        whereClauses.push({ isActive: query.status === 'ACTIVE' });
     }
+    if (query.planId) {
+        whereClauses.push({ planId: BigInt(query.planId) });
+    }
+    const where = whereClauses.length > 0 ? { AND: whereClauses } : {};
 
-    const { data: schools, total } = await schoolRepo.getSchools(where, skip, limit);
+    const sortBy = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'desc';
+
+    const { data: schools, total } = await schoolRepo.getSchools(where, skip, limit, sortBy, sortOrder);
 
     return {
         schools,

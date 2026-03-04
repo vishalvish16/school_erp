@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIDYRON Premium Logo Merger</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.4.5/gifshot.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #FFFFFF;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        #canvas {
+            width: 1920px;
+            height: 1080px;
+            background-color: #FFFFFF;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: scale(0.6);
+            transform-origin: center;
+        }
+
+        .main-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 1200px;
+            height: 600px;
+        }
+
+        .icon-container {
+            position: relative;
+            display: flex;
+            gap: 150px;
+            align-items: center;
+            justify-content: center;
+            height: 400px;
+            width: 100%;
+        }
+
+        .icon-wrapper {
+            position: relative;
+            width: 220px;
+            height: 220px;
+        }
+
+        .icon-item {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            opacity: 0;
+        }
+
+        .fragment-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .fragment {
+            position: absolute;
+            background-size: 220px 220px;
+            pointer-events: none;
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .final-logo-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 900px;
+            opacity: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #final-logo {
+            width: 100%;
+            height: auto;
+        }
+
+        .tagline {
+            margin-top: 50px;
+            font-size: 38px;
+            font-weight: 600;
+            color: #0c1a32;
+            letter-spacing: 0.6em;
+            opacity: 0;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        /* The New Export Button Styling */
+        #export-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #1E63F0 0%, #3EA6FF 100%);
+            color: white;
+            border-radius: 50px;
+            font-weight: 700;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 25px rgba(30, 99, 240, 0.4);
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #export-btn:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 15px 30px rgba(30, 99, 240, 0.6);
+        }
+
+        #status-bar {
+            position: fixed;
+            bottom: 100px;
+            right: 40px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            display: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            z-index: 1000;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="canvas">
+        <div class="main-container" id="capture-region">
+            <div id="icons" class="icon-container">
+                <div class="icon-wrapper">
+                    <img src="assets/images/protect.png" class="icon-item" id="icon-protect" alt="Protect">
+                    <div id="fragments-protect" class="fragment-container"></div>
+                </div>
+                <div class="icon-wrapper">
+                    <img src="assets/images/track.png" class="icon-item" id="icon-track" alt="Track">
+                    <div id="fragments-track" class="fragment-container"></div>
+                </div>
+                <div class="icon-wrapper">
+                    <img src="assets/images/automate.png" class="icon-item" id="icon-automate" alt="Automate">
+                    <div id="fragments-automate" class="fragment-container"></div>
+                </div>
+            </div>
+            <div id="logo-reveal-container" class="final-logo-container">
+                <img id="final-logo" src="assets/images/logo2.png" alt="VIDYRON">
+            </div>
+            <div id="tagline" class="tagline">PROTECT • TRACK • AUTOMATE</div>
+        </div>
+    </div>
+
+    <button id="export-btn" onclick="exportGif()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        Download GIF
+    </button>
+    <div id="status-bar"></div>
+
+    <script>
+        const GRID_SIZE = 12;
+        function createFragments(containerId, imgSrc) {
+            const container = document.getElementById(containerId);
+            const size = 220;
+            const fragSize = size / GRID_SIZE;
+            for (let r = 0; r < GRID_SIZE; r++) {
+                for (let c = 0; c < GRID_SIZE; c++) {
+                    const frag = document.createElement('div');
+                    frag.className = 'fragment';
+                    frag.style.width = fragSize + 'px';
+                    frag.style.height = fragSize + 'px';
+                    frag.style.backgroundImage = `url(${imgSrc})`;
+                    frag.style.backgroundPosition = `-${c * fragSize}px -${r * fragSize}px`;
+                    frag.style.left = `${c * fragSize}px`;
+                    frag.style.top = `${r * fragSize}px`;
+                    container.appendChild(frag);
+                }
+            }
+        }
+
+        createFragments('fragments-protect', 'assets/images/protect.png');
+        createFragments('fragments-track', 'assets/images/track.png');
+        createFragments('fragments-automate', 'assets/images/automate.png');
+
+        const tl = gsap.timeline({ defaults: { ease: "expo.out", duration: 1.0 } });
+
+        function setupAnimation() {
+            tl.clear();
+            gsap.set(".icon-item", { opacity: 0, scale: 0.85, visibility: "visible" });
+            gsap.set(".fragment", { opacity: 0, visibility: "hidden" });
+            gsap.set("#logo-reveal-container, #tagline", { opacity: 0, scale: 0.95 });
+
+            tl.to(".icon-item", { opacity: 1, scale: 1, stagger: 0.15, duration: 0.8 }, 0.2);
+            tl.set(".icon-item", { opacity: 0, visibility: "hidden" }, 1.2);
+            tl.set(".fragment", { opacity: 1, visibility: "visible" }, 1.2);
+
+            ['protect', 'track', 'automate'].forEach((id) => {
+                tl.to(`#fragments-${id} .fragment`, {
+                    x: (i) => {
+                        const targetX = id === 'protect' ? 370 : id === 'automate' ? -370 : 0;
+                        return targetX + (Math.random() - 0.5) * 60;
+                    },
+                    y: () => (Math.random() - 0.5) * 120,
+                    rotation: () => Math.random() * 360,
+                    scale: 0.1,
+                    opacity: 0,
+                    stagger: { amount: 0.6, from: "center" },
+                    duration: 1.6,
+                    ease: "power2.inOut"
+                }, 1.2);
+            });
+
+            tl.to("#logo-reveal-container", { opacity: 1, scale: 1, duration: 1.2, ease: "power3.out" }, 1.8);
+            tl.to("#tagline", { opacity: 1, letterSpacing: "0.5em", duration: 1.0 }, 2.2);
+        }
+
+        setupAnimation();
+
+        async function exportGif() {
+            const btn = document.getElementById('export-btn');
+            const status = document.getElementById('status-bar');
+
+            btn.disabled = true;
+            status.style.display = 'block';
+            status.innerText = "Starting GIF Engine...";
+
+            const frames = [];
+            const region = document.getElementById('capture-region');
+            const fps = 12; // Adjusted for smoother animation
+            const duration = 4.5;
+            const totalFrames = Math.floor(duration * fps);
+
+            tl.pause();
+
+            // Store original scale and remove it for the capture to ensure resolution matches
+            const originalTransform = document.getElementById('canvas').style.transform;
+            document.getElementById('canvas').style.transform = 'none';
+
+            try {
+                for (let i = 0; i < totalFrames; i++) {
+                    tl.progress(i / (totalFrames - 1));
+                    // Allow browser to repaint before capture
+                    await new Promise(r => setTimeout(r, 80));
+
+                    const frameCanvas = await html2canvas(region, {
+                        backgroundColor: '#FFFFFF',
+                        width: 1200,
+                        height: 600,
+                        scale: 1,
+                        useCORS: true,
+                        allowTaint: true,
+                        logging: false
+                    });
+
+                    frames.push(frameCanvas.toDataURL('image/png'));
+                    status.innerText = `Capturing Frames: ${Math.round((i / totalFrames) * 100)}%`;
+                }
+
+                status.innerText = "Processing High-Res GIF...";
+
+                gifshot.createGIF({
+                    images: frames,
+                    gifWidth: 800,  // Output size
+                    gifHeight: 400,
+                    interval: 0.08, // Adjusts the speed of the result
+                    numWorkers: 4,
+                    sampleInterval: 10
+                }, function (obj) {
+                    if (!obj.error) {
+                        const downloadLink = document.createElement('a');
+                        downloadLink.href = obj.image;
+                        downloadLink.download = 'vidyron_splash.gif';
+                        downloadLink.click();
+                        status.innerText = "Download Successful!";
+                        setTimeout(() => status.style.display = 'none', 3000);
+                    } else {
+                        status.innerText = "Encoding Error. Try again.";
+                        console.error(obj.errorMsg);
+                    }
+
+                    // Reset UI
+                    btn.disabled = false;
+                    document.getElementById('canvas').style.transform = originalTransform;
+                    tl.play();
+                });
+
+            } catch (err) {
+                status.innerText = "Error! Ensure images are in assets folder.";
+                btn.disabled = false;
+                document.getElementById('canvas').style.transform = originalTransform;
+                tl.play();
+            }
+        }
+    </script>
+</body>
+
+</html>

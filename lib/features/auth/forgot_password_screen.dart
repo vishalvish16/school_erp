@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/constants/app_auth_constants.dart';
 import 'forgot_password_provider.dart';
 import 'forgot_password_state.dart';
 
@@ -34,14 +35,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(forgotPasswordProvider);
-    final isMobile = MediaQuery.of(context).size.width < 900;
+    final isMobile = MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
 
     ref.listen<ForgotPasswordState>(forgotPasswordProvider, (previous, next) {
       if (next.isFailure && previous?.isFailure != true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              next.errorMessage ?? 'Recovery failed. Please check your email.',
+              next.errorMessage ?? AuthStrings.recoveryFailed,
             ),
             backgroundColor: Colors.redAccent,
           ),
@@ -54,27 +55,175 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         fit: StackFit.expand,
         children: [
           // Premium Background
-          Image.asset('assets/images/auth_background.jpg', fit: BoxFit.cover),
+          Image.asset(AuthAssets.background, fit: BoxFit.cover),
 
-          // Subtle Darkening Overlay
-          Container(color: Colors.black.withValues(alpha: 0.15)),
+          // Light gradient overlay - keeps background visible for glass effect
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AuthColors.overlayLight(0.15),
+                  AuthColors.overlayLight(0.05),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
 
           // Main Content
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: AnimatedSwitcher(
+          SafeArea(
+            child: Column(
+              children: [
+                // Header: Logo + Mobile Tagline
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AuthSizes.headerPaddingV,
+                    horizontal: AuthSizes.headerPaddingH,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        AuthAssets.logo,
+                        height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                        fit: BoxFit.contain,
+                      ),
+                      if (isMobile) ...[
+                        SizedBox(height: AuthSizes.taglineGap),
+                        _buildMobileTagline(),
+                      ],
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(AuthSizes.scrollPadding),
+                      child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 500),
                 transitionBuilder: (child, animation) =>
                     FadeTransition(opacity: animation, child: child),
-                child: state.isSuccess
-                    ? _buildSuccessCard(context, state.email)
-                    : _buildRecoveryCard(context, state, isMobile),
-              ),
+                        child: state.isSuccess
+                            ? _buildSuccessCard(context, state.email)
+                            : _buildRecoveryCard(context, state, isMobile),
+                      ),
+                    ),
+                  ),
+                ),
+                // Footer: Protect, Track, Automate (web only)
+                if (!isMobile) _buildFooter(),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFooter() {
+    final gap = AuthSizes.footerGapWeb;
+    final dotSeparator = Padding(
+      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+      child: Container(
+        width: AuthSizes.taglineDotSize,
+        height: AuthSizes.taglineDotSize,
+        decoration: const BoxDecoration(
+          color: AuthColors.textMuted,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: AuthSizes.footerPaddingV,
+        horizontal: AuthSizes.footerPaddingH,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildFooterIcon(AuthAssets.protect),
+              SizedBox(width: AuthSizes.footerGapWeb),
+              _buildFooterIcon(AuthAssets.track),
+              SizedBox(width: AuthSizes.footerGapWeb),
+              _buildFooterIcon(AuthAssets.automate),
+            ],
+          ),
+          SizedBox(height: AuthSizes.footerTextGap),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(AuthStrings.protect, style: AuthTextStyles.tagline),
+              dotSeparator,
+              Text(AuthStrings.track, style: AuthTextStyles.tagline),
+              dotSeparator,
+              Text(AuthStrings.automate, style: AuthTextStyles.tagline),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterIcon(String assetPath) {
+    return Container(
+      padding: const EdgeInsets.all(AuthSizes.footerIconPadding),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: AuthColors.overlayLight(0.08),
+            blurRadius: AuthSizes.formFieldShadowBlur,
+            offset: const Offset(0, AuthSizes.formFieldShadowOffset),
+          ),
+        ],
+      ),
+      child: Image.asset(
+        assetPath,
+        width: AuthSizes.footerIconWeb,
+        height: AuthSizes.footerIconWeb,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) =>
+            Icon(Icons.verified_user, size: AuthSizes.footerIconWeb, color: AuthColors.primary),
+      ),
+    );
+  }
+
+  Widget _buildMobileTagline() {
+    final dotSeparator = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AuthSizes.taglineDotPadding),
+      child: Container(
+        width: AuthSizes.taglineDotSize,
+        height: AuthSizes.taglineDotSize,
+        decoration: const BoxDecoration(
+          color: AuthColors.textMuted,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          AuthAssets.protect,
+          width: AuthSizes.taglineIconSize,
+          height: AuthSizes.taglineIconSize,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(Icons.shield, size: AuthSizes.taglineIconSize, color: AuthColors.primary),
+        ),
+        const SizedBox(width: AuthSizes.taglineIconGap),
+        Text(AuthStrings.protect, style: AuthTextStyles.tagline),
+        dotSeparator,
+        Text(AuthStrings.track, style: AuthTextStyles.tagline),
+        dotSeparator,
+        Text(AuthStrings.automate, style: AuthTextStyles.tagline),
+      ],
     );
   }
 
@@ -85,24 +234,24 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   ) {
     return ClipRRect(
       key: const ValueKey('recovery_card'),
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlurStrong, sigmaY: AuthSizes.glassBlurStrong),
         child: Container(
-          width: isMobile ? double.infinity : 450,
-          padding: const EdgeInsets.all(40),
+          width: isMobile ? double.infinity : AuthSizes.cardWidthFixed,
+          padding: const EdgeInsets.all(AuthSizes.cardPadding),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.82),
-            borderRadius: BorderRadius.circular(32),
+            color: AuthColors.overlayLight(0.25),
+            borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.6),
-              width: 1.5,
+              color: AuthColors.overlayLight(0.5),
+              width: AuthSizes.glassBorderWidth,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 40,
-                offset: const Offset(0, 20),
+                color: AuthColors.overlayDark(0.08),
+                blurRadius: AuthSizes.glassShadowBlur,
+                offset: Offset(0, AuthSizes.glassShadowOffset),
               ),
             ],
           ),
@@ -111,69 +260,52 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // VIDYRON Branding (Logo)
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 240,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'Recover Your Access',
+                Text(
+                  AuthStrings.recoverAccess,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.5,
-                  ),
+                  style: AuthTextStyles.screenTitle,
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Enter your registered email address to receive secure recovery instructions.',
+                SizedBox(height: AuthSizes.formSpacingMedium - 12),
+                Text(
+                  AuthStrings.recoverInstructions,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF475569),
-                    height: 1.6,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AuthTextStyles.screenSubtitle,
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: AuthSizes.cardPadding),
 
                 // Email Field
                 _buildStyledInput(
                   controller: _emailController,
-                  hint: 'Enterprise Email',
+                  hint: AuthStrings.enterpriseEmail,
                   icon: Icons.alternate_email_rounded,
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'Email is required';
+                    if (v == null || v.isEmpty) return AuthStrings.emailRequired;
                     if (!RegExp(
                       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                     ).hasMatch(v)) {
-                      return 'Please enter a valid email address';
+                      return AuthStrings.emailInvalid;
                     }
                     return null;
                   },
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: AuthSizes.sectionGap),
 
                 // Action Button
                 Container(
                   width: double.infinity,
-                  height: 56,
+                  height: AuthSizes.buttonHeight,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                      colors: [AuthColors.primary, AuthColors.primaryDark],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
+                        color: AuthColors.primary.withValues(alpha: 0.3),
+                        blurRadius: AuthSizes.buttonShadowBlur,
+                        offset: Offset(0, AuthSizes.buttonShadowOffset),
                       ),
                     ],
                   ),
@@ -183,51 +315,47 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
                       ),
                     ),
                     child: state.isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                        ? SizedBox(
+                            width: AuthSizes.formSpacingMedium,
+                            height: AuthSizes.formSpacingMedium,
                             child: CircularProgressIndicator(
                               color: Colors.white,
                               strokeWidth: 2.5,
                             ),
                           )
-                        : const Text(
-                            'Send Recovery Link',
-                            style: TextStyle(
+                        : Text(
+                            AuthStrings.sendRecoveryLink,
+                            style: AuthTextStyles.buttonPrimary.copyWith(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
-                              color: Colors.white,
                             ),
                           ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: AuthSizes.formSpacingBackLink),
 
                 // Back to Login Link
                 TextButton(
                   onPressed: () => context.pop(),
                   style: TextButton.styleFrom(
-                    foregroundColor: const Color(0xFF475569),
+                    foregroundColor: AuthColors.textSecondary,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
+                      horizontal: AuthSizes.formSpacingSmall - 4,
+                      vertical: AuthSizes.formFieldIconSize - 2,
                     ),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.arrow_back_rounded, size: 18),
-                      SizedBox(width: 8),
+                      Icon(Icons.arrow_back_rounded, size: AuthSizes.formFieldIconSize - 2),
+                      SizedBox(width: AuthSizes.formFieldIconSize - 2),
                       Text(
-                        'Back to Workspace Login',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 14,
-                        ),
+                        AuthStrings.backToLogin,
+                        style: AuthTextStyles.tagline,
                       ),
                     ],
                   ),
@@ -248,29 +376,29 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
+        border: Border.all(color: AuthColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AuthColors.overlayDark(0.04),
+            blurRadius: AuthSizes.formFieldShadowBlur,
+            offset: Offset(0, AuthSizes.formFieldShadowOffset),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1E293B),
-          fontSize: 15,
-        ),
+        style: AuthTextStyles.inputText,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontWeight: FontWeight.w500,
-          ),
+          hintStyle: AuthTextStyles.inputHint,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
+            horizontal: AuthSizes.formFieldPaddingH,
+            vertical: AuthSizes.formFieldPaddingV,
           ),
           border: InputBorder.none,
-          prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
+          prefixIcon: Icon(icon, color: AuthColors.textMuted, size: AuthSizes.formFieldIconSize),
         ),
         keyboardType: TextInputType.emailAddress,
         validator: validator,
@@ -281,82 +409,69 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   Widget _buildSuccessCard(BuildContext context, String email) {
     return ClipRRect(
       key: const ValueKey('success_card'),
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlurStrong, sigmaY: AuthSizes.glassBlurStrong),
         child: Container(
-          width: 450,
-          padding: const EdgeInsets.all(40),
+          width: AuthSizes.cardWidthFixed,
+          padding: const EdgeInsets.all(AuthSizes.cardPadding),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(32),
+            color: AuthColors.overlayLight(0.25),
+            borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.6),
-              width: 1.5,
+              color: AuthColors.overlayLight(0.5),
+              width: AuthSizes.glassBorderWidth,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AuthColors.overlayDark(0.08),
+                blurRadius: AuthSizes.glassShadowBlur,
+                offset: Offset(0, AuthSizes.glassShadowOffset),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.verified_user_rounded,
-                size: 80,
-                color: Color(0xFF10B981),
+                size: AuthSizes.successIconSize,
+                color: AuthColors.success,
               ),
-              const SizedBox(height: 32),
-              const Text(
-                'Recovery Link Sent!',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  color: Color(0xFF0F172A),
-                ),
+              SizedBox(height: AuthSizes.successSpacing),
+              Text(
+                AuthStrings.recoveryLinkSent,
+                style: AuthTextStyles.successTitle,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: AuthSizes.successBodySpacing),
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: const TextStyle(
-                    color: Color(0xFF475569),
-                    height: 1.6,
-                    fontSize: 15,
-                  ),
+                  style: AuthTextStyles.successBody,
                   children: [
-                    const TextSpan(
-                      text: 'We have dispatched a secure recovery link to:\n',
-                    ),
-                    TextSpan(
-                      text: email,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF1E293B),
-                      ),
-                    ),
-                    const TextSpan(
-                      text:
-                          '\nPlease check your inbox and follow the instructions.',
-                    ),
+                    const TextSpan(text: AuthStrings.recoveryLinkMessage),
+                    TextSpan(text: email, style: AuthTextStyles.successEmail),
+                    const TextSpan(text: AuthStrings.recoveryLinkFooter),
                   ],
                 ),
               ),
-              const SizedBox(height: 48),
+              SizedBox(height: AuthSizes.successButtonSpacing),
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: AuthSizes.buttonHeight,
                 child: OutlinedButton(
                   onPressed: () => context.pop(),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF2563EB), width: 2),
+                    side: BorderSide(color: AuthColors.primary, width: 2),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
                     ),
                   ),
-                  child: const Text(
-                    'Return to Login',
-                    style: TextStyle(
+                  child: Text(
+                    AuthStrings.returnToLogin,
+                    style: AuthTextStyles.buttonPrimary.copyWith(
+                      color: AuthColors.primary,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF2563EB),
-                      fontSize: 16,
                     ),
                   ),
                 ),

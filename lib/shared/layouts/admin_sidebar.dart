@@ -53,7 +53,10 @@ class AdminSidebar extends StatelessWidget {
             // ── Menu Section ───────────────────────────────────────────────────
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                padding: EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: isCollapsed ? 8 : 12,
+                ),
                 children: [
                   for (final section in SuperAdminNavigation.sections) ...[
                     if (SuperAdminNavigation.sections.indexOf(section) > 0)
@@ -83,20 +86,23 @@ class AdminSidebar extends StatelessWidget {
                 onTap: onToggle,
                 child: Container(
                   height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 12 : 20),
                   child: Row(
-                    mainAxisAlignment: isCollapsed 
-                        ? MainAxisAlignment.center 
+                    mainAxisAlignment: isCollapsed
+                        ? MainAxisAlignment.center
                         : MainAxisAlignment.spaceBetween,
                     children: [
-                      if (!isCollapsed) 
-                        Text(
-                          'Collapse Sidebar', 
-                          style: AppTextStyles.caption(color: scheme.onSurfaceVariant)
+                      if (!isCollapsed)
+                        Expanded(
+                          child: Text(
+                            'Collapse Sidebar',
+                            style: AppTextStyles.caption(color: scheme.onSurfaceVariant),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       Icon(
-                        isCollapsed 
-                            ? Icons.arrow_forward_ios_rounded 
+                        isCollapsed
+                            ? Icons.arrow_forward_ios_rounded
                             : Icons.arrow_back_ios_new_rounded,
                         size: 16,
                         color: scheme.onSurfaceVariant,
@@ -169,42 +175,47 @@ class _SidebarItem extends StatelessWidget {
           onTap: () => context.go(route),
           borderRadius: AppRadius.brMd,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 0 : 12),
-            child: Row(
-              mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-              children: [
-                Icon(
-                  isActive ? activeIcon : icon,
-                  size: 20,
-                  color: isActive ? scheme.primary : scheme.onSurfaceVariant,
-                ),
-                if (!isCollapsed) ...[
-                  AppSpacing.hGapMd,
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: AppTextStyles.body(
-                        color: isActive ? scheme.primary : scheme.onSurface,
-                      ).copyWith(
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 8 : 12),
+            child: isCollapsed
+                ? Center(
+                    child: Icon(
+                      isActive ? activeIcon : icon,
+                      size: 20,
+                      color: isActive ? scheme.primary : scheme.onSurfaceVariant,
                     ),
+                  )
+                : Row(
+                    children: [
+                      Icon(
+                        isActive ? activeIcon : icon,
+                        size: 20,
+                        color: isActive ? scheme.primary : scheme.onSurfaceVariant,
+                      ),
+                      AppSpacing.hGapMd,
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: AppTextStyles.body(
+                            color: isActive ? scheme.primary : scheme.onSurface,
+                          ).copyWith(
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                            fontSize: 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isActive)
+                        Container(
+                          width: 4,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: scheme.primary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                    ],
                   ),
-                  if (isActive)
-                    Container(
-                      width: 4,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: scheme.primary,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                ],
-              ],
-            ),
           ),
         ),
       ),

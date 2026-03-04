@@ -54,7 +54,7 @@ class SchoolModel {
   factory SchoolModel.fromJson(Map<String, dynamic> json) {
     return SchoolModel(
       id: json['id'].toString(),
-      schoolCode: json['schoolCode'] ?? '',
+      schoolCode: json['schoolCode'] ?? json['school_code'] ?? '',
       name: json['name'] ?? '',
       subdomain: json['subdomain'],
       contactEmail: json['contactEmail'],
@@ -125,7 +125,20 @@ class SchoolModel {
     bool? isActive,
     int? studentCount,
     int? teacherCount,
+    String? contactPhone,
+    String? address,
+    String? city,
+    String? state,
+    String? country,
+    String? pincode,
+    int? planId,
+    String? planName,
+    int? maxStudents,
+    int? maxTeachers,
+    DateTime? subscriptionStart,
     DateTime? subscriptionEnd,
+    ActiveSubscriptionModel? activeSubscription,
+    List<SubscriptionHistoryModel>? subscriptionHistory,
   }) {
     return SchoolModel(
       id: id ?? this.id,
@@ -137,7 +150,20 @@ class SchoolModel {
       isActive: isActive ?? this.isActive,
       studentCount: studentCount ?? this.studentCount,
       teacherCount: teacherCount ?? this.teacherCount,
+      contactPhone: contactPhone ?? this.contactPhone,
+      address: address ?? this.address,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      country: country ?? this.country,
+      pincode: pincode ?? this.pincode,
+      planId: planId ?? this.planId,
+      planName: planName ?? this.planName,
+      maxStudents: maxStudents ?? this.maxStudents,
+      maxTeachers: maxTeachers ?? this.maxTeachers,
+      subscriptionStart: subscriptionStart ?? this.subscriptionStart,
       subscriptionEnd: subscriptionEnd ?? this.subscriptionEnd,
+      activeSubscription: activeSubscription ?? this.activeSubscription,
+      subscriptionHistory: subscriptionHistory ?? this.subscriptionHistory,
     );
   }
 }

@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../provider/plan_provider.dart';
 import '../../data/models/plan_model.dart';
 import '../widgets/plan_dialog.dart';
@@ -103,7 +104,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Subscription Plans',
+                      AppStrings.subscriptionPlans,
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -111,7 +112,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                       ),
                     ),
                     Text(
-                      'Manage SaaS pricing and platform limits',
+                      AppStrings.subscriptionPlansSubtitle,
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.grey.shade600,
@@ -141,7 +142,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                   controller: _searchController,
                   onChanged: (val) => setState(() => _searchQuery = val),
                   decoration: InputDecoration(
-                    hintText: 'Search plans...',
+                    hintText: AppStrings.searchPlans,
                     prefixIcon: const Icon(Icons.search),
                     filled: true,
                     fillColor: Colors.grey.shade100,
@@ -157,7 +158,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
               IconButton.filledTonal(
                 onPressed: () => ref.read(planProvider).fetchPlans(),
                 icon: const Icon(Icons.refresh),
-                tooltip: 'Refresh',
+                tooltip: AppStrings.tooltipRefresh,
               ),
             ],
           ),
@@ -172,7 +173,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
         showDialog(context: context, builder: (context) => const PlanDialog());
       },
       icon: const Icon(Icons.add),
-      label: const Text('Create Plan'),
+      label: const Text(AppStrings.createPlan),
       style: ElevatedButton.styleFrom(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         backgroundColor: Colors.indigo,
@@ -185,7 +186,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   Widget _buildCardsGrid(List<PlanModel> plans) {
     if (plans.isEmpty) {
       return const SliverToBoxAdapter(
-        child: Center(child: Text('No plans found')),
+        child: Center(child: Text(AppStrings.noPlansFound)),
       );
     }
 
@@ -216,22 +217,22 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
           const Padding(
             padding: EdgeInsets.all(20),
             child: Text(
-              'Detailed Comparison',
+              AppStrings.detailedComparison,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           ReusableDataTable(
             isLoading: isLoading && plans.isEmpty,
             columns: const [
-              'Plan Name',
-              'Monthly',
-              'Yearly',
-              'Students',
-              'Teachers',
-              'Branches',
-              'Active Schools',
-              'Status',
-              'Actions',
+              AppStrings.planName,
+              AppStrings.monthly,
+              AppStrings.yearly,
+              AppStrings.students,
+              AppStrings.teachers,
+              AppStrings.branches,
+              AppStrings.activeSchools,
+              AppStrings.tableStatus,
+              AppStrings.tableActions,
             ],
             rows: plans.map((plan) {
               return DataRow(
@@ -255,22 +256,28 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit_outlined, size: 20),
-                          onPressed: () {
-                            showDialog(
-                              context: context,
-                              builder: (context) => PlanDialog(plan: plan),
-                            );
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete_outline,
-                            size: 20,
-                            color: Colors.red,
+                        Tooltip(
+                          message: AppStrings.tooltipEditPlan,
+                          child: IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (context) => PlanDialog(plan: plan),
+                              );
+                            },
                           ),
-                          onPressed: () => _showDeleteDialog(context, plan),
+                        ),
+                        Tooltip(
+                          message: AppStrings.tooltipDeletePlan,
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 20,
+                              color: Colors.red,
+                            ),
+                            onPressed: () => _showDeleteDialog(context, plan),
+                          ),
                         ),
                       ],
                     ),
@@ -300,9 +307,12 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
           Expanded(
             child: Text(error, style: const TextStyle(color: Colors.red)),
           ),
-          IconButton(
-            onPressed: () => ref.read(planProvider).clearError(),
-            icon: const Icon(Icons.close, size: 18, color: Colors.red),
+          Tooltip(
+            message: AppStrings.tooltipDismissError,
+            child: IconButton(
+              onPressed: () => ref.read(planProvider).clearError(),
+              icon: const Icon(Icons.close, size: 18, color: Colors.red),
+            ),
           ),
         ],
       ),
@@ -313,14 +323,14 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Plan'),
+        title: const Text(AppStrings.deletePlanTitle),
         content: Text(
-          'Are you sure you want to delete "${plan.planName}"? This action cannot be undone.',
+          AppStrings.deletePlanConfirm(plan.planName),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text(AppStrings.cancel),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -335,16 +345,16 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
               if (!mounted) return;
               if (success) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Plan deleted successfully')),
+                  const SnackBar(content: Text(AppStrings.planDeletedSuccess)),
                 );
               } else {
                 final error = ref.read(planProvider).error;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(error ?? 'Failed to delete plan')),
+                  SnackBar(content: Text(error ?? AppStrings.failedToDeletePlan)),
                 );
               }
             },
-            child: const Text('Delete'),
+            child: const Text(AppStrings.delete),
           ),
         ],
       ),
@@ -404,7 +414,7 @@ class _PlanCard extends ConsumerWidget {
                   color: Colors.indigo,
                 ),
               ),
-              const Text(' /mo', style: TextStyle(color: Colors.grey)),
+              const Text(AppStrings.perMonth, style: TextStyle(color: Colors.grey)),
               const SizedBox(width: 8),
               Text(
                 '₹${plan.priceYearly.toStringAsFixed(0)} /yr',
@@ -439,15 +449,18 @@ class _PlanCard extends ConsumerWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => PlanDialog(plan: plan),
-                    );
-                  },
-                  icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Edit'),
+                child: Tooltip(
+                  message: 'Edit plan',
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => PlanDialog(plan: plan),
+                      );
+                    },
+                    icon: const Icon(Icons.edit_outlined, size: 18),
+                    label: const Text(AppStrings.edit),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -458,7 +471,7 @@ class _PlanCard extends ConsumerWidget {
                   plan.isActive ? Icons.toggle_on : Icons.toggle_off,
                   color: plan.isActive ? Colors.green : Colors.grey,
                 ),
-                tooltip: plan.isActive ? 'Deactivate' : 'Activate',
+                tooltip: plan.isActive ? AppStrings.tooltipDeactivate : AppStrings.tooltipActivate,
               ),
             ],
           ),

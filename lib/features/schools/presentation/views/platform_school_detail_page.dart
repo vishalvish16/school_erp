@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/app_strings.dart';
 import 'package:intl/intl.dart';
 import '../viewmodels/school_detail_viewmodel.dart';
 import '../../domain/models/school_model.dart';
@@ -24,19 +25,22 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
           ? const Color(0xFF121212)
           : const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text('School Details'),
+        title: const Text(AppStrings.schoolDetails),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => ref
-                .read(schoolDetailViewModelProvider(schoolId).notifier)
-                .fetchSchool(),
+          Tooltip(
+            message: AppStrings.tooltipRefresh,
+            child: IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () => ref
+                  .read(schoolDetailViewModelProvider(schoolId).notifier)
+                  .fetchSchool(),
+            ),
           ),
         ],
       ),
       body: state.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err')),
+        error: (err, _) => Center(child: Text(AppStrings.errorWithMessage(err.toString()))),
         data: (school) => SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -46,7 +50,7 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
               const SizedBox(height: 32),
 
               _buildSectionHeader(
-                'Subscription Information',
+                AppStrings.subscriptionInformation,
                 Icons.card_membership,
               ),
               const SizedBox(height: 16),
@@ -55,7 +59,7 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
               const SizedBox(height: 32),
 
               if (school.subscriptionHistory.isNotEmpty) ...[
-                _buildSectionHeader('Subscription History', Icons.history),
+                _buildSectionHeader(AppStrings.subscriptionHistory, Icons.history),
                 const SizedBox(height: 16),
                 _SubscriptionHistoryTable(history: school.subscriptionHistory),
               ],
@@ -132,7 +136,7 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'School Code: ${school.schoolCode}',
+                  AppStrings.schoolCodeLabel(school.schoolCode),
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 12),
@@ -152,7 +156,7 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '${school.city ?? 'N/A'}, ${school.state ?? 'N/A'}',
+                          '${school.city ?? AppStrings.notAvailable}, ${school.state ?? AppStrings.notAvailable}',
                         ),
                       ],
                     ),
@@ -207,7 +211,7 @@ class _SubscriptionCard extends ConsumerWidget {
                   sub?.planName ?? 'No Plan Assigned',
                   isBold: true,
                 ),
-                _buildInfoColumn('Billing Cycle', sub?.billingCycle ?? 'N/A'),
+                _buildInfoColumn(AppStrings.tableBilling, sub?.billingCycle ?? AppStrings.notAvailable),
                 StatusBadge(status: sub?.status ?? 'NONE'),
               ],
             ),
@@ -222,13 +226,13 @@ class _SubscriptionCard extends ConsumerWidget {
                   'Start Date',
                   sub != null
                       ? DateFormat('MMM dd, yyyy').format(sub.startDate)
-                      : 'N/A',
+                      : AppStrings.notAvailable,
                 ),
                 _buildInfoColumn(
                   'End Date',
                   sub != null
                       ? DateFormat('MMM dd, yyyy').format(sub.endDate)
-                      : 'N/A',
+                      : AppStrings.notAvailable,
                 ),
                 _buildRemainingColumn(sub?.daysRemaining ?? 0),
               ],
@@ -402,15 +406,18 @@ class _SubActionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, size: 18),
-      label: Text(label),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color ?? theme.colorScheme.primary,
-        foregroundColor: Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Tooltip(
+      message: label,
+      child: ElevatedButton.icon(
+        onPressed: onPressed,
+        icon: Icon(icon, size: 18),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color ?? theme.colorScheme.primary,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       ),
     );
   }

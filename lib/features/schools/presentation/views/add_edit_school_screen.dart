@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 
+import '../../../../core/constants/app_strings.dart';
 import '../../domain/models/school_model.dart';
 import '../../data/providers/schools_providers.dart';
 import '../viewmodels/schools_viewmodel.dart';
@@ -160,7 +161,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('School saved successfully!'),
+            content: Text(AppStrings.schoolSavedSuccess),
             backgroundColor: Colors.green,
           ),
         );
@@ -171,7 +172,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error saving school: $e'),
+            content: Text(AppStrings.errorSavingSchool(e.toString())),
             backgroundColor: Colors.red,
           ),
         );
@@ -190,7 +191,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: Text(isEdit ? 'Edit School' : 'Add New School'),
+        title: Text(isEdit ? AppStrings.editSchool : AppStrings.addNewSchool),
         elevation: 0,
         backgroundColor: Colors.white,
         foregroundColor: Colors.black87,
@@ -221,7 +222,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       const Text(
-                        'General Information',
+                        AppStrings.generalInformation,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -236,16 +237,16 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               children: [
                                 _buildTextField(
                                   controller: _nameController,
-                                  label: 'School Name *',
+                                  label: AppStrings.schoolNameRequired,
                                   validator: (val) => val == null || val.isEmpty
-                                      ? 'Required'
+                                      ? AppStrings.required
                                       : null,
                                 ),
                                 const SizedBox(height: 16),
                                 _buildTextField(
                                   controller: _codeController,
                                   label:
-                                      'School Code (Auto-generated if empty)',
+                                      AppStrings.schoolCodeHint,
                                 ),
                               ],
                             );
@@ -255,9 +256,9 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               Expanded(
                                 child: _buildTextField(
                                   controller: _nameController,
-                                  label: 'School Name *',
+                                  label: AppStrings.schoolNameRequired,
                                   validator: (val) => val == null || val.isEmpty
-                                      ? 'Required'
+                                      ? AppStrings.required
                                       : null,
                                 ),
                               ),
@@ -266,7 +267,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                 child: _buildTextField(
                                   controller: _codeController,
                                   label:
-                                      'School Code (Auto-generated if empty)',
+                                      AppStrings.schoolCodeHint,
                                 ),
                               ),
                             ],
@@ -282,12 +283,12 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               children: [
                                 _buildTextField(
                                   controller: _emailController,
-                                  label: 'Email Address',
+                                  label: AppStrings.emailAddress,
                                 ),
                                 const SizedBox(height: 16),
                                 _buildTextField(
                                   controller: _phoneController,
-                                  label: 'Phone Number',
+                                  label: AppStrings.phoneNumber,
                                 ),
                               ],
                             );
@@ -297,14 +298,14 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               Expanded(
                                 child: _buildTextField(
                                   controller: _emailController,
-                                  label: 'Email Address',
+                                  label: AppStrings.emailAddress,
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: _buildTextField(
                                   controller: _phoneController,
-                                  label: 'Phone Number',
+                                  label: AppStrings.phoneNumber,
                                 ),
                               ),
                             ],
@@ -314,7 +315,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                       const SizedBox(height: 32),
 
                       const Text(
-                        'Address Details',
+                        AppStrings.addressDetails,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -323,7 +324,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                       const Divider(height: 32),
                       _buildTextField(
                         controller: _addressController,
-                        label: 'Street Address',
+                        label: AppStrings.streetAddress,
                       ),
                       const SizedBox(height: 16),
                       LayoutBuilder(
@@ -334,17 +335,17 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               children: [
                                 _buildTextField(
                                   controller: _cityController,
-                                  label: 'City',
+                                  label: AppStrings.city,
                                 ),
                                 const SizedBox(height: 16),
                                 _buildTextField(
                                   controller: _stateController,
-                                  label: 'State',
+                                  label: AppStrings.state,
                                 ),
                                 const SizedBox(height: 16),
                                 _buildTextField(
                                   controller: _countryController,
-                                  label: 'Country',
+                                  label: AppStrings.country,
                                 ),
                               ],
                             );
@@ -354,21 +355,21 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               Expanded(
                                 child: _buildTextField(
                                   controller: _cityController,
-                                  label: 'City',
+                                  label: AppStrings.city,
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: _buildTextField(
                                   controller: _stateController,
-                                  label: 'State',
+                                  label: AppStrings.state,
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: _buildTextField(
                                   controller: _countryController,
-                                  label: 'Country',
+                                  label: AppStrings.country,
                                 ),
                               ),
                             ],
@@ -378,7 +379,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                       const SizedBox(height: 32),
 
                       const Text(
-                        'Subscription & Capacity',
+                        AppStrings.subscriptionCapacity,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
@@ -392,13 +393,13 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                             return Column(
                               children: [
                                 _buildDateField(
-                                  label: 'Subscription Start',
+                                  label: AppStrings.subscriptionStart,
                                   date: _subStart,
                                   onTap: () => _selectDate(context, true),
                                 ),
                                 const SizedBox(height: 16),
                                 _buildDateField(
-                                  label: 'Subscription End',
+                                  label: AppStrings.subscriptionEnd,
                                   date: _subEnd,
                                   onTap: () => _selectDate(context, false),
                                 ),
@@ -409,7 +410,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                             children: [
                               Expanded(
                                 child: _buildDateField(
-                                  label: 'Subscription Start',
+                                  label: AppStrings.subscriptionStart,
                                   date: _subStart,
                                   onTap: () => _selectDate(context, true),
                                 ),
@@ -417,7 +418,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               const SizedBox(width: 16),
                               Expanded(
                                 child: _buildDateField(
-                                  label: 'Subscription End',
+                                  label: AppStrings.subscriptionEnd,
                                   date: _subEnd,
                                   onTap: () => _selectDate(context, false),
                                 ),
@@ -435,30 +436,30 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               children: [
                                 _buildTextField(
                                   controller: _maxStudentsController,
-                                  label: 'Max Students',
+                                  label: AppStrings.maxStudents,
                                   isNumber: true,
                                 ),
                                 const SizedBox(height: 16),
                                 _buildTextField(
                                   controller: _maxTeachersController,
-                                  label: 'Max Teachers',
+                                  label: AppStrings.maxTeachers,
                                   isNumber: true,
                                 ),
                                 const SizedBox(height: 16),
                                 DropdownButtonFormField<String>(
                                   value: _status,
                                   decoration: const InputDecoration(
-                                    labelText: 'Status',
+                                    labelText: AppStrings.statusLabel,
                                     border: OutlineInputBorder(),
                                   ),
                                   items: const [
                                     DropdownMenuItem(
                                       value: 'ACTIVE',
-                                      child: Text('Active'),
+                                      child: Text(AppStrings.statusActive),
                                     ),
                                     DropdownMenuItem(
                                       value: 'SUSPENDED',
-                                      child: Text('Suspended'),
+                                      child: Text(AppStrings.statusSuspended),
                                     ),
                                   ],
                                   onChanged: (val) {
@@ -474,7 +475,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               Expanded(
                                 child: _buildTextField(
                                   controller: _maxStudentsController,
-                                  label: 'Max Students',
+                                  label: AppStrings.maxStudents,
                                   isNumber: true,
                                 ),
                               ),
@@ -482,7 +483,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               Expanded(
                                 child: _buildTextField(
                                   controller: _maxTeachersController,
-                                  label: 'Max Teachers',
+                                  label: AppStrings.maxTeachers,
                                   isNumber: true,
                                 ),
                               ),
@@ -491,17 +492,17 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                 child: DropdownButtonFormField<String>(
                                   value: _status,
                                   decoration: const InputDecoration(
-                                    labelText: 'Status',
+                                    labelText: AppStrings.statusLabel,
                                     border: OutlineInputBorder(),
                                   ),
                                   items: const [
                                     DropdownMenuItem(
                                       value: 'ACTIVE',
-                                      child: Text('Active'),
+                                      child: Text(AppStrings.statusActive),
                                     ),
                                     DropdownMenuItem(
                                       value: 'SUSPENDED',
-                                      child: Text('Suspended'),
+                                      child: Text(AppStrings.statusSuspended),
                                     ),
                                   ],
                                   onChanged: (val) {
@@ -524,7 +525,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                 ? null
                                 : () => Navigator.pop(context),
                             child: const Text(
-                              'Cancel',
+                              AppStrings.cancel,
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey,
@@ -553,7 +554,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                     ),
                                   )
                                 : const Text(
-                                    'Save School',
+                                    AppStrings.saveSchool,
                                     style: TextStyle(fontSize: 16),
                                   ),
                           ),
@@ -614,7 +615,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
               child: Text(
                 date != null
                     ? DateFormat('MMM dd, yyyy').format(date)
-                    : 'Select Date',
+                    : AppStrings.selectDate,
                 overflow: TextOverflow.ellipsis,
               ),
             ),

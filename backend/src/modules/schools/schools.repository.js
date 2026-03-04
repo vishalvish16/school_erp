@@ -36,14 +36,26 @@ export const createSchool = async (data) => {
     return convertBigInts(created);
 };
 
-export const getSchools = async (where, skip, take) => {
+const SORT_FIELD_MAP = {
+    schoolCode: 'schoolCode',
+    name: 'name',
+    planId: 'planId',
+    isActive: 'isActive',
+    subscriptionEnd: 'subscriptionEnd',
+    createdAt: 'createdAt'
+};
+
+export const getSchools = async (where, skip, take, sortBy = 'createdAt', sortOrder = 'desc') => {
+    const orderField = SORT_FIELD_MAP[sortBy] || 'createdAt';
+    const orderBy = { [orderField]: sortOrder };
+
     // Run count and fetch concurrently
     const [schools, total] = await Promise.all([
         prisma.school.findMany({
             where,
             skip,
             take,
-            orderBy: { createdAt: 'desc' },
+            orderBy,
             include: { plan: true }
         }),
         prisma.school.count({ where })

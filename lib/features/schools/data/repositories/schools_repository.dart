@@ -8,10 +8,15 @@ abstract class ISchoolsRepository {
     int limit = 10,
     String? search,
     String? status,
+    String? code,
+    String? planId,
+    String? sortBy,
+    String? sortOrder,
   });
   Future<SchoolModel> createSchool(Map<String, dynamic> data);
   Future<SchoolModel> updateSchool(String id, Map<String, dynamic> data);
   Future<void> suspendSchool(String id);
+  Future<void> activateSchool(String id);
   Future<SchoolModel> getSchoolById(String id);
 
   // Subscription management
@@ -34,16 +39,30 @@ class SchoolsRepository implements ISchoolsRepository {
     int limit = 10,
     String? search,
     String? status,
+    String? code,
+    String? planId,
+    String? sortBy,
+    String? sortOrder,
   }) async {
-    final Map<String, dynamic> query = {'page': page, 'limit': limit};
-    if (search != null && search.isNotEmpty) query['search'] = search;
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'limit': limit.toString(),
+    };
+    final searchVal = search?.trim() ?? '';
+    if (searchVal.isNotEmpty) {
+      queryParams['search'] = searchVal;
+      queryParams['code'] = searchVal; // Backend uses both for name OR schoolCode
+    }
     if (status != null && status.isNotEmpty && status != 'ALL')
-      query['status'] = status;
+      queryParams['status'] = status;
+    if (planId != null && planId.isNotEmpty) queryParams['planId'] = planId;
+    if (sortBy != null && sortBy.isNotEmpty) queryParams['sortBy'] = sortBy;
+    if (sortOrder != null && sortOrder.isNotEmpty) queryParams['sortOrder'] = sortOrder;
 
-    final response = await _dio.get(
-      '/api/platform/schools',
-      queryParameters: query,
+    final uri = Uri.parse('/api/platform/schools').replace(
+      queryParameters: queryParams,
     );
+    final response = await _dio.get(uri.toString());
 
     Map<String, dynamic> payload = {};
 
@@ -58,8 +77,6 @@ class SchoolsRepository implements ISchoolsRepository {
     } else if (response.data is List) {
       payload = {'data': response.data};
     }
-
-    print('DEBUG API PAYLOAD: $payload');
 
     return PaginationModel<SchoolModel>.fromJson(
       payload,
@@ -82,6 +99,11 @@ class SchoolsRepository implements ISchoolsRepository {
   @override
   Future<void> suspendSchool(String id) async {
     await _dio.delete('/api/platform/schools/$id');
+  }
+
+  @override
+  Future<void> activateSchool(String id) async {
+    await _dio.put('/api/platform/schools/$id', data: {'status': 'ACTIVE'});
   }
 
   @override

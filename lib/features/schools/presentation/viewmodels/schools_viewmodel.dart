@@ -24,6 +24,9 @@ class SchoolsViewModel
   final int _limit = 10;
   String _searchQuery = '';
   String _statusFilter = 'ALL';
+  String _planIdFilter = '';
+  String _sortBy = 'createdAt';
+  String _sortOrder = 'desc';
 
   SchoolsViewModel(this._repository) : super(const AsyncValue.loading()) {
     fetchSchools();
@@ -49,8 +52,11 @@ class SchoolsViewModel
       final response = await _repository.getSchools(
         page: _currentPage,
         limit: _limit,
-        search: _searchQuery,
+        search: _searchQuery.isNotEmpty ? _searchQuery : null,
         status: _statusFilter,
+        planId: _planIdFilter.isNotEmpty ? _planIdFilter : null,
+        sortBy: _sortBy,
+        sortOrder: _sortOrder,
       );
       state = AsyncData(response);
     } catch (e, st) {
@@ -62,19 +68,47 @@ class SchoolsViewModel
   }
 
   void onSearchChanged(String query) {
-    if (_searchQuery == query) return;
-    _searchQuery = query;
+    final trimmed = query.trim();
+    if (_searchQuery == trimmed) return;
+    _searchQuery = trimmed;
     _currentPage = 1;
 
     if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+    if (trimmed.isEmpty) {
       fetchSchools();
-    });
+    } else {
+      _debounceTimer = Timer(const Duration(milliseconds: 350), () {
+        fetchSchools();
+      });
+    }
+  }
+
+  void applySearchNow([String? queryFromField]) {
+    if (queryFromField != null) _searchQuery = queryFromField.trim();
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _currentPage = 1;
+    fetchSchools();
   }
 
   void setStatusFilter(String status) {
     if (_statusFilter == status) return;
     _statusFilter = status;
+    _currentPage = 1;
+    fetchSchools();
+  }
+
+  void setPlanIdFilter(String? planId) {
+    final value = planId ?? '';
+    if (_planIdFilter == value) return;
+    _planIdFilter = value;
+    _currentPage = 1;
+    fetchSchools();
+  }
+
+  void setSort(String sortBy, String sortOrder) {
+    if (_sortBy == sortBy && _sortOrder == sortOrder) return;
+    _sortBy = sortBy;
+    _sortOrder = sortOrder;
     _currentPage = 1;
     fetchSchools();
   }
@@ -111,7 +145,42 @@ class SchoolsViewModel
     }
   }
 
+  Future<void> activateSchool(String id) async {
+    final previousState = state;
+
+    // Optimistic UI update
+    if (state.hasValue) {
+      final currentList = state.value!.data;
+      final updatedList = currentList.map((s) {
+        if (s.id == id) {
+          return s.copyWith(status: 'ACTIVE', isActive: true);
+        }
+        return s;
+      }).toList();
+
+      state = AsyncData(
+        PaginationModel<SchoolModel>(
+          data: updatedList,
+          total: state.value!.total,
+          page: state.value!.page,
+          limit: state.value!.limit,
+          totalPages: state.value!.totalPages,
+        ),
+      );
+    }
+
+    try {
+      await _repository.activateSchool(id);
+    } catch (e) {
+      state = previousState;
+      rethrow;
+    }
+  }
+
   int get currentPage => _currentPage;
   String get currentStatus => _statusFilter;
   String get currentSearch => _searchQuery;
+  String get currentPlanIdFilter => _planIdFilter;
+  String get currentSortBy => _sortBy;
+  String get currentSortOrder => _sortOrder;
 }

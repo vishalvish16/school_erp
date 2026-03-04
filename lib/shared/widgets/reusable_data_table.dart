@@ -1,15 +1,31 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/app_strings.dart';
 
 class ReusableDataTable extends StatelessWidget {
   final List<String> columns;
   final List<DataRow> rows;
   final bool isLoading;
+  /// Fixed widths per column. When provided, prevents layout shift when cell content changes.
+  final List<double>? columnWidths;
+  /// Column indices that support sorting. When provided, headers show sort icon and are tappable.
+  final List<int>? sortableColumns;
+  /// Currently sorted column index (0-based), or null if no sort.
+  final int? sortColumnIndex;
+  /// true = ascending, false = descending.
+  final bool sortAscending;
+  /// Called when user taps a sortable column header. (columnIndex, ascending).
+  final void Function(int columnIndex, bool ascending)? onSort;
 
   const ReusableDataTable({
     super.key,
     required this.columns,
     required this.rows,
     this.isLoading = false,
+    this.columnWidths,
+    this.sortableColumns,
+    this.sortColumnIndex,
+    this.sortAscending = true,
+    this.onSort,
   });
 
   @override
@@ -23,12 +39,15 @@ class ReusableDataTable extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(32.0),
           child: Text(
-            'No records found',
+            AppStrings.noRecordsFound,
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),
         ),
       );
     }
+
+    final widths = columnWidths;
+    final hasWidths = widths != null && widths.length == columns.length;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -37,19 +56,48 @@ class ReusableDataTable extends StatelessWidget {
           child: ConstrainedBox(
             constraints: BoxConstraints(minWidth: constraints.maxWidth),
             child: DataTable(
+              sortColumnIndex: sortColumnIndex,
+              sortAscending: sortAscending,
               headingRowColor: WidgetStateProperty.resolveWith(
                 (states) => Colors.grey.shade100,
               ),
-              columns: columns
-                  .map(
-                    (col) => DataColumn(
-                      label: Text(
-                        col,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+              columns: List.generate(columns.length, (i) {
+                final isSortable = sortableColumns != null &&
+                    sortableColumns!.contains(i) &&
+                    onSort != null;
+                final isSorted = sortColumnIndex == i;
+                final label = Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      columns[i],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                  )
-                  .toList(),
+                    if (isSortable)
+                      Icon(
+                        isSorted
+                            ? (sortAscending
+                                ? Icons.arrow_drop_up
+                                : Icons.arrow_drop_down)
+                            : Icons.unfold_more,
+                        size: 18,
+                        color: isSorted ? Colors.blue : Colors.grey,
+                      ),
+                  ],
+                );
+                return DataColumn(
+                  label: hasWidths
+                      ? SizedBox(
+                          width: widths[i],
+                          child: label,
+                        )
+                      : label,
+                  onSort: isSortable
+                      ? (columnIndex, ascending) =>
+                          onSort!(columnIndex, ascending)
+                      : null,
+                );
+              }),
               rows: rows,
             ),
           ),

@@ -40,6 +40,7 @@ dependencies:
   shared_preferences: ^2.5.4
   local_auth: ^3.0.0
   flutter_secure_storage: ^10.0.0
+  gif_view: ^1.0.3
 
 dev_dependencies:
   flutter_test:
@@ -58,6 +59,7 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/logo.png"
+  remove_alpha_ios: true  # Required for Apple App Store
   min_sdk_android: 21 # android min sdk version
 
 # For information on the generic Dart part of this file, see the
@@ -75,7 +77,7 @@ flutter:
     - assets/images/logo2.png
     - assets/images/logo.png
     - assets/animations/logo_gif.gif
-    - assets/images/auth_background.jpg
+    - assets/images/auth_background.jpeg
     - assets/images/protect.png
     - assets/images/track.png
     - assets/images/automate.png

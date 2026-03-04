@@ -48,12 +48,19 @@ export const schoolIdParamSchema = z.object({
     })
 });
 
+const sortByEnum = z.enum(['schoolCode', 'name', 'planId', 'isActive', 'subscriptionEnd', 'createdAt']);
+const sortOrderEnum = z.enum(['asc', 'desc']);
+
 export const getSchoolsQuerySchema = z.object({
     query: z.object({
         page: z.string().optional(),
         limit: z.string().optional(),
         search: z.string().optional(),
-        status: z.string().optional()
+        status: z.string().optional(),
+        code: z.string().optional(),
+        planId: z.string().optional(),
+        sortBy: sortByEnum.optional(),
+        sortOrder: sortOrderEnum.optional()
     })
 });
 
@@ -76,8 +83,9 @@ export const validate = (schema) => (req, res, next) => {
             params: req.params,
         });
         if (parsed.body) req.body = parsed.body;
-        if (parsed.query) req.query = parsed.query;
         if (parsed.params) req.params = parsed.params;
+        // Do NOT replace req.query - Zod strips optional keys from output,
+        // breaking code/planId/sortBy/sortOrder filters. Keep Express req.query.
         next();
     } catch (error) {
         if (error instanceof z.ZodError) {

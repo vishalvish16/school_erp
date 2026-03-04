@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VIDYRON Short Intro (3s)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: transparent;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        #canvas {
+            width: 1920px;
+            height: 1080px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: scale(0.6);
+        }
+
+        .main-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 1200px;
+        }
+
+        .icon-layer {
+            display: flex;
+            gap: 100px;
+            align-items: center;
+            justify-content: center;
+            height: 350px;
+        }
+
+        .icon-item {
+            width: 180px;
+            height: 180px;
+            object-fit: contain;
+            opacity: 0;
+        }
+
+        .final-logo-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 900px;
+            height: 300px;
+            opacity: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #final-logo {
+            width: 100%;
+            height: auto;
+        }
+
+        #cap-overlay {
+            position: absolute;
+            width: 135px;
+            right: 22px;
+            top: 15px;
+            opacity: 0;
+        }
+
+        .tagline {
+            margin-top: 80px;
+            font-size: 38px;
+            font-weight: 600;
+            color: #0c1a32;
+            letter-spacing: 0.6em;
+            opacity: 0;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .underline-mask {
+            position: absolute;
+            bottom: 121px;
+            left: 100px;
+            width: 710px;
+            height: 8px;
+            overflow: hidden;
+            border-radius: 4px;
+            opacity: 0;
+        }
+
+        .sweep-gradient {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #1E63F0 0%, #3EA6FF 100%);
+            transform: scaleX(0);
+            transform-origin: left;
+        }
+
+        .sweep {
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="canvas">
+        <div class="main-container">
+            <div id="icons" class="icon-layer">
+                <img id="img-protect" src="assets/images/protect.png" class="icon-item" alt="Protect">
+                <img id="img-track" src="assets/images/track.png" class="icon-item" alt="Track">
+                <img id="img-automate" src="assets/images/automate.png" class="icon-item" alt="Automate">
+            </div>
+            <div id="logo-reveal-container" class="final-logo-container">
+                <img id="final-logo" src="assets/images/logo2.png" alt="VIDYRON">
+            </div>
+            <div id="tagline" class="tagline">PROTECT • TRACK • AUTOMATE</div>
+        </div>
+    </div>
+    <script>
+        const tl = gsap.timeline({ defaults: { ease: "cubic-bezier(0.4, 0, 0.2, 1)", duration: 0.5 } });
+        tl.to(".icon-item", { opacity: 1, scale: 1, stagger: 0.05, startAt: { scale: 0.95 } }, 0)
+            .to("#img-protect", { x: 300, duration: 0.7 }, 0.5)
+            .to("#img-automate", { x: -300, duration: 0.7 }, 0.5)
+            .to("#icons", { opacity: 0, scale: 0.9, duration: 0.3 }, 0.8)
+            .to("#logo-reveal-container", { opacity: 1, y: 0, startAt: { y: 10 }, duration: 0.5 }, 1.0)
+            .to("#tagline", { opacity: 1, letterSpacing: "0.5em", startAt: { letterSpacing: "0.7em" }, duration: 0.5 }, 1.6)
+            .to("#sweep-gradient", { scaleX: 1, duration: 0.4 }, 2.0)
+            .to("#sweep", { left: "100%", duration: 0.6, ease: "power2.inOut" }, 2.2);
+    </script>
+</body>
+
+</html>

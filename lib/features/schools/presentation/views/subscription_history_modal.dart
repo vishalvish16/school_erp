@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../domain/models/subscription_models.dart';
 import '../../../../shared/widgets/reusable_data_table.dart';
 
@@ -26,13 +27,16 @@ class SubscriptionHistoryModal extends StatelessWidget {
               children: [
                 const Expanded(
                   child: Text(
-                    'Full Subscription History',
+                    AppStrings.fullSubscriptionHistory,
                     style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close),
+                Tooltip(
+                  message: AppStrings.tooltipClose,
+                  child: IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
                 ),
               ],
             ),
@@ -46,12 +50,12 @@ class SubscriptionHistoryModal extends StatelessWidget {
                 child: SingleChildScrollView(
                   child: ReusableDataTable(
                     columns: const [
-                      'Plan',
-                      'Billing',
-                      'Start Date',
-                      'End Date',
-                      'Status',
-                      'Created At',
+                      AppStrings.tablePlan,
+                      AppStrings.tableBilling,
+                      AppStrings.tableStartDate,
+                      AppStrings.tableEndDate,
+                      AppStrings.tableStatus,
+                      AppStrings.tableCreatedAt,
                     ],
                     rows: history.map((h) {
                       return DataRow(
@@ -92,7 +96,7 @@ class SubscriptionHistoryModal extends StatelessWidget {
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                'Total Records: ${history.length}',
+                AppStrings.totalRecords(history.length),
                 style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
               ),
             ),

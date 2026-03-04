@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
 import 'reset_password_provider.dart';
 import 'reset_password_state.dart';
 
@@ -17,13 +19,81 @@ class ResetPasswordScreen extends ConsumerStatefulWidget {
 class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
+  final _passwordFocusNode = FocusNode();
+  final _confirmFocusNode = FocusNode();
   final _formKey = GlobalKey<FormState>();
+  final _passwordFieldKey = GlobalKey();
   bool _isPasswordVisible = false;
+  OverlayEntry? _tooltipOverlay;
+
+  static final List<({String label, bool Function(String) check})> _passwordRules = [
+    (label: AuthStrings.passwordRuleMinLength, check: (s) => s.length >= 8),
+    (label: AuthStrings.passwordRuleUppercase, check: (s) => s.contains(RegExp(r'[A-Z]'))),
+    (label: AuthStrings.passwordRuleLowercase, check: (s) => s.contains(RegExp(r'[a-z]'))),
+    (label: AuthStrings.passwordRuleNumber, check: (s) => s.contains(RegExp(r'[0-9]'))),
+    (label: AuthStrings.passwordRuleSpecial, check: (s) => s.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/`~]'))),
+  ];
+
+  bool _hasUnsatisfiedPasswordRules(String? value) {
+    if (value == null || value.isEmpty) return true;
+    return _passwordRules.any((r) => !r.check(value));
+  }
+
+  void _hideTooltip() {
+    _tooltipOverlay?.remove();
+    _tooltipOverlay = null;
+    if (mounted) setState(() {});
+  }
+
+  void _updateTooltipVisibility() {
+    if (!mounted) return;
+    final hasUnsatisfied = _hasUnsatisfiedPasswordRules(_passwordController.text);
+    final hasText = _passwordController.text.isNotEmpty;
+
+    if (hasText && hasUnsatisfied) {
+      if (_tooltipOverlay != null) {
+        _tooltipOverlay!.markNeedsBuild();
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _showTooltipOverlay());
+      }
+    } else {
+      _hideTooltip();
+    }
+  }
+
+  void _showTooltipOverlay() {
+    if (!mounted || _tooltipOverlay != null) return;
+    final overlay = Overlay.of(context);
+    final box = _passwordFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final pos = box.localToGlobal(Offset.zero);
+    final size = box.size;
+    final isMobile = MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
+
+    _tooltipOverlay = OverlayEntry(
+      builder: (context) => Positioned(
+        left: isMobile ? pos.dx : pos.dx + size.width + 12,
+        top: isMobile ? pos.dy + size.height + 8 : pos.dy,
+        child: _buildPasswordTooltip(_passwordController.text),
+      ),
+    );
+    overlay.insert(_tooltipOverlay!);
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.addListener(_updateTooltipVisibility);
+  }
 
   @override
   void dispose() {
+    _hideTooltip();
     _passwordController.dispose();
     _confirmController.dispose();
+    _passwordFocusNode.dispose();
+    _confirmFocusNode.dispose();
     super.dispose();
   }
 
@@ -39,21 +109,21 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(resetPasswordProvider);
-    final isMobile = MediaQuery.of(context).size.width < 900;
+    final isMobile = MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
 
     ref.listen<ResetPasswordState>(resetPasswordProvider, (previous, next) {
       if (next.isSuccess && previous?.isSuccess != true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Password updated successfully!'),
-            backgroundColor: Colors.green,
+            content: Text(AuthStrings.passwordUpdated),
+            backgroundColor: AuthColors.success,
           ),
         );
         context.go('/login');
       } else if (next.isFailure && previous?.isFailure != true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.errorMessage ?? 'Failed to reset password'),
+            content: Text(next.errorMessage ?? AuthStrings.resetFailed),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -65,20 +135,168 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         fit: StackFit.expand,
         children: [
           // Background
-          Image.asset('assets/images/auth_background.jpg', fit: BoxFit.cover),
+          Image.asset(AuthAssets.background, fit: BoxFit.cover),
 
-          // Subtle Darkening Overlay
-          Container(color: Colors.black.withValues(alpha: 0.15)),
+          // Light gradient overlay - keeps background visible for glass effect
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AuthColors.overlayLight(0.15),
+                  AuthColors.overlayLight(0.05),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
 
           // Main Content
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: _buildResetCard(context, state, isMobile),
+          SafeArea(
+            child: Column(
+              children: [
+                // Header: Logo + Mobile Tagline
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AuthSizes.headerPaddingV,
+                    horizontal: AuthSizes.headerPaddingH,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        AuthAssets.logo,
+                        height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                        fit: BoxFit.contain,
+                      ),
+                      if (isMobile) ...[
+                        SizedBox(height: AuthSizes.taglineGap),
+                        _buildMobileTagline(),
+                      ],
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(AuthSizes.scrollPadding),
+                      child: _buildResetCard(context, state, isMobile),
+                    ),
+                  ),
+                ),
+                // Footer: Protect, Track, Automate (web only)
+                if (!isMobile) _buildFooter(),
+              ],
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFooter() {
+    final gap = AuthSizes.footerGapWeb;
+    final dotSeparator = Padding(
+      padding: EdgeInsets.symmetric(horizontal: gap / 2),
+      child: Container(
+        width: AuthSizes.taglineDotSize,
+        height: AuthSizes.taglineDotSize,
+        decoration: const BoxDecoration(
+          color: AuthColors.textMuted,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: AuthSizes.footerPaddingV,
+        horizontal: AuthSizes.footerPaddingH,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildFooterIcon(AuthAssets.protect),
+              SizedBox(width: AuthSizes.footerGapWeb),
+              _buildFooterIcon(AuthAssets.track),
+              SizedBox(width: AuthSizes.footerGapWeb),
+              _buildFooterIcon(AuthAssets.automate),
+            ],
+          ),
+          SizedBox(height: AuthSizes.footerTextGap),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(AuthStrings.protect, style: AuthTextStyles.tagline),
+              dotSeparator,
+              Text(AuthStrings.track, style: AuthTextStyles.tagline),
+              dotSeparator,
+              Text(AuthStrings.automate, style: AuthTextStyles.tagline),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFooterIcon(String assetPath) {
+    return Container(
+      padding: const EdgeInsets.all(AuthSizes.footerIconPadding),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: AuthColors.overlayLight(0.08),
+            blurRadius: AuthSizes.formFieldShadowBlur,
+            offset: const Offset(0, AuthSizes.formFieldShadowOffset),
+          ),
+        ],
+      ),
+      child: Image.asset(
+        assetPath,
+        width: AuthSizes.footerIconWeb,
+        height: AuthSizes.footerIconWeb,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) =>
+            Icon(Icons.verified_user, size: AuthSizes.footerIconWeb, color: AuthColors.primary),
+      ),
+    );
+  }
+
+  Widget _buildMobileTagline() {
+    final dotSeparator = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AuthSizes.taglineDotPadding),
+      child: Container(
+        width: AuthSizes.taglineDotSize,
+        height: AuthSizes.taglineDotSize,
+        decoration: const BoxDecoration(
+          color: AuthColors.textMuted,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Image.asset(
+          AuthAssets.protect,
+          width: AuthSizes.taglineIconSize,
+          height: AuthSizes.taglineIconSize,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) =>
+              Icon(Icons.shield, size: AuthSizes.taglineIconSize, color: AuthColors.primary),
+        ),
+        const SizedBox(width: AuthSizes.taglineIconGap),
+        Text(AuthStrings.protect, style: AuthTextStyles.tagline),
+        dotSeparator,
+        Text(AuthStrings.track, style: AuthTextStyles.tagline),
+        dotSeparator,
+        Text(AuthStrings.automate, style: AuthTextStyles.tagline),
+      ],
     );
   }
 
@@ -88,24 +306,24 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     bool isMobile,
   ) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(32),
+      borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlurStrong, sigmaY: AuthSizes.glassBlurStrong),
         child: Container(
-          width: isMobile ? double.infinity : 450,
-          padding: const EdgeInsets.all(40),
+          width: isMobile ? double.infinity : AuthSizes.cardWidthFixed,
+          padding: const EdgeInsets.all(AuthSizes.cardPadding),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.82),
-            borderRadius: BorderRadius.circular(32),
+            color: AuthColors.overlayLight(0.25),
+            borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.6),
-              width: 1.5,
+              color: AuthColors.overlayLight(0.5),
+              width: AuthSizes.glassBorderWidth,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 40,
-                offset: const Offset(0, 20),
+                color: AuthColors.overlayDark(0.08),
+                blurRadius: AuthSizes.glassShadowBlur,
+                offset: Offset(0, AuthSizes.glassShadowOffset),
               ),
             ],
           ),
@@ -114,80 +332,71 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Logo
-                Image.asset(
-                  'assets/images/logo.png',
-                  width: 240,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 32),
-                const Text(
-                  'Secure Credentials Update',
+                Text(
+                  AuthStrings.secureCredentials,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF0F172A),
-                    letterSpacing: -0.5,
-                  ),
+                  style: AuthTextStyles.screenTitle,
                 ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Establish your new security key for workspace access.',
+                SizedBox(height: AuthSizes.formSpacingMedium - 12),
+                Text(
+                  AuthStrings.secureCredentialsDesc,
                   textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF475569),
-                    height: 1.6,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: AuthTextStyles.screenSubtitle,
                 ),
-                const SizedBox(height: 40),
+                SizedBox(height: AuthSizes.cardPadding),
 
-                // Password Field
-                _buildStyledInput(
-                  controller: _passwordController,
-                  hint: 'New Security Key',
-                  icon: Icons.vpn_key_rounded,
-                  isPassword: true,
-                  validator: (v) {
-                    if (v == null || v.isEmpty) return 'Password is required';
-                    if (v.length < 8) return 'Minimum 8 characters required';
-                    return null;
-                  },
+                // Password Field (tooltip shows as overlay on blur)
+                Container(
+                  key: _passwordFieldKey,
+                  child: _buildStyledInput(
+                    controller: _passwordController,
+                    hint: AuthStrings.newSecurityKey,
+                    icon: Icons.vpn_key_rounded,
+                    isPassword: true,
+                    focusNode: _passwordFocusNode,
+                    validator: (v) {
+                      if (v == null || v.isEmpty) return AuthStrings.passwordRequired;
+                      for (final r in _passwordRules) {
+                        if (!r.check(v)) return '${r.label} required';
+                      }
+                      return null;
+                    },
+                  ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: AuthSizes.formSpacingSmall),
 
                 // Confirm Password Field
                 _buildStyledInput(
                   controller: _confirmController,
-                  hint: 'Authorize Security Key',
+                  hint: AuthStrings.authorizeSecurityKey,
                   icon: Icons.check_circle_outline_rounded,
                   isPassword: true,
+                  focusNode: _confirmFocusNode,
                   validator: (v) {
-                    if (v != _passwordController.text)
-                      return 'Keys do not match';
+                    if (v != _passwordController.text) {
+                      return AuthStrings.keysDoNotMatch;
+                    }
                     return null;
                   },
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: AuthSizes.sectionGap),
 
                 // Action Button
                 Container(
                   width: double.infinity,
-                  height: 56,
+                  height: AuthSizes.buttonHeight,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                      colors: [AuthColors.primary, AuthColors.primaryDark],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF2563EB).withValues(alpha: 0.3),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
+                        color: AuthColors.primary.withValues(alpha: 0.3),
+                        blurRadius: AuthSizes.buttonShadowBlur,
+                        offset: Offset(0, AuthSizes.buttonShadowOffset),
                       ),
                     ],
                   ),
@@ -197,38 +406,35 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
                       ),
                     ),
                     child: state.isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
+                        ? SizedBox(
+                            width: AuthSizes.formSpacingMedium,
+                            height: AuthSizes.formSpacingMedium,
                             child: CircularProgressIndicator(
                               color: Colors.white,
                               strokeWidth: 2.5,
                             ),
                           )
-                        : const Text(
-                            'Finalize Update',
-                            style: TextStyle(
+                        : Text(
+                            AuthStrings.finalizeUpdate,
+                            style: AuthTextStyles.buttonPrimary.copyWith(
                               fontSize: 17,
                               fontWeight: FontWeight.w800,
-                              color: Colors.white,
                             ),
                           ),
                   ),
                 ),
-                const SizedBox(height: 28),
+                SizedBox(height: AuthSizes.formSpacingBackLink),
 
                 TextButton(
                   onPressed: () => context.go('/login'),
-                  child: const Text(
-                    'Cancel Update',
-                    style: TextStyle(
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                  child: Text(
+                    AuthStrings.cancelUpdate,
+                    style: AuthTextStyles.tagline.copyWith(
+                      color: AuthColors.textMuted,
                     ),
                   ),
                 ),
@@ -240,47 +446,122 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     );
   }
 
+  Widget _buildPasswordTooltip(String password) {
+    return Material(
+      elevation: 8,
+      borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
+      shadowColor: AuthColors.overlayDark(0.15),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 220),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
+          border: Border.all(color: AuthColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: AuthColors.overlayDark(0.04),
+              blurRadius: AuthSizes.formFieldShadowBlur,
+              offset: Offset(0, AuthSizes.formFieldShadowOffset),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 14, color: AuthColors.textMuted),
+                const SizedBox(width: 6),
+                Text(
+                  AppStrings.tooltipRequirements,
+                  style: AuthTextStyles.inputHint.copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AuthColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            ..._passwordRules.map((r) {
+              final satisfied = r.check(password);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      satisfied ? Icons.check_circle : Icons.cancel,
+                      size: 14,
+                      color: satisfied ? AuthColors.success : Colors.redAccent,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        r.label,
+                        style: AuthTextStyles.inputHint.copyWith(
+                          fontSize: 11,
+                          color: satisfied ? AuthColors.success : Colors.redAccent,
+                          fontWeight: satisfied ? FontWeight.w600 : FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildStyledInput({
     required TextEditingController controller,
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    FocusNode? focusNode,
     required String? Function(String?) validator,
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC).withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
+        border: Border.all(color: AuthColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: AuthColors.overlayDark(0.04),
+            blurRadius: AuthSizes.formFieldShadowBlur,
+            offset: Offset(0, AuthSizes.formFieldShadowOffset),
+          ),
+        ],
       ),
       child: TextFormField(
         controller: controller,
+        focusNode: focusNode,
         obscureText: isPassword && !_isPasswordVisible,
-        style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: Color(0xFF1E293B),
-          fontSize: 15,
-        ),
+        style: AuthTextStyles.inputText,
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: const TextStyle(
-            color: Color(0xFF94A3B8),
-            fontWeight: FontWeight.w500,
-          ),
+          hintStyle: AuthTextStyles.inputHint,
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
-            vertical: 18,
+            horizontal: AuthSizes.formFieldPaddingH,
+            vertical: AuthSizes.formFieldPaddingV,
           ),
           border: InputBorder.none,
-          prefixIcon: Icon(icon, color: const Color(0xFF64748B), size: 20),
+          prefixIcon: Icon(icon, color: AuthColors.textMuted, size: AuthSizes.formFieldIconSize),
           suffixIcon: isPassword
               ? IconButton(
                   icon: Icon(
                     _isPasswordVisible
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    color: const Color(0xFF94A3B8),
-                    size: 20,
+                    color: AuthColors.textHint,
+                    size: AuthSizes.formFieldIconSize,
                   ),
                   onPressed: () =>
                       setState(() => _isPasswordVisible = !_isPasswordVisible),

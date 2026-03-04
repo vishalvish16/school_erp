@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../subscription/provider/plan_provider.dart';
 import '../viewmodels/school_detail_viewmodel.dart';
 
@@ -37,20 +38,20 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
     final theme = Theme.of(context);
 
     return AlertDialog(
-      title: const Text('Assign Subscription Plan'),
+      title: const Text(AppStrings.assignSubscriptionPlan),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Choose a Plan',
+              AppStrings.choosePlan,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<int>(
               value: _selectedPlanId,
-              hint: const Text('Select Plan'),
+              hint: const Text(AppStrings.selectPlan),
               isExpanded: true,
               items: planState.plans.map((plan) {
                 return DropdownMenuItem(
@@ -65,14 +66,14 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Billing Cycle',
+              AppStrings.billingCycle,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             Row(
               children: [
                 Expanded(
                   child: RadioListTile<String>(
-                    title: const Text('Monthly'),
+                    title: const Text(AppStrings.monthlyBilling),
                     value: 'MONTHLY',
                     groupValue: _billingCycle,
                     onChanged: (val) => setState(() => _billingCycle = val!),
@@ -81,7 +82,7 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
                 ),
                 Expanded(
                   child: RadioListTile<String>(
-                    title: const Text('Yearly'),
+                    title: const Text(AppStrings.yearlyBilling),
                     value: 'YEARLY',
                     groupValue: _billingCycle,
                     onChanged: (val) => setState(() => _billingCycle = val!),
@@ -92,7 +93,7 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Custom Duration (Optional)',
+              AppStrings.customDuration,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -100,8 +101,8 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
               controller: _durationController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                hintText: 'Enter months (e.g. 6)',
-                suffixText: 'Months',
+                hintText: AppStrings.enterMonthsHint,
+                suffixText: AppStrings.months,
                 border: OutlineInputBorder(),
               ),
             ),
@@ -118,7 +119,7 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
       actions: [
         TextButton(
           onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: const Text(AppStrings.cancel),
         ),
         ElevatedButton(
           onPressed: _isSubmitting || _selectedPlanId == null
@@ -137,7 +138,7 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
                     color: Colors.white,
                   ),
                 )
-              : const Text('Assign'),
+              : const Text(AppStrings.assign),
         ),
       ],
     );
@@ -160,7 +161,7 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Plan assigned successfully'),
+            content: Text(AppStrings.planAssignedSuccess),
             backgroundColor: Colors.green,
           ),
         );
@@ -169,7 +170,7 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
+            content: Text(AppStrings.errorWithMessage(e.toString())),
             backgroundColor: Colors.red,
           ),
         );

@@ -39,9 +39,12 @@ class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
         children: [
           // ── Mobile/Tablet Menu Button ──────────────────────────────────────
           if (showMenuButton) ...[
-            IconButton(
-              onPressed: onMenuPressed,
-              icon: const Icon(Icons.menu_rounded),
+            Tooltip(
+              message: AppStrings.menuTooltip,
+              child: IconButton(
+                onPressed: onMenuPressed,
+                icon: const Icon(Icons.menu_rounded),
+              ),
             ),
             AppSpacing.hGapMd,
           ],
@@ -80,10 +83,13 @@ class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
               // Notification with Badge
               Stack(
                 children: [
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.notifications_none_rounded),
-                    color: scheme.onSurfaceVariant,
+                  Tooltip(
+                    message: AppStrings.notificationsTooltip,
+                    child: IconButton(
+                      onPressed: () {},
+                      icon: const Icon(Icons.notifications_none_rounded),
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                   Positioned(
                     right: 12,
