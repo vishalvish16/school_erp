@@ -39,12 +39,14 @@ class LoginNotifier extends StateNotifier<LoginState> {
       state = state.copyWith(
         isBiometricSupported: false,
         isBiometricEnabled: false,
+        primaryBiometricType: null,
       );
       return;
     }
     try {
       final biometricService = _ref.read(biometricServiceProvider);
       final isSupported = await biometricService.isBiometricAvailable();
+      final primaryType = await biometricService.getPrimaryBiometricType();
 
       final prefs = await SharedPreferences.getInstance();
       final isEnabled = prefs.getBool('biometric_login_enabled') ?? false;
@@ -52,11 +54,13 @@ class LoginNotifier extends StateNotifier<LoginState> {
       state = state.copyWith(
         isBiometricSupported: isSupported,
         isBiometricEnabled: isEnabled,
+        primaryBiometricType: primaryType,
       );
     } catch (e) {
       state = state.copyWith(
         isBiometricSupported: false,
         isBiometricEnabled: false,
+        primaryBiometricType: null,
       );
     }
   }

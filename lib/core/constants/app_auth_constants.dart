@@ -21,6 +21,9 @@ abstract final class AuthStrings {
   static const String forgotPassword = 'Forgot Password?';
   static const String or = 'OR';
   static const String biometricEntry = 'Biometric Entry';
+  static const String useFingerprint = 'Use Fingerprint';
+  static const String useFace = 'Use Face';
+  static const String useBiometric = 'Use Face or Fingerprint';
 
   // ── Feature points ─────────────────────────────────────────────────────────
   static const String featureAiShield = 'Advanced AI Shield Security';

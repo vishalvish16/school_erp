@@ -4,6 +4,7 @@
 // =============================================================================
 
 import 'package:flutter/foundation.dart';
+import '../../core/services/biometric_service.dart';
 
 @immutable
 class LoginState {
@@ -16,6 +17,7 @@ class LoginState {
     this.password = '',
     this.isBiometricSupported = false,
     this.isBiometricEnabled = false,
+    this.primaryBiometricType,
   });
 
   final bool isLoading;
@@ -26,6 +28,7 @@ class LoginState {
   final String password;
   final bool isBiometricSupported;
   final bool isBiometricEnabled;
+  final BiometricTypeUI? primaryBiometricType;
 
   /// Helper to check if state is failure
   bool get isFailure => errorMessage != null;
@@ -37,6 +40,7 @@ class LoginState {
     bool? rememberMe,
     bool? isBiometricSupported,
     bool? isBiometricEnabled,
+    BiometricTypeUI? primaryBiometricType,
     String? email,
     String? password,
   }) {
@@ -47,6 +51,7 @@ class LoginState {
       rememberMe: rememberMe ?? this.rememberMe,
       isBiometricSupported: isBiometricSupported ?? this.isBiometricSupported,
       isBiometricEnabled: isBiometricEnabled ?? this.isBiometricEnabled,
+      primaryBiometricType: primaryBiometricType ?? this.primaryBiometricType,
       email: email ?? this.email,
       password: password ?? this.password,
     );
@@ -76,6 +81,7 @@ class LoginState {
           rememberMe == other.rememberMe &&
           isBiometricSupported == other.isBiometricSupported &&
           isBiometricEnabled == other.isBiometricEnabled &&
+          primaryBiometricType == other.primaryBiometricType &&
           email == other.email &&
           password == other.password;
 
@@ -87,6 +93,7 @@ class LoginState {
       rememberMe.hashCode ^
       isBiometricSupported.hashCode ^
       isBiometricEnabled.hashCode ^
+      primaryBiometricType.hashCode ^
       email.hashCode ^
       password.hashCode;
 }

@@ -26,12 +26,26 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   bool _isPasswordVisible = false;
   OverlayEntry? _tooltipOverlay;
 
-  static final List<({String label, bool Function(String) check})> _passwordRules = [
+  static final List<({String label, bool Function(String) check})>
+  _passwordRules = [
     (label: AuthStrings.passwordRuleMinLength, check: (s) => s.length >= 8),
-    (label: AuthStrings.passwordRuleUppercase, check: (s) => s.contains(RegExp(r'[A-Z]'))),
-    (label: AuthStrings.passwordRuleLowercase, check: (s) => s.contains(RegExp(r'[a-z]'))),
-    (label: AuthStrings.passwordRuleNumber, check: (s) => s.contains(RegExp(r'[0-9]'))),
-    (label: AuthStrings.passwordRuleSpecial, check: (s) => s.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/`~]'))),
+    (
+      label: AuthStrings.passwordRuleUppercase,
+      check: (s) => s.contains(RegExp(r'[A-Z]')),
+    ),
+    (
+      label: AuthStrings.passwordRuleLowercase,
+      check: (s) => s.contains(RegExp(r'[a-z]')),
+    ),
+    (
+      label: AuthStrings.passwordRuleNumber,
+      check: (s) => s.contains(RegExp(r'[0-9]')),
+    ),
+    (
+      label: AuthStrings.passwordRuleSpecial,
+      check: (s) =>
+          s.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;/`~]')),
+    ),
   ];
 
   bool _hasUnsatisfiedPasswordRules(String? value) {
@@ -47,14 +61,18 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   void _updateTooltipVisibility() {
     if (!mounted) return;
-    final hasUnsatisfied = _hasUnsatisfiedPasswordRules(_passwordController.text);
+    final hasUnsatisfied = _hasUnsatisfiedPasswordRules(
+      _passwordController.text,
+    );
     final hasText = _passwordController.text.isNotEmpty;
 
     if (hasText && hasUnsatisfied) {
       if (_tooltipOverlay != null) {
         _tooltipOverlay!.markNeedsBuild();
       } else {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _showTooltipOverlay());
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _showTooltipOverlay(),
+        );
       }
     } else {
       _hideTooltip();
@@ -64,11 +82,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   void _showTooltipOverlay() {
     if (!mounted || _tooltipOverlay != null) return;
     final overlay = Overlay.of(context);
-    final box = _passwordFieldKey.currentContext?.findRenderObject() as RenderBox?;
+    final box =
+        _passwordFieldKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final pos = box.localToGlobal(Offset.zero);
     final size = box.size;
-    final isMobile = MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
+    final isMobile =
+        MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
 
     _tooltipOverlay = OverlayEntry(
       builder: (context) => Positioned(
@@ -109,7 +129,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(resetPasswordProvider);
-    final isMobile = MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
+    final isMobile =
+        MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
 
     ref.listen<ResetPasswordState>(resetPasswordProvider, (previous, next) {
       if (next.isSuccess && previous?.isSuccess != true) {
@@ -166,7 +187,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     children: [
                       Image.asset(
                         AuthAssets.logo,
-                        height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                        height: isMobile
+                            ? AuthSizes.logoHeightMobile
+                            : AuthSizes.logoHeightWeb,
                         fit: BoxFit.contain,
                       ),
                       if (isMobile) ...[
@@ -260,15 +283,20 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         width: AuthSizes.footerIconWeb,
         height: AuthSizes.footerIconWeb,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) =>
-            Icon(Icons.verified_user, size: AuthSizes.footerIconWeb, color: AuthColors.primary),
+        errorBuilder: (context, error, stackTrace) => Icon(
+          Icons.verified_user,
+          size: AuthSizes.footerIconWeb,
+          color: AuthColors.primary,
+        ),
       ),
     );
   }
 
   Widget _buildMobileTagline() {
     final dotSeparator = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AuthSizes.taglineDotPadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AuthSizes.taglineDotPadding,
+      ),
       child: Container(
         width: AuthSizes.taglineDotSize,
         height: AuthSizes.taglineDotSize,
@@ -287,8 +315,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           width: AuthSizes.taglineIconSize,
           height: AuthSizes.taglineIconSize,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(Icons.shield, size: AuthSizes.taglineIconSize, color: AuthColors.primary),
+          errorBuilder: (context, error, stackTrace) => Icon(
+            Icons.shield,
+            size: AuthSizes.taglineIconSize,
+            color: AuthColors.primary,
+          ),
         ),
         const SizedBox(width: AuthSizes.taglineIconGap),
         Text(AuthStrings.protect, style: AuthTextStyles.tagline),
@@ -308,7 +339,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlurStrong, sigmaY: AuthSizes.glassBlurStrong),
+        filter: ImageFilter.blur(
+          sigmaX: AuthSizes.glassBlurStrong,
+          sigmaY: AuthSizes.glassBlurStrong,
+        ),
         child: Container(
           width: isMobile ? double.infinity : AuthSizes.cardWidthFixed,
           padding: const EdgeInsets.all(AuthSizes.cardPadding),
@@ -349,13 +383,15 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 Container(
                   key: _passwordFieldKey,
                   child: _buildStyledInput(
+                    context: context,
                     controller: _passwordController,
                     hint: AuthStrings.newSecurityKey,
                     icon: Icons.vpn_key_rounded,
                     isPassword: true,
                     focusNode: _passwordFocusNode,
                     validator: (v) {
-                      if (v == null || v.isEmpty) return AuthStrings.passwordRequired;
+                      if (v == null || v.isEmpty)
+                        return AuthStrings.passwordRequired;
                       for (final r in _passwordRules) {
                         if (!r.check(v)) return '${r.label} required';
                       }
@@ -367,6 +403,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
                 // Confirm Password Field
                 _buildStyledInput(
+                  context: context,
                   controller: _confirmController,
                   hint: AuthStrings.authorizeSecurityKey,
                   icon: Icons.check_circle_outline_rounded,
@@ -406,7 +443,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
+                        borderRadius: BorderRadius.circular(
+                          AuthSizes.buttonRadius,
+                        ),
                       ),
                     ),
                     child: state.isLoading
@@ -503,8 +542,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                         r.label,
                         style: AuthTextStyles.inputHint.copyWith(
                           fontSize: 11,
-                          color: satisfied ? AuthColors.success : Colors.redAccent,
-                          fontWeight: satisfied ? FontWeight.w600 : FontWeight.w500,
+                          color: satisfied
+                              ? AuthColors.success
+                              : Colors.redAccent,
+                          fontWeight: satisfied
+                              ? FontWeight.w600
+                              : FontWeight.w500,
                           height: 1.3,
                         ),
                       ),
@@ -520,6 +563,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   Widget _buildStyledInput({
+    required BuildContext context,
     required TextEditingController controller,
     required String hint,
     required IconData icon,
@@ -527,11 +571,20 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     FocusNode? focusNode,
     required String? Function(String?) validator,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark ||
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final inputTextColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
+    final hintColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final iconColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final fieldBgColor = isDark ? colorScheme.surface : colorScheme.surfaceContainerHighest;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: fieldBgColor,
         borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: AuthColors.overlayDark(0.04),
@@ -544,23 +597,30 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         controller: controller,
         focusNode: focusNode,
         obscureText: isPassword && !_isPasswordVisible,
-        style: AuthTextStyles.inputText,
+        cursorColor: colorScheme.primary,
+        style: AuthTextStyles.inputText.copyWith(color: inputTextColor),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: AuthTextStyles.inputHint,
+          hintStyle: AuthTextStyles.inputHint.copyWith(color: hintColor),
+          filled: true,
+          fillColor: Colors.transparent,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AuthSizes.formFieldPaddingH,
             vertical: AuthSizes.formFieldPaddingV,
           ),
           border: InputBorder.none,
-          prefixIcon: Icon(icon, color: AuthColors.textMuted, size: AuthSizes.formFieldIconSize),
+          prefixIcon: Icon(
+            icon,
+            color: iconColor,
+            size: AuthSizes.formFieldIconSize,
+          ),
           suffixIcon: isPassword
               ? IconButton(
                   icon: Icon(
                     _isPasswordVisible
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    color: AuthColors.textHint,
+                    color: iconColor,
                     size: AuthSizes.formFieldIconSize,
                   ),
                   onPressed: () =>

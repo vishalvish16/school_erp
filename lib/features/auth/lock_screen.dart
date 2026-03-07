@@ -2,9 +2,10 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'login_provider.dart';
+import '../../core/services/biometric_service.dart';
 import 'auth_guard_provider.dart';
 import 'auto_lock_provider.dart';
+import 'login_provider.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({super.key});
@@ -179,46 +180,54 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                           const SizedBox(height: 16),
 
                           // Password Input (Matches LoginScreen style)
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.white),
-                            ),
-                            child: TextField(
-                              controller: _passwordController,
-                              obscureText: _isObscured,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'Security Key',
-                                hintStyle: const TextStyle(
-                                  color: Color(0xFF94A3B8),
+                          Builder(
+                            builder: (context) {
+                              final isDark = Theme.of(context).brightness == Brightness.dark ||
+                                  MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+                              final textColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
+                              return Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: Colors.white),
                                 ),
-                                prefixIcon: const Icon(
-                                  Icons.key_rounded,
-                                  color: Color(0xFF6366F1),
-                                ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _isObscured
-                                        ? Icons.visibility_off_outlined
-                                        : Icons.visibility_outlined,
-                                    color: const Color(0xFF94A3B8),
-                                    size: 20,
+                                child: TextField(
+                                  controller: _passwordController,
+                                  obscureText: _isObscured,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: textColor,
                                   ),
-                                  onPressed: () => setState(
-                                    () => _isObscured = !_isObscured,
+                                  decoration: InputDecoration(
+                                    hintText: 'Security Key',
+                                    hintStyle: const TextStyle(
+                                      color: Color(0xFF94A3B8),
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.key_rounded,
+                                      color: Color(0xFF6366F1),
+                                    ),
+                                    suffixIcon: IconButton(
+                                      icon: Icon(
+                                        _isObscured
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        color: const Color(0xFF94A3B8),
+                                        size: 20,
+                                      ),
+                                      onPressed: () => setState(
+                                        () => _isObscured = !_isObscured,
+                                      ),
+                                    ),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 16,
+                                    ),
                                   ),
                                 ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 16,
-                                ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                           if (_errorMessage != null) ...[
                             const SizedBox(height: 12),
@@ -284,26 +293,36 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                             ),
                           ),
 
-                          // Biometric Unlock (Mobile Only)
-                          if (!kIsWeb &&
-                              ref.watch(loginProvider).isBiometricSupported &&
-                              ref.watch(loginProvider).isBiometricEnabled) ...[
-                            const SizedBox(height: 20),
-                            OutlinedButton.icon(
-                              onPressed: _isLoading
-                                  ? null
-                                  : _handleBiometricUnlock,
-                              icon: const Icon(
-                                Icons.fingerprint_rounded,
-                                color: Color(0xFF6366F1),
-                              ),
-                              label: const Text(
-                                'Unlock with Biometrics',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1E293B),
-                                ),
-                              ),
+                          // Biometric Unlock (Mobile Only - Face or Fingerprint)
+                          Builder(
+                            builder: (context) {
+                              final loginState = ref.watch(loginProvider);
+                              if (kIsWeb || !loginState.isBiometricSupported) {
+                                return const SizedBox.shrink();
+                              }
+                              final type = loginState.primaryBiometricType;
+                              final icon = type == BiometricTypeUI.face
+                                  ? Icons.face_rounded
+                                  : Icons.fingerprint_rounded;
+                              final label = type == BiometricTypeUI.face
+                                  ? 'Unlock with Face'
+                                  : type == BiometricTypeUI.fingerprint
+                                      ? 'Unlock with Fingerprint'
+                                      : 'Unlock with Face or Fingerprint';
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 20),
+                                child: OutlinedButton.icon(
+                                  onPressed: _isLoading
+                                      ? null
+                                      : _handleBiometricUnlock,
+                                  icon: Icon(icon, color: const Color(0xFF6366F1)),
+                                  label: Text(
+                                    label,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1E293B),
+                                    ),
+                                  ),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
@@ -319,7 +338,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                 backgroundColor: Colors.white.withOpacity(0.5),
                               ),
                             ),
-                          ],
+                          );
+                            },
+                          ),
                         ],
                       ),
                     ),

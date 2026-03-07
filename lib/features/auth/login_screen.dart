@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/services/biometric_service.dart';
 import '../../core/constants/app_strings.dart';
 import 'login_provider.dart';
 import 'login_state.dart';
@@ -70,7 +71,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
     });
 
-    final isMobile = MediaQuery.of(context).size.width < AuthSizes.breakpointLogin;
+    final isMobile =
+        MediaQuery.of(context).size.width < AuthSizes.breakpointLogin;
 
     return Scaffold(
       body: Stack(
@@ -122,7 +124,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (loginState.isLoading)
             Positioned.fill(
               child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlur, sigmaY: AuthSizes.glassBlur),
+                filter: ImageFilter.blur(
+                  sigmaX: AuthSizes.glassBlur,
+                  sigmaY: AuthSizes.glassBlur,
+                ),
                 child: Container(
                   color: AuthColors.overlayDark(0.2),
                   child: const Center(
@@ -180,8 +185,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         children: [
           Image.asset(
             AuthAssets.logo,
-            height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+            height: isMobile
+                ? AuthSizes.logoHeightMobile
+                : AuthSizes.logoHeightWeb,
             fit: BoxFit.contain,
+            isAntiAlias: true,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (_, __, ___) => Icon(
+              Icons.school_rounded,
+              size: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+              color: AuthColors.primary,
+            ),
           ),
           if (isMobile) ...[
             SizedBox(height: AuthSizes.taglineGap),
@@ -195,7 +209,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   /// Shield icon + "Protect • Track • Automate" — mobile only, below logo
   Widget _buildMobileTagline() {
     final dotSeparator = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AuthSizes.taglineDotPadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AuthSizes.taglineDotPadding,
+      ),
       child: Container(
         width: AuthSizes.taglineDotSize,
         height: AuthSizes.taglineDotSize,
@@ -214,8 +230,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           width: AuthSizes.taglineIconSize,
           height: AuthSizes.taglineIconSize,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(Icons.shield, size: AuthSizes.taglineIconSize, color: AuthColors.primary),
+          errorBuilder: (context, error, stackTrace) => Icon(
+            Icons.shield,
+            size: AuthSizes.taglineIconSize,
+            color: AuthColors.primary,
+          ),
         ),
         const SizedBox(width: AuthSizes.taglineIconGap),
         Text(AuthStrings.protect, style: AuthTextStyles.tagline),
@@ -230,7 +249,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildBrandingPanel({required bool isMobile}) {
     return _buildGlassPanel(
       child: Padding(
-        padding: EdgeInsets.all(isMobile ? AuthSizes.brandingPaddingMobile : AuthSizes.brandingPaddingWeb),
+        padding: EdgeInsets.all(
+          isMobile
+              ? AuthSizes.brandingPaddingMobile
+              : AuthSizes.brandingPaddingWeb,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: isMobile
@@ -276,9 +299,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildFooterIcon(AuthAssets.protect, isMobile),
-                      SizedBox(width: isMobile ? AuthSizes.footerGapMobile : AuthSizes.footerGapWeb),
+                      SizedBox(
+                        width: isMobile
+                            ? AuthSizes.footerGapMobile
+                            : AuthSizes.footerGapWeb,
+                      ),
                       _buildFooterIcon(AuthAssets.track, isMobile),
-                      SizedBox(width: isMobile ? AuthSizes.footerGapMobile : AuthSizes.footerGapWeb),
+                      SizedBox(
+                        width: isMobile
+                            ? AuthSizes.footerGapMobile
+                            : AuthSizes.footerGapWeb,
+                      ),
                       _buildFooterIcon(AuthAssets.automate, isMobile),
                     ],
                   ),
@@ -345,8 +376,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         width: isMobile ? AuthSizes.footerIconMobile : AuthSizes.footerIconWeb,
         height: isMobile ? AuthSizes.footerIconMobile : AuthSizes.footerIconWeb,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) =>
-            Icon(Icons.verified_user, size: isMobile ? AuthSizes.footerIconMobile : AuthSizes.footerIconWeb, color: AuthColors.primary),
+        errorBuilder: (context, error, stackTrace) => Icon(
+          Icons.verified_user,
+          size: isMobile ? AuthSizes.footerIconMobile : AuthSizes.footerIconWeb,
+          color: AuthColors.primary,
+        ),
       ),
     );
   }
@@ -362,13 +396,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               color: AuthColors.accent,
               shape: BoxShape.circle,
             ),
-            child: Icon(Icons.check, size: AuthSizes.featurePointIconSize, color: Colors.white),
+            child: Icon(
+              Icons.check,
+              size: AuthSizes.featurePointIconSize,
+              color: Colors.white,
+            ),
           ),
           SizedBox(width: AuthSizes.featurePointTextGap),
-          Text(
-            text,
-            style: AuthTextStyles.featurePoint,
-          ),
+          Text(text, style: AuthTextStyles.featurePoint),
         ],
       ),
     );
@@ -378,7 +413,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlur, sigmaY: AuthSizes.glassBlur),
+        filter: ImageFilter.blur(
+          sigmaX: AuthSizes.glassBlur,
+          sigmaY: AuthSizes.glassBlur,
+        ),
         child: Container(
           decoration: BoxDecoration(
             color: AuthColors.overlayLight(0.25),
@@ -408,179 +446,247 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         padding: const EdgeInsets.all(AuthSizes.cardPadding),
         child: Form(
           key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Center(
-                  child: Text(
-                    AuthStrings.login,
-                    style: AuthTextStyles.loginTitle,
-                  ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Center(
+                child: Text(
+                  AuthStrings.login,
+                  style: AuthTextStyles.loginTitle,
                 ),
-                SizedBox(height: AuthSizes.formSpacingMedium),
+              ),
+              SizedBox(height: AuthSizes.formSpacingMedium),
 
-                // Email Input
-                _buildStyledField(
-                  controller: _emailController,
-                  hint: AuthStrings.email,
-                  icon: Icons.alternate_email_rounded,
-                  validator: (v) => v == null || v.isEmpty
-                      ? AppStrings.enterEmailError
-                      : null,
-                ),
-                SizedBox(height: AuthSizes.formSpacingSmall),
+              // Email Input
+              _buildStyledField(
+                context: context,
+                controller: _emailController,
+                hint: AuthStrings.email,
+                icon: Icons.alternate_email_rounded,
+                validator: (v) =>
+                    v == null || v.isEmpty ? AppStrings.enterEmailError : null,
+              ),
+              SizedBox(height: AuthSizes.formSpacingSmall),
 
-                // Password Input
-                _buildStyledField(
-                  controller: _passwordController,
-                  hint: AuthStrings.password,
-                  icon: Icons.security_rounded,
-                  isPassword: true,
-                  validator: (v) => v == null || v.isEmpty
-                      ? AppStrings.enterPasswordError
-                      : null,
-                ),
+              // Password Input
+              _buildStyledField(
+                context: context,
+                controller: _passwordController,
+                hint: AuthStrings.password,
+                icon: Icons.security_rounded,
+                isPassword: true,
+                validator: (v) => v == null || v.isEmpty
+                    ? AppStrings.enterPasswordError
+                    : null,
+              ),
 
-                SizedBox(height: AuthSizes.formSpacingSmall),
+              SizedBox(height: AuthSizes.formSpacingSmall),
 
-                // Remember Me & Forgot Password
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    GestureDetector(
-                      onTap: () => ref
-                          .read(loginProvider.notifier)
-                          .toggleRememberMe(!state.rememberMe),
-                      behavior: HitTestBehavior.opaque,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Switch(
-                            value: state.rememberMe,
-                            onChanged: (val) => ref
-                                .read(loginProvider.notifier)
-                                .toggleRememberMe(val),
-                            activeTrackColor: AuthColors.primary,
-                            activeThumbColor: Colors.white,
-                            inactiveTrackColor: AuthColors.switchInactiveTrack,
-                            inactiveThumbColor: Colors.white,
-                          ),
-                          SizedBox(width: AuthSizes.checkboxLabelGap),
-                          Text(
-                            AuthStrings.rememberMe,
-                            style: AuthTextStyles.rememberMe,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                SizedBox(height: AuthSizes.formSpacingLarge),
-
-                // Access Button
-                Container(
-                  height: AuthSizes.buttonHeight,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
-                    gradient: const LinearGradient(
-                      colors: [AuthColors.primary, AuthColors.primaryDark],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AuthColors.primary.withValues(alpha: 0.3),
-                        blurRadius: AuthSizes.buttonShadowBlur,
-                        offset: Offset(0, AuthSizes.buttonShadowOffset),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: state.isLoading ? null : _handleLogin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
-                      ),
-                    ),
-                    child: Text(
-                      AuthStrings.login,
-                      style: AuthTextStyles.buttonPrimary,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: AuthSizes.formSpacingMedium),
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.push('/forgot-password'),
-                    child: Text(
-                      AuthStrings.forgotPassword,
-                      style: AuthTextStyles.forgotPassword.copyWith(
-                        color: AuthColors.overlayDark(0.6),
-                      ),
-                    ),
-                  ),
-                ),
-                if (state.isBiometricSupported && state.isBiometricEnabled) ...[
-                  SizedBox(height: AuthSizes.formSpacingLarge),
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: AuthColors.border)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: AuthSizes.biometricDividerPadding),
-                        child: Text(
-                          AuthStrings.or,
-                          style: AuthTextStyles.orDivider,
+              // Remember Me & Forgot Password
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => ref
+                        .read(loginProvider.notifier)
+                        .toggleRememberMe(!state.rememberMe),
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Switch(
+                          value: state.rememberMe,
+                          onChanged: (val) => ref
+                              .read(loginProvider.notifier)
+                              .toggleRememberMe(val),
+                          activeTrackColor: AuthColors.primary,
+                          activeThumbColor: Colors.white,
+                          inactiveTrackColor: AuthColors.switchInactiveTrack,
+                          inactiveThumbColor: Colors.white,
                         ),
-                      ),
-                      Expanded(child: Divider(color: AuthColors.border)),
-                    ],
-                  ),
-                  SizedBox(height: AuthSizes.formSpacingMedium),
-                  OutlinedButton.icon(
-                    onPressed: () =>
-                        ref.read(loginProvider.notifier).loginWithBiometrics(),
-                    icon: Icon(Icons.fingerprint_rounded, size: AuthSizes.biometricIconSize),
-                    label: Text(
-                      AuthStrings.biometricEntry,
-                      style: AuthTextStyles.biometricLabel,
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AuthColors.textPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: AuthSizes.biometricPaddingV),
-                      side: BorderSide(
-                        color: AuthColors.border,
-                        width: AuthSizes.glassBorderWidth,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
-                      ),
+                        SizedBox(width: AuthSizes.checkboxLabelGap),
+                        Text(
+                          AuthStrings.rememberMe,
+                          style: AuthTextStyles.rememberMe,
+                        ),
+                      ],
                     ),
                   ),
                 ],
+              ),
+
+              SizedBox(height: AuthSizes.formSpacingLarge),
+
+              // Access Button
+              Container(
+                height: AuthSizes.buttonHeight,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
+                  gradient: const LinearGradient(
+                    colors: [AuthColors.primary, AuthColors.primaryDark],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AuthColors.primary.withValues(alpha: 0.3),
+                      blurRadius: AuthSizes.buttonShadowBlur,
+                      offset: Offset(0, AuthSizes.buttonShadowOffset),
+                    ),
+                  ],
+                ),
+                child: ElevatedButton(
+                  onPressed: state.isLoading ? null : _handleLogin,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        AuthSizes.buttonRadius,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    AuthStrings.login,
+                    style: AuthTextStyles.buttonPrimary,
+                  ),
+                ),
+              ),
+
+              SizedBox(height: AuthSizes.formSpacingMedium),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push('/forgot-password'),
+                  child: Text(
+                    AuthStrings.forgotPassword,
+                    style: AuthTextStyles.forgotPassword.copyWith(
+                      color: AuthColors.overlayDark(0.6),
+                    ),
+                  ),
+                ),
+              ),
+              if (state.isBiometricSupported) ...[
+                SizedBox(height: AuthSizes.formSpacingLarge),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Divider(color: _biometricDividerColor(context)),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AuthSizes.biometricDividerPadding,
+                      ),
+                      child: Text(
+                        AuthStrings.or,
+                        style: AuthTextStyles.orDivider.copyWith(
+                          color: _biometricDividerColor(context),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Divider(color: _biometricDividerColor(context)),
+                    ),
+                  ],
+                ),
+                SizedBox(height: AuthSizes.formSpacingMedium),
+                Builder(
+                  builder: (context) {
+                    final isDark =
+                        Theme.of(context).brightness == Brightness.dark ||
+                        MediaQuery.platformBrightnessOf(context) ==
+                            Brightness.dark;
+                    final fgColor = isDark
+                        ? const Color(0xFFF8FAFC)
+                        : AuthColors.textPrimary;
+                    final borderColor = isDark
+                        ? const Color(0xFF64748B)
+                        : AuthColors.border;
+                    final type =
+                        state.primaryBiometricType ?? BiometricTypeUI.both;
+                    final (icon, label) = _biometricIconAndLabel(type);
+                    return OutlinedButton.icon(
+                      onPressed: () => ref
+                          .read(loginProvider.notifier)
+                          .loginWithBiometrics(),
+                      icon: Icon(
+                        icon,
+                        size: AuthSizes.biometricIconSize,
+                        color: fgColor,
+                      ),
+                      label: Text(
+                        label,
+                        style: AuthTextStyles.biometricLabel.copyWith(
+                          color: fgColor,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: fgColor,
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AuthSizes.biometricPaddingV,
+                        ),
+                        side: BorderSide(
+                          color: borderColor,
+                          width: AuthSizes.glassBorderWidth,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                            AuthSizes.buttonRadius,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ],
-            ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
+
+  (IconData icon, String label) _biometricIconAndLabel(BiometricTypeUI type) {
+    switch (type) {
+      case BiometricTypeUI.face:
+        return (Icons.face_rounded, AuthStrings.useFace);
+      case BiometricTypeUI.fingerprint:
+        return (Icons.fingerprint_rounded, AuthStrings.useFingerprint);
+      case BiometricTypeUI.both:
+        return (Icons.fingerprint_rounded, AuthStrings.useBiometric);
+    }
+  }
+
+  Color _biometricDividerColor(BuildContext context) {
+    final isDark =
+        Theme.of(context).brightness == Brightness.dark ||
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    return isDark ? const Color(0xFF64748B) : AuthColors.border;
   }
 
   Widget _buildStyledField({
+    required BuildContext context,
     required TextEditingController controller,
     required String hint,
     required IconData icon,
     bool isPassword = false,
     String? Function(String?)? validator,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    // Use platform brightness for mobile - ensures correct colors in dark mode
+    final isDark = theme.brightness == Brightness.dark ||
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final inputTextColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
+    final hintColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final iconColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final fieldBgColor = isDark ? colorScheme.surface : colorScheme.surfaceContainerHighest;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: fieldBgColor,
         borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: AuthColors.overlayDark(0.04),
@@ -592,23 +698,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       child: TextFormField(
         controller: controller,
         obscureText: isPassword && !_isPasswordVisible,
-        style: AuthTextStyles.inputText,
+        cursorColor: colorScheme.primary,
+        style: AuthTextStyles.inputText.copyWith(color: inputTextColor),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: AuthTextStyles.inputHint,
+          hintStyle: AuthTextStyles.inputHint.copyWith(color: hintColor),
+          filled: true,
+          fillColor: Colors.transparent,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AuthSizes.formFieldPaddingH,
             vertical: AuthSizes.formFieldPaddingV,
           ),
           border: InputBorder.none,
-          prefixIcon: Icon(icon, color: AuthColors.textMuted, size: AuthSizes.formFieldIconSize),
+          prefixIcon: Icon(
+            icon,
+            color: iconColor,
+            size: AuthSizes.formFieldIconSize,
+          ),
           suffixIcon: isPassword
               ? IconButton(
                   icon: Icon(
                     _isPasswordVisible
                         ? Icons.visibility_off_outlined
                         : Icons.visibility_outlined,
-                    color: AuthColors.textHint,
+                    color: iconColor,
                     size: AuthSizes.formFieldIconSize,
                   ),
                   onPressed: () =>
@@ -627,11 +740,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _buildStatBubble(AuthStrings.statStudents, AuthStrings.statStudentsLabel),
+          _buildStatBubble(
+            AuthStrings.statStudents,
+            AuthStrings.statStudentsLabel,
+          ),
           SizedBox(width: AuthSizes.statBubbleGap),
-          _buildStatBubble(AuthStrings.statAttendance, AuthStrings.statAttendanceLabel),
+          _buildStatBubble(
+            AuthStrings.statAttendance,
+            AuthStrings.statAttendanceLabel,
+          ),
           SizedBox(width: AuthSizes.statBubbleGap),
-          _buildStatBubble(AuthStrings.statIncidents, AuthStrings.statIncidentsLabel),
+          _buildStatBubble(
+            AuthStrings.statIncidents,
+            AuthStrings.statIncidentsLabel,
+          ),
         ],
       ),
     );
@@ -650,17 +772,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       ),
       child: Column(
         children: [
-          Text(
-            val,
-            style: AuthTextStyles.statValue,
-          ),
-          Text(
-            label,
-            style: AuthTextStyles.statLabel,
-          ),
+          Text(val, style: AuthTextStyles.statValue),
+          Text(label, style: AuthTextStyles.statLabel),
         ],
       ),
     );
   }
-
 }

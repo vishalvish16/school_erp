@@ -35,15 +35,14 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(forgotPasswordProvider);
-    final isMobile = MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
+    final isMobile =
+        MediaQuery.of(context).size.width < AuthSizes.breakpointMobile;
 
     ref.listen<ForgotPasswordState>(forgotPasswordProvider, (previous, next) {
       if (next.isFailure && previous?.isFailure != true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              next.errorMessage ?? AuthStrings.recoveryFailed,
-            ),
+            content: Text(next.errorMessage ?? AuthStrings.recoveryFailed),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -86,7 +85,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     children: [
                       Image.asset(
                         AuthAssets.logo,
-                        height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                        height: isMobile
+                            ? AuthSizes.logoHeightMobile
+                            : AuthSizes.logoHeightWeb,
                         fit: BoxFit.contain,
                       ),
                       if (isMobile) ...[
@@ -101,9 +102,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(AuthSizes.scrollPadding),
                       child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 500),
-                transitionBuilder: (child, animation) =>
-                    FadeTransition(opacity: animation, child: child),
+                        duration: const Duration(milliseconds: 500),
+                        transitionBuilder: (child, animation) =>
+                            FadeTransition(opacity: animation, child: child),
                         child: state.isSuccess
                             ? _buildSuccessCard(context, state.email)
                             : _buildRecoveryCard(context, state, isMobile),
@@ -187,15 +188,20 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         width: AuthSizes.footerIconWeb,
         height: AuthSizes.footerIconWeb,
         fit: BoxFit.contain,
-        errorBuilder: (context, error, stackTrace) =>
-            Icon(Icons.verified_user, size: AuthSizes.footerIconWeb, color: AuthColors.primary),
+        errorBuilder: (context, error, stackTrace) => Icon(
+          Icons.verified_user,
+          size: AuthSizes.footerIconWeb,
+          color: AuthColors.primary,
+        ),
       ),
     );
   }
 
   Widget _buildMobileTagline() {
     final dotSeparator = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AuthSizes.taglineDotPadding),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AuthSizes.taglineDotPadding,
+      ),
       child: Container(
         width: AuthSizes.taglineDotSize,
         height: AuthSizes.taglineDotSize,
@@ -214,8 +220,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           width: AuthSizes.taglineIconSize,
           height: AuthSizes.taglineIconSize,
           fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) =>
-              Icon(Icons.shield, size: AuthSizes.taglineIconSize, color: AuthColors.primary),
+          errorBuilder: (context, error, stackTrace) => Icon(
+            Icons.shield,
+            size: AuthSizes.taglineIconSize,
+            color: AuthColors.primary,
+          ),
         ),
         const SizedBox(width: AuthSizes.taglineIconGap),
         Text(AuthStrings.protect, style: AuthTextStyles.tagline),
@@ -236,7 +245,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       key: const ValueKey('recovery_card'),
       borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlurStrong, sigmaY: AuthSizes.glassBlurStrong),
+        filter: ImageFilter.blur(
+          sigmaX: AuthSizes.glassBlurStrong,
+          sigmaY: AuthSizes.glassBlurStrong,
+        ),
         child: Container(
           width: isMobile ? double.infinity : AuthSizes.cardWidthFixed,
           padding: const EdgeInsets.all(AuthSizes.cardPadding),
@@ -275,11 +287,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
                 // Email Field
                 _buildStyledInput(
+                  context: context,
                   controller: _emailController,
                   hint: AuthStrings.enterpriseEmail,
                   icon: Icons.alternate_email_rounded,
                   validator: (v) {
-                    if (v == null || v.isEmpty) return AuthStrings.emailRequired;
+                    if (v == null || v.isEmpty)
+                      return AuthStrings.emailRequired;
                     if (!RegExp(
                       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                     ).hasMatch(v)) {
@@ -315,7 +329,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                       backgroundColor: Colors.transparent,
                       shadowColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
+                        borderRadius: BorderRadius.circular(
+                          AuthSizes.buttonRadius,
+                        ),
                       ),
                     ),
                     child: state.isLoading
@@ -351,7 +367,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.arrow_back_rounded, size: AuthSizes.formFieldIconSize - 2),
+                      Icon(
+                        Icons.arrow_back_rounded,
+                        size: AuthSizes.formFieldIconSize - 2,
+                      ),
                       SizedBox(width: AuthSizes.formFieldIconSize - 2),
                       Text(
                         AuthStrings.backToLogin,
@@ -369,16 +388,26 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   }
 
   Widget _buildStyledInput({
+    required BuildContext context,
     required TextEditingController controller,
     required String hint,
     required IconData icon,
     required String? Function(String?) validator,
   }) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark ||
+        MediaQuery.platformBrightnessOf(context) == Brightness.dark;
+    final inputTextColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
+    final hintColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final iconColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final fieldBgColor = isDark ? colorScheme.surface : colorScheme.surfaceContainerHighest;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: fieldBgColor,
         borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
-        border: Border.all(color: AuthColors.border),
+        border: Border.all(color: colorScheme.outlineVariant),
         boxShadow: [
           BoxShadow(
             color: AuthColors.overlayDark(0.04),
@@ -389,16 +418,23 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       ),
       child: TextFormField(
         controller: controller,
-        style: AuthTextStyles.inputText,
+        cursorColor: colorScheme.primary,
+        style: AuthTextStyles.inputText.copyWith(color: inputTextColor),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: AuthTextStyles.inputHint,
+          hintStyle: AuthTextStyles.inputHint.copyWith(color: hintColor),
+          filled: true,
+          fillColor: Colors.transparent,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: AuthSizes.formFieldPaddingH,
             vertical: AuthSizes.formFieldPaddingV,
           ),
           border: InputBorder.none,
-          prefixIcon: Icon(icon, color: AuthColors.textMuted, size: AuthSizes.formFieldIconSize),
+          prefixIcon: Icon(
+            icon,
+            color: iconColor,
+            size: AuthSizes.formFieldIconSize,
+          ),
         ),
         keyboardType: TextInputType.emailAddress,
         validator: validator,
@@ -411,7 +447,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       key: const ValueKey('success_card'),
       borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: AuthSizes.glassBlurStrong, sigmaY: AuthSizes.glassBlurStrong),
+        filter: ImageFilter.blur(
+          sigmaX: AuthSizes.glassBlurStrong,
+          sigmaY: AuthSizes.glassBlurStrong,
+        ),
         child: Container(
           width: AuthSizes.cardWidthFixed,
           padding: const EdgeInsets.all(AuthSizes.cardPadding),
@@ -464,7 +503,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   style: OutlinedButton.styleFrom(
                     side: BorderSide(color: AuthColors.primary, width: 2),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
+                      borderRadius: BorderRadius.circular(
+                        AuthSizes.buttonRadius,
+                      ),
                     ),
                   ),
                   child: Text(
