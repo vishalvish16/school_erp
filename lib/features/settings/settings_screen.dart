@@ -77,7 +77,7 @@ class SettingsScreen extends ConsumerWidget {
                     icon: Icons.security_rounded,
                     iconColor: const Color(0xFF3B82F6),
                     title: 'Auto-Lock Session',
-                    subtitle: 'Securely close session after 10 seconds',
+                    subtitle: 'Securely lock session after 30 minutes of inactivity',
                     trailing: Switch(
                       value: state.isAutoLockEnabled,
                       onChanged: (val) => ref

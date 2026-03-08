@@ -18,6 +18,12 @@ class LoginState {
     this.isBiometricSupported = false,
     this.isBiometricEnabled = false,
     this.primaryBiometricType,
+    this.requiresOtp = false,
+    this.otpSessionId,
+    this.maskedPhone,
+    this.portalType,
+    this.requires2fa = false,
+    this.tempToken,
   });
 
   final bool isLoading;
@@ -29,6 +35,12 @@ class LoginState {
   final bool isBiometricSupported;
   final bool isBiometricEnabled;
   final BiometricTypeUI? primaryBiometricType;
+  final bool requiresOtp;
+  final String? otpSessionId;
+  final String? maskedPhone;
+  final String? portalType;
+  final bool requires2fa;
+  final String? tempToken;
 
   /// Helper to check if state is failure
   bool get isFailure => errorMessage != null;
@@ -43,17 +55,29 @@ class LoginState {
     BiometricTypeUI? primaryBiometricType,
     String? email,
     String? password,
+    bool? requiresOtp,
+    String? otpSessionId,
+    String? maskedPhone,
+    String? portalType,
+    bool? requires2fa,
+    String? tempToken,
   }) {
     return LoginState(
       isLoading: isLoading ?? this.isLoading,
       isSuccess: isSuccess ?? this.isSuccess,
-      errorMessage: errorMessage, // Reset error if not explicitly passed
+      errorMessage: errorMessage,
       rememberMe: rememberMe ?? this.rememberMe,
       isBiometricSupported: isBiometricSupported ?? this.isBiometricSupported,
       isBiometricEnabled: isBiometricEnabled ?? this.isBiometricEnabled,
       primaryBiometricType: primaryBiometricType ?? this.primaryBiometricType,
       email: email ?? this.email,
       password: password ?? this.password,
+      requiresOtp: requiresOtp ?? this.requiresOtp,
+      otpSessionId: otpSessionId ?? this.otpSessionId,
+      maskedPhone: maskedPhone ?? this.maskedPhone,
+      portalType: portalType ?? this.portalType,
+      requires2fa: requires2fa ?? this.requires2fa,
+      tempToken: tempToken ?? this.tempToken,
     );
   }
 

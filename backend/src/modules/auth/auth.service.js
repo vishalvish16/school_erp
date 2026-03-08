@@ -53,12 +53,18 @@ export const login = async (email, password) => {
 };
 
 export const forgotPassword = async (email, origin) => {
+    const smartRepo = await import('./smart-login.repository.js');
+    const recentCount = await smartRepo.countRecentForgotPasswordByEmail(email, 60);
+    if (recentCount >= 3) {
+        throw new AppError('Too many attempts. Try again in 60 minutes.', 429);
+    }
+
     const user = await authRepository.findUserByEmail(email);
     if (!user) {
-        // We don't want to leak if a user exists or not for security reasons
-        // But for this project's "working model", we can be more helpful or follow best practices
         return { message: 'If a user with that email exists, a reset link has been sent.' };
     }
+
+    await smartRepo.trackForgotPasswordRequest(email).catch(() => {});
 
     const token = crypto.randomBytes(32).toString('hex');
     const expiry = new Date(Date.now() + 3600000); // 1 hour

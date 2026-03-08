@@ -63,6 +63,14 @@ export const getSchools = async (query) => {
     };
 };
 
+/**
+ * Public school search for mobile app — no auth required
+ * Returns only safe public fields
+ */
+export const searchSchoolsPublic = async (q, limit = 10) => {
+    return schoolRepo.searchSchoolsPublic(q, limit);
+};
+
 export const getSchoolById = async (id) => {
     const school = await schoolRepo.getSchoolById(id);
     if (!school) {

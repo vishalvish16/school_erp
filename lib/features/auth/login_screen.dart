@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,9 +7,12 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_auth_constants.dart';
 import '../../core/services/biometric_service.dart';
 import '../../core/constants/app_strings.dart';
+import '../../utils/subdomain_resolver.dart';
+import 'auth_guard_provider.dart';
 import 'login_provider.dart';
 import 'login_state.dart';
 
+/// Super Admin / Platform Command Center login (admin.vidyron.in)
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -21,11 +25,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
+  bool? _subdomainValid; // null = checking, true = ok, false = wrong URL
 
   @override
   void initState() {
     super.initState();
     _loadRememberedEmail();
+    _checkSubdomain();
+  }
+
+  Future<void> _checkSubdomain() async {
+    if (!kIsWeb) {
+      if (mounted) setState(() => _subdomainValid = true);
+      return;
+    }
+    final sub = await SubdomainResolver.getCurrentSubdomain();
+    final valid = sub == null || sub == 'admin';
+    if (mounted) setState(() => _subdomainValid = valid);
   }
 
   Future<void> _loadRememberedEmail() async {
@@ -59,8 +75,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final loginState = ref.watch(loginProvider);
 
     ref.listen<LoginState>(loginProvider, (previous, next) {
-      if (next.isSuccess && previous?.isSuccess != true) {
-        context.go('/dashboard');
+      if (next.requires2fa && previous?.requires2fa != true && next.tempToken != null && next.tempToken!.isNotEmpty) {
+        final token = Uri.encodeComponent(next.tempToken!);
+        final portal = next.portalType;
+        final q = 'temp_token=$token${portal != null ? '&portal_type=$portal' : ''}';
+        context.push('/verify-2fa?$q');
+      } else if (next.requiresOtp && previous?.requiresOtp != true && next.otpSessionId != null && next.otpSessionId!.isNotEmpty) {
+        final sessionId = next.otpSessionId!;
+        final masked = next.maskedPhone ?? '';
+        final portal = next.portalType;
+        final q = 'otp_session_id=$sessionId&masked_phone=${Uri.encodeComponent(masked)}${portal != null ? '&portal_type=$portal' : ''}';
+        context.push('/device-verification?$q');
+      } else if (next.isSuccess && previous?.isSuccess != true) {
+        final portal = next.portalType ?? ref.read(authGuardProvider).portalType;
+        final isSuperAdmin = portal == 'super_admin';
+        context.go(isSuperAdmin ? '/super-admin/dashboard' : '/dashboard');
       } else if (next.isFailure && previous?.isFailure != true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -451,11 +480,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Center(
-                child: Text(
-                  AuthStrings.login,
-                  style: AuthTextStyles.loginTitle,
+                child: Column(
+                  children: [
+                    Text(
+                      AuthStrings.login,
+                      style: AuthTextStyles.loginTitle,
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Platform Command Center',
+                      style: AuthTextStyles.tagline,
+                    ),
+                  ],
                 ),
               ),
+              if (_subdomainValid == false)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AuthSizes.formSpacingSmall),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Platform login is at admin.vidyron.in',
+                            style: AuthTextStyles.tagline.copyWith(fontSize: 13),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               SizedBox(height: AuthSizes.formSpacingMedium),
 
               // Email Input

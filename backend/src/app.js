@@ -8,9 +8,11 @@ import { AppError } from './utils/response.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import schoolRoutes from './modules/schools/schools.routes.js';
+import { searchSchools } from './modules/schools/schools.public.controller.js';
 import subscriptionRoutes from './modules/subscription/subscription.routes.js';
 import plansRoutes from './modules/plans/plans.routes.js';
 import schoolManagementRoutes from './modules/school/school.routes.js';
+import superAdminRoutes from './modules/super-admin/super-admin.routes.js';
 
 const app = express();
 
@@ -42,9 +44,12 @@ const API_PREFIX = '/api/platform';
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/dashboard`, dashboardRoutes);
+// Public school search — separate path, no auth (for mobile app)
+app.get('/api/public/schools/search', searchSchools);
 app.use(`${API_PREFIX}/schools`, schoolRoutes);
 app.use(`${API_PREFIX}/subscriptions`, subscriptionRoutes);
 app.use(`${API_PREFIX}/plans`, plansRoutes);
+app.use(`${API_PREFIX}/super-admin`, superAdminRoutes);
 
 // School-level operations (e.g., student/teacher/branch management)
 app.use('/api/school', schoolManagementRoutes);

@@ -40,9 +40,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
     ref.listen<ForgotPasswordState>(forgotPasswordProvider, (previous, next) {
       if (next.isFailure && previous?.isFailure != true) {
+        final msg = next.errorMessage ?? AuthStrings.recoveryFailed;
+        final isRateLimit = msg.toLowerCase().contains('too many') || msg.contains('429');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(next.errorMessage ?? AuthStrings.recoveryFailed),
+            content: Text(isRateLimit
+                ? 'Too many attempts. Try again in 60 minutes.'
+                : msg),
             backgroundColor: Colors.redAccent,
           ),
         );

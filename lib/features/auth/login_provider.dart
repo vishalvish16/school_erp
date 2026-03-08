@@ -9,7 +9,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'login_state.dart';
 import 'login_repository.dart';
 import 'auth_guard_provider.dart';
+import 'auto_lock_provider.dart';
 import '../../core/services/biometric_service.dart';
+import '../../core/services/local_storage_service.dart';
 import '../../core/services/secure_storage_service.dart';
 import '../settings/settings_provider.dart';
 
@@ -135,7 +137,11 @@ class LoginNotifier extends StateNotifier<LoginState> {
   /// Internal login logic shared between normal and biometric login
   Future<void> _performLoginLogic() async {
     try {
-      final token = await _repository.login(state.email, state.password);
+      final result = await _repository.login(
+        state.email,
+        state.password,
+        trustDevice: state.rememberMe,
+      );
 
       if (mounted) {
         final prefs = await SharedPreferences.getInstance();
@@ -145,15 +151,53 @@ class LoginNotifier extends StateNotifier<LoginState> {
           await prefs.remove('saved_login_email');
         }
 
-        // Securely store credentials for future biometric use (Mobile only)
-        if (!kIsWeb) {
-          final secureStorage = _ref.read(secureStorageServiceProvider);
-          await secureStorage.write('biometric_email', state.email);
-          await secureStorage.write('biometric_password', state.password);
+        if (result['requires_2fa'] == true) {
+          state = state.copyWith(
+            isLoading: false,
+            requires2fa: true,
+            tempToken: result['temp_token']?.toString(),
+            portalType: result['portal_type']?.toString(),
+          );
+          return;
         }
 
-        await _ref.read(authGuardProvider.notifier).establishSession(token);
-        state = state.setSuccess();
+        if (result['requires_otp'] == true) {
+          state = state.copyWith(
+            isLoading: false,
+            requiresOtp: true,
+            otpSessionId: result['otp_session_id']?.toString(),
+            maskedPhone: result['masked_phone']?.toString(),
+            portalType: result['portal_type']?.toString(),
+          );
+          return;
+        }
+
+        final token = result['access_token'] as String?;
+        if (token != null) {
+          if (!kIsWeb) {
+            final secureStorage = _ref.read(secureStorageServiceProvider);
+            await secureStorage.write('biometric_email', state.email);
+            await secureStorage.write('biometric_password', state.password);
+            // Save portal_type for next mobile login (no subdomain)
+            final pt = result['portal_type']?.toString();
+            if (pt != null) {
+              await LocalStorageService().setPortalType(pt);
+            }
+          }
+          await _ref.read(authGuardProvider.notifier).establishSession(
+                token,
+                portalTypeOverride: result['portal_type']?.toString(),
+              );
+          _ref.read(autoLockProvider.notifier).resetTimer();
+          state = state.copyWith(
+            isSuccess: true,
+            isLoading: false,
+            errorMessage: null,
+            portalType: result['portal_type']?.toString() ?? state.portalType,
+          );
+        } else {
+          state = state.setError('Invalid response from server');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -177,6 +221,7 @@ class LoginNotifier extends StateNotifier<LoginState> {
   /// Logs out the user and clears the session
   Future<void> logout() async {
     await _ref.read(authGuardProvider.notifier).clearSession();
+    if (!kIsWeb) await LocalStorageService().clearSession();
     reset();
   }
 }

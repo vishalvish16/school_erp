@@ -9,13 +9,23 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 class ApiConfig {
   ApiConfig._();
 
-  // Change this to your production / staging URL as needed
-  static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:3000';
-    if (Platform.isAndroid)
-      return 'http://192.168.1.14:3000'; // Actual Desktop Wi-Fi IP for physical phones
-    return 'http://192.168.1.14:3000';
+  /// Backend port — must match backend .env PORT (default 3000)
+  static const int backendPort = 3000;
+
+  /// Override: flutter run --dart-define=API_HOST=192.168.1.100
+  /// Emulator: 10.0.2.2 = host localhost. If timeout, try: adb reverse tcp:3000 tcp:3000 + API_HOST=127.0.0.1
+  static String get _host {
+    const fromEnv = String.fromEnvironment(
+      'API_HOST',
+      defaultValue: '',
+    );
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (kIsWeb) return 'localhost';
+    if (Platform.isAndroid) return '10.0.2.2'; // Emulator; use --dart-define for physical device
+    return 'localhost';
   }
+
+  static String get baseUrl => 'http://$_host:$backendPort';
 
   // Specific endpoints
   static const String loginEndpoint = '/api/platform/auth/login';

@@ -215,6 +215,69 @@ export const deleteSchool = async (id) => {
     return convertBigInts(updated);
 };
 
+/**
+ * Public school search — name, city, state, or code (case insensitive)
+ * Only active schools with non-expired subscription
+ * Returns only safe public fields (no subdomain, admin, billing)
+ */
+export const searchSchoolsPublic = async (q, limit = 10) => {
+    const term = `%${q}%`;
+    const schools = await prisma.school.findMany({
+        where: {
+            isActive: true,
+            AND: [
+                {
+                    OR: [
+                        { name: { contains: q, mode: 'insensitive' } },
+                        { schoolCode: { contains: q, mode: 'insensitive' } },
+                        ...(q.length >= 2 ? [
+                            { city: { contains: q, mode: 'insensitive' } },
+                            { state: { contains: q, mode: 'insensitive' } }
+                        ] : [])
+                    ]
+                },
+                {
+                    OR: [
+                        { subscriptionEnd: null },
+                        { subscriptionEnd: { gte: new Date() } }
+                    ]
+                }
+            ]
+        },
+        select: {
+            id: true,
+            name: true,
+            schoolCode: true,
+            city: true,
+            state: true,
+            isActive: true
+        },
+        orderBy: { name: 'asc' },
+        take: limit
+    });
+
+    // Prisma orderBy with conditional is tricky — use simple name asc
+    const sorted = schools.sort((a, b) => {
+        const aStarts = a.name.toLowerCase().startsWith(q.toLowerCase());
+        const bStarts = b.name.toLowerCase().startsWith(q.toLowerCase());
+        if (aStarts && !bStarts) return -1;
+        if (!aStarts && bStarts) return 1;
+        return a.name.localeCompare(b.name);
+    });
+
+    return sorted.map(s => ({
+        id: s.id.toString(),
+        name: s.name,
+        code: s.schoolCode,
+        city: s.city || '',
+        state: s.state || '',
+        board: '', // Schema has no board — extend later if needed
+        type: 'school',
+        logo_url: null,
+        is_active: s.isActive
+    }));
+};
+
 export const findByCode = async (schoolCode, excludeId = null) => {
     const where = { schoolCode };
     if (excludeId) {

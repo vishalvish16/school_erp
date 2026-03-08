@@ -19,24 +19,30 @@ class AuthGuardState {
     this.isAuthenticated = false,
     this.accessToken,
     this.userEmail,
+    this.portalType,
     this.isInitializing = true,
   });
 
   final bool isAuthenticated;
   final String? accessToken;
   final String? userEmail;
+  final String? portalType;
   final bool isInitializing;
+
+  bool get isSuperAdmin => portalType == 'super_admin';
 
   AuthGuardState copyWith({
     bool? isAuthenticated,
     String? accessToken,
     String? userEmail,
+    String? portalType,
     bool? isInitializing,
   }) {
     return AuthGuardState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
       accessToken: accessToken ?? this.accessToken,
       userEmail: userEmail ?? this.userEmail,
+      portalType: portalType ?? this.portalType,
       isInitializing: isInitializing ?? false,
     );
   }
@@ -69,6 +75,7 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
           isAuthenticated: true,
           accessToken: token,
           userEmail: _extractEmail(token),
+          portalType: _extractPortalType(token),
           isInitializing: false,
         );
       } else {
@@ -108,16 +115,30 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
 
   String? _extractEmail(String token) {
     try {
+      final payload = _decodePayload(token);
+      return payload?['email'];
+    } catch (e) {
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _decodePayload(String token) {
+    try {
       final parts = token.split('.');
+      if (parts.length != 3) return null;
       String payloadStr = parts[1];
       while (payloadStr.length % 4 != 0) {
         payloadStr += '=';
       }
-      final payload = json.decode(utf8.decode(base64Url.decode(payloadStr)));
-      return payload['email'];
+      return json.decode(utf8.decode(base64Url.decode(payloadStr)));
     } catch (e) {
       return null;
     }
+  }
+
+  String? _extractPortalType(String token) {
+    final payload = _decodePayload(token);
+    return payload?['portal_type']?.toString();
   }
 
   /// Exposes current authentication status synchronously
@@ -126,14 +147,17 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
   }
 
   /// Establishes a new authenticated session (called after login success)
-  Future<void> establishSession(String token) async {
+  /// [portalTypeOverride] — use API response portal_type when token may not have it
+  Future<void> establishSession(String token, {String? portalTypeOverride}) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('access_token', token);
 
+    final portalType = portalTypeOverride ?? _extractPortalType(token);
     state = state.copyWith(
       isAuthenticated: true,
       accessToken: token,
       userEmail: _extractEmail(token),
+      portalType: portalType,
       isInitializing: false,
     );
   }
@@ -146,6 +170,8 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
     state = state.copyWith(
       isAuthenticated: false,
       accessToken: null,
+      userEmail: null,
+      portalType: null,
       isInitializing: false,
     );
   }

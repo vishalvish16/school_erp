@@ -2,9 +2,19 @@ import { z } from 'zod';
 
 export const loginSchema = z.object({
     body: z.object({
-        email: z.string().email('Invalid email format'),
-        password: z.string().min(1, 'Password is required')
-    })
+        email: z.string().optional(),
+        identifier: z.string().optional(),
+        password: z.string().min(1, 'Password is required'),
+        portal_type: z.string().optional(),
+        school_id: z.union([z.string(), z.number()]).optional(),
+        device_fingerprint: z.string().optional(),
+        device_meta: z.record(z.any()).optional()
+    }).refine(data => {
+        const loginId = data.email || data.identifier;
+        if (!loginId || String(loginId).trim() === '') return false;
+        if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email)) return false;
+        return true;
+    }, { message: 'Valid email or identifier is required' })
 });
 
 export const forgotPasswordSchema = z.object({
@@ -17,6 +27,60 @@ export const resetPasswordSchema = z.object({
     body: z.object({
         token: z.string().min(1, 'Token is required'),
         newPassword: z.string().min(6, 'Password must be at least 6 characters')
+    })
+});
+
+export const resolveSubdomainSchema = z.object({
+    body: z.object({
+        subdomain: z.string().min(1, 'Subdomain is required')
+    })
+});
+
+export const verifyDeviceOtpSchema = z.object({
+    body: z.object({
+        otp_session_id: z.string().min(1, 'OTP session is required'),
+        otp_code: z.string().min(6).max(6, 'OTP must be 6 digits'),
+        trust_device: z.boolean().optional(),
+        device_fingerprint: z.string().optional(),
+        device_meta: z.record(z.any()).optional(),
+        portal_type: z.string().optional()
+    })
+});
+
+export const verify2faSchema = z.object({
+    body: z.object({
+        totp_code: z.string().min(6, 'TOTP code is required'),
+        temp_token: z.string().min(1, 'Temp token is required'),
+        device_fingerprint: z.string().optional(),
+        device_meta: z.record(z.any()).optional()
+    })
+});
+
+export const groupAdminLoginSchema = z.object({
+    body: z.object({
+        identifier: z.string().min(1, 'Identifier is required'),
+        password: z.string().optional(),
+        otp_code: z.string().optional(),
+        group_id: z.string().min(1, 'Group ID is required'),
+        device_fingerprint: z.string().optional(),
+        device_meta: z.record(z.any()).optional(),
+        trust_device: z.boolean().optional()
+    }).refine(data => data.password || data.otp_code, { message: 'Password or OTP required' })
+});
+
+export const resolveUserByPhoneSchema = z.object({
+    body: z.object({
+        phone: z.string().min(10, 'Phone number required'),
+        user_type: z.enum(['parent', 'student']).optional().default('parent')
+    })
+});
+
+export const qrLoginSchema = z.object({
+    body: z.object({
+        qr_token: z.string().min(1, 'QR token is required'),
+        school_id: z.union([z.string(), z.number()]),
+        device_fingerprint: z.string().optional(),
+        device_meta: z.record(z.any()).optional()
     })
 });
 

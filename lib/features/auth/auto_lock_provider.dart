@@ -25,7 +25,7 @@ class AutoLockNotifier extends StateNotifier<AutoLockState> {
 
   final Ref _ref;
   Timer? _timer;
-  static const Duration _lockDuration = Duration(seconds: 10);
+  static const Duration _lockDuration = Duration(minutes: 30);
 
   void _startTimer() {
     _timer?.cancel();

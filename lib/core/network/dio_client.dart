@@ -29,8 +29,11 @@ final dioProvider = Provider<Dio>((ref) {
         }
         return handler.next(options);
       },
-      onError: (DioException e, handler) {
-        // Here we could implement automatic token refresh interceptor later
+      onError: (DioException e, handler) async {
+        if (e.response?.statusCode == 401) {
+          await ref.read(authGuardProvider.notifier).clearSession();
+          // Router will redirect to /splash -> /login via refreshListenable
+        }
         return handler.next(e);
       },
     ),

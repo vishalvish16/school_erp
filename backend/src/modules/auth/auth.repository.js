@@ -42,3 +42,20 @@ export const updateUserPassword = async (userId, hashedPassword) => {
         }
     });
 };
+
+export const updateUserFailedAttempts = async (userId, failedCount, lockedUntil) => {
+    return prisma.user.update({
+        where: { id: userId },
+        data: {
+            failedLoginAttempts: failedCount,
+            lockedUntil: lockedUntil || null
+        }
+    });
+};
+
+export const findUserById = async (userId) => {
+    return prisma.user.findUnique({
+        where: { id: userId },
+        include: { role: true }
+    });
+};
