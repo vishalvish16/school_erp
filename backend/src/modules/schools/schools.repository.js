@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { AppError } from '../../utils/response.js';
 
 const prisma = new PrismaClient();
 
@@ -11,52 +12,67 @@ const convertBigInts = (obj) => {
 };
 
 export const createSchool = async (data) => {
-    const mappedData = { ...data };
-    if (mappedData.status !== undefined) {
-        mappedData.isActive = mappedData.status === 'ACTIVE';
-        delete mappedData.status;
-    }
-    if (mappedData.phone !== undefined) {
-        mappedData.contactPhone = mappedData.phone;
-        delete mappedData.phone;
-    }
-
-    if (!mappedData.subdomain) {
-        mappedData.subdomain = (mappedData.schoolCode || mappedData.name).toLowerCase().replace(/[^a-z0-9]/g, '');
-    }
-
-    const created = await prisma.school.create({
-        data: {
-            ...mappedData,
-            planId: BigInt(mappedData.planId)
-        },
-        include: { plan: true }
-    });
-    created.status = created.isActive ? 'ACTIVE' : 'SUSPENDED';
-    return convertBigInts(created);
+    const code = data.schoolCode || data.code || `SCH${Date.now().toString(36).toUpperCase()}`;
+    const subdomainVal = (data.subdomain || data.code || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const mappedData = {
+        name: data.name || 'New School',
+        code,
+        subdomain: subdomainVal || code.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+        email: data.contactEmail || data.email || 'admin@school.in',
+        phone: data.contactPhone || data.phone || '+910000000000',
+        status: data.status === 'ACTIVE' ? 'ACTIVE' : 'ACTIVE',
+        subscriptionPlan: ['BASIC', 'STANDARD', 'PREMIUM'].includes(data.subscriptionPlan) ? data.subscriptionPlan : 'BASIC',
+        subscriptionStart: data.subscriptionStart || new Date(),
+        subscriptionEnd: data.subscriptionEnd || null,
+        board: data.board || null,
+        address: data.address || null,
+        city: data.city || null,
+        state: data.state || null,
+        country: data.country || 'India',
+        timezone: data.timezone || 'Asia/Kolkata'
+    };
+    const created = await prisma.school.create({ data: mappedData });
+    return convertBigInts({ ...created, schoolCode: created.code });
 };
 
 const SORT_FIELD_MAP = {
-    schoolCode: 'schoolCode',
+    schoolCode: 'code',
+    code: 'code',
     name: 'name',
-    planId: 'planId',
-    isActive: 'isActive',
+    planId: 'subscriptionPlan',
+    subscriptionPlan: 'subscriptionPlan',
+    isActive: 'status',
+    status: 'status',
     subscriptionEnd: 'subscriptionEnd',
     createdAt: 'createdAt'
+};
+
+const SCHOOL_LIST_SELECT = {
+    id: true,
+    name: true,
+    code: true,
+    subdomain: true,
+    board: true,
+    status: true,
+    subscriptionPlan: true,
+    subscriptionEnd: true,
+    city: true,
+    state: true,
+    country: true,
+    groupId: true,
 };
 
 export const getSchools = async (where, skip, take, sortBy = 'createdAt', sortOrder = 'desc') => {
     const orderField = SORT_FIELD_MAP[sortBy] || 'createdAt';
     const orderBy = { [orderField]: sortOrder };
 
-    // Run count and fetch concurrently
     const [schools, total] = await Promise.all([
         prisma.school.findMany({
             where,
             skip,
             take,
             orderBy,
-            include: { plan: true }
+            select: SCHOOL_LIST_SELECT,
         }),
         prisma.school.count({ where })
     ]);
@@ -65,7 +81,6 @@ export const getSchools = async (where, skip, take, sortBy = 'createdAt', sortOr
         return { data: [], total, skip, take };
     }
 
-    // Optimization: Avoid N+1 mapping using a single group-by aggregation
     const schoolIds = schools.map(s => s.id);
     const userRoleCounts = await prisma.user.groupBy({
         by: ['schoolId', 'roleId'],
@@ -87,7 +102,8 @@ export const getSchools = async (where, skip, take, sortBy = 'createdAt', sortOr
     });
 
     for (const record of userRoleCounts) {
-        const sId = record.schoolId.toString();
+        const sId = record.schoolId?.toString();
+        if (!sId) continue;
         const roleName = roleMap.get(record.roleId.toString());
         if (roleName === 'STUDENT') {
             countsMap.get(sId).studentCount += record._count.id;
@@ -98,9 +114,10 @@ export const getSchools = async (where, skip, take, sortBy = 'createdAt', sortOr
 
     const enrichedSchools = schools.map(school => ({
         ...school,
-        status: school.isActive ? 'ACTIVE' : 'SUSPENDED',
-        studentCount: countsMap.get(school.id.toString()).studentCount,
-        teacherCount: countsMap.get(school.id.toString()).teacherCount
+        schoolCode: school.code,
+        status: school.status || 'ACTIVE',
+        studentCount: countsMap.get(school.id.toString())?.studentCount ?? 0,
+        teacherCount: countsMap.get(school.id.toString())?.teacherCount ?? 0
     }));
 
     return {
@@ -113,52 +130,14 @@ export const getSchools = async (where, skip, take, sortBy = 'createdAt', sortOr
 
 export const getSchoolById = async (id) => {
     const school = await prisma.school.findUnique({
-        where: { id: BigInt(id) },
-        include: {
-            plan: true,
-            subscriptions: {
-                include: { plan: true },
-                orderBy: { createdAt: 'desc' }
-            }
-        }
+        where: { id: String(id) }
     });
 
     if (!school) return null;
 
-    // Separate active subscription from history
-    const activeSubscription = school.subscriptions.find(s => s.status === 'ACTIVE');
-    const subscriptionHistory = school.subscriptions;
-
-    const enrichedSchool = {
-        ...school,
-        active_subscription: activeSubscription ? {
-            subscription_id: activeSubscription.id.toString(),
-            plan_id: activeSubscription.planId.toString(),
-            plan_name: activeSubscription.plan.name,
-            billing_cycle: activeSubscription.billingCycle,
-            start_date: activeSubscription.startDate,
-            end_date: activeSubscription.endDate,
-            status: activeSubscription.status
-        } : null,
-        subscription_history: subscriptionHistory.map(s => ({
-            subscription_id: s.id.toString(),
-            plan_id: s.planId.toString(),
-            plan_name: s.plan.name,
-            billing_cycle: s.billingCycle,
-            start_date: s.startDate,
-            end_date: s.endDate,
-            status: s.status,
-            created_at: s.createdAt
-        }))
-    };
-
-    // Remove the flat subscriptions array from the root to keep response clean
-    delete enrichedSchool.subscriptions;
-
-    // Single query for specific counts to avoid sequential or nested roundtrips
     const userRoleCounts = await prisma.user.groupBy({
         by: ['roleId'],
-        where: { schoolId: BigInt(id) },
+        where: { schoolId: String(id) },
         _count: { id: true }
     });
 
@@ -180,37 +159,63 @@ export const getSchoolById = async (id) => {
         }
     }
 
-    enrichedSchool.status = enrichedSchool.isActive ? 'ACTIVE' : 'SUSPENDED';
-    return convertBigInts({ ...enrichedSchool, studentCount, teacherCount });
+    return convertBigInts({
+        ...school,
+        schoolCode: school.code,
+        status: school.status || 'ACTIVE',
+        studentCount,
+        teacherCount,
+        active_subscription: school.subscriptionEnd ? {
+            plan_name: school.subscriptionPlan,
+            end_date: school.subscriptionEnd,
+            status: 'ACTIVE'
+        } : null,
+        subscription_history: []
+    });
 };
 
 export const updateSchool = async (id, data) => {
-    const mappedData = { ...data };
-    if (mappedData.status !== undefined) {
-        mappedData.isActive = mappedData.status === 'ACTIVE';
-        delete mappedData.status;
+    const mappedData = {};
+    if (data.name !== undefined) mappedData.name = data.name;
+    if (data.code !== undefined) mappedData.code = data.code;
+    if (data.schoolCode !== undefined) mappedData.code = data.schoolCode;
+    if (data.email !== undefined) mappedData.email = data.email;
+    if (data.contactEmail !== undefined) mappedData.email = data.contactEmail;
+    if (data.phone !== undefined) mappedData.phone = data.phone;
+    if (data.contactPhone !== undefined) mappedData.phone = data.contactPhone;
+    if (data.status !== undefined) {
+        const s = String(data.status).toUpperCase();
+        mappedData.status = s === 'SUSPENDED' ? 'SUSPENDED' : s === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
     }
-    if (mappedData.phone !== undefined) {
-        mappedData.contactPhone = mappedData.phone;
-        delete mappedData.phone;
+    if (data.subscriptionPlan !== undefined) mappedData.subscriptionPlan = data.subscriptionPlan;
+    if (data.subscriptionEnd !== undefined) mappedData.subscriptionEnd = data.subscriptionEnd;
+    if (data.board !== undefined) mappedData.board = data.board;
+    if (data.address !== undefined) mappedData.address = data.address;
+    if (data.city !== undefined) mappedData.city = data.city;
+    if (data.state !== undefined) mappedData.state = data.state;
+    if (data.country !== undefined) mappedData.country = data.country;
+    if (data.subdomain !== undefined) mappedData.subdomain = data.subdomain;
+    if (data.pin !== undefined) mappedData.pinCode = data.pin || null;
+    if (data.pin_code !== undefined) mappedData.pinCode = data.pin_code || null;
+    if (data.pinCode !== undefined) mappedData.pinCode = data.pinCode || null;
+    if (data.group_id !== undefined) mappedData.groupId = data.group_id || null;
+    if (data.groupId !== undefined) mappedData.groupId = data.groupId || null;
+
+    if (Object.keys(mappedData).length === 0) {
+        throw new AppError('No valid fields to update. Ensure at least one field is provided.', 400);
     }
 
     const updated = await prisma.school.update({
-        where: { id: BigInt(id) },
-        data: {
-            ...mappedData,
-            ...(mappedData.planId ? { planId: BigInt(mappedData.planId) } : {})
-        },
-        include: { plan: true }
+        where: { id: String(id) },
+        data: mappedData
     });
-    updated.status = updated.isActive ? 'ACTIVE' : 'SUSPENDED';
-    return convertBigInts(updated);
+    return convertBigInts({ ...updated, schoolCode: updated.code });
 };
 
 export const deleteSchool = async (id) => {
     const updated = await prisma.school.update({
-        where: { id: BigInt(id) },
-        data: { isActive: false }
+        where: { id: String(id) },
+        data: { status: 'INACTIVE' }
     });
     return convertBigInts(updated);
 };
@@ -221,15 +226,14 @@ export const deleteSchool = async (id) => {
  * Returns only safe public fields (no subdomain, admin, billing)
  */
 export const searchSchoolsPublic = async (q, limit = 10) => {
-    const term = `%${q}%`;
     const schools = await prisma.school.findMany({
         where: {
-            isActive: true,
+            status: 'ACTIVE',
             AND: [
                 {
                     OR: [
                         { name: { contains: q, mode: 'insensitive' } },
-                        { schoolCode: { contains: q, mode: 'insensitive' } },
+                        { code: { contains: q, mode: 'insensitive' } },
                         ...(q.length >= 2 ? [
                             { city: { contains: q, mode: 'insensitive' } },
                             { state: { contains: q, mode: 'insensitive' } }
@@ -244,19 +248,11 @@ export const searchSchoolsPublic = async (q, limit = 10) => {
                 }
             ]
         },
-        select: {
-            id: true,
-            name: true,
-            schoolCode: true,
-            city: true,
-            state: true,
-            isActive: true
-        },
+        select: { id: true, name: true, code: true, city: true, state: true, status: true },
         orderBy: { name: 'asc' },
         take: limit
     });
 
-    // Prisma orderBy with conditional is tricky — use simple name asc
     const sorted = schools.sort((a, b) => {
         const aStarts = a.name.toLowerCase().startsWith(q.toLowerCase());
         const bStarts = b.name.toLowerCase().startsWith(q.toLowerCase());
@@ -268,37 +264,56 @@ export const searchSchoolsPublic = async (q, limit = 10) => {
     return sorted.map(s => ({
         id: s.id.toString(),
         name: s.name,
-        code: s.schoolCode,
+        code: s.code,
         city: s.city || '',
         state: s.state || '',
-        board: '', // Schema has no board — extend later if needed
+        board: '',
         type: 'school',
         logo_url: null,
-        is_active: s.isActive
+        is_active: s.status === 'ACTIVE'
     }));
 };
 
-export const findByCode = async (schoolCode, excludeId = null) => {
-    const where = { schoolCode };
-    if (excludeId) {
-        where.id = { not: BigInt(excludeId) };
+/** Check if subdomain is already taken (case-insensitive). Checks subdomain and code. Exclude schoolId when updating. */
+export const isSubdomainTaken = async (value, excludeSchoolId = null) => {
+    if (!value || typeof value !== 'string') return false;
+    const normalized = String(value).trim().toLowerCase();
+    if (!/^[a-z0-9-]+$/.test(normalized) || normalized.length < 2) return false;
+    const where = {
+        OR: [
+            { subdomain: { equals: normalized, mode: 'insensitive' } },
+            { code: { equals: normalized, mode: 'insensitive' } },
+        ],
+    };
+    if (excludeSchoolId) {
+        where.id = { not: String(excludeSchoolId) };
     }
     const school = await prisma.school.findFirst({
         where,
-        select: { id: true, schoolCode: true }
+        select: { id: true },
     });
-    return school ? convertBigInts(school) : null;
+    return !!school;
+};
+
+export const findByCode = async (schoolCode, excludeId = null) => {
+    const where = { code: schoolCode };
+    if (excludeId) {
+        where.id = { not: String(excludeId) };
+    }
+    const school = await prisma.school.findFirst({
+        where,
+        select: { id: true, code: true }
+    });
+    return school ? convertBigInts({ ...school, schoolCode: school.code }) : null;
 };
 
 export const suspendExpiredSubscriptions = async () => {
     const suspended = await prisma.school.updateMany({
         where: {
             subscriptionEnd: { lt: new Date() },
-            isActive: true
+            status: 'ACTIVE'
         },
-        data: {
-            isActive: false
-        }
+        data: { status: 'SUSPENDED' }
     });
     return suspended.count;
 };

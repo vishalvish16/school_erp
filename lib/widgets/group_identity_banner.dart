@@ -6,6 +6,8 @@
 import 'package:flutter/material.dart';
 import '../models/school_identity.dart';
 import '../core/constants/app_auth_constants.dart';
+import '../design_system/tokens/app_colors.dart';
+import '../design_system/tokens/app_spacing.dart';
 
 class GroupIdentityBanner extends StatelessWidget {
   const GroupIdentityBanner({
@@ -19,7 +21,7 @@ class GroupIdentityBanner extends StatelessWidget {
   final bool showSchoolList;
   final List<String> schoolNames;
 
-  static const Color _groupAccent = Color(0xFF7C3AED); // violet
+  static const Color _groupAccent = AppColors.primary600;
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +46,11 @@ class GroupIdentityBanner extends StatelessWidget {
                 height: 56,
                 decoration: BoxDecoration(
                   color: _groupAccent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.brLg,
                 ),
                 child: Icon(Icons.groups_rounded, color: _groupAccent, size: 28),
               ),
-              const SizedBox(width: 16),
+              AppSpacing.hGapLg,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,10 +71,10 @@ class GroupIdentityBanner extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: AppSpacing.xs),
                 decoration: BoxDecoration(
                   color: AuthColors.success.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: AppRadius.brXl2,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -92,12 +94,12 @@ class GroupIdentityBanner extends StatelessWidget {
             ],
           ),
           if (showSchoolList && schoolNames.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             Text(
               'Schools in this group:',
               style: AuthTextStyles.tagline.copyWith(fontSize: 12),
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vGapSm,
             Wrap(
               spacing: 8,
               runSpacing: 4,
@@ -115,10 +117,10 @@ class GroupIdentityBanner extends StatelessWidget {
 
   Widget _buildSchoolChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: AppSpacing.xs),
       decoration: BoxDecoration(
         color: AuthColors.overlayLight(0.3),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.brMd,
       ),
       child: Text(
         text,

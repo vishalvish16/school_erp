@@ -3,8 +3,9 @@ import { successResponse } from '../../utils/response.js';
 
 export const resolveSubdomainController = async (req, res, next) => {
     try {
-        const { subdomain } = req.body;
-        const result = await smartLoginService.resolveSubdomain(subdomain);
+        const { subdomain, slug } = req.body;
+        const subdomainOrSlug = (subdomain && String(subdomain).trim()) || (slug && String(slug).trim());
+        const result = await smartLoginService.resolveSubdomain(subdomainOrSlug);
         return successResponse(res, 200, 'Subdomain resolved', result);
     } catch (error) {
         next(error);
@@ -30,6 +31,16 @@ export const verifyDeviceOtpController = async (req, res, next) => {
         const body = { ...req.body, device_meta: meta };
         const result = await smartLoginService.verifyDeviceOtp(body);
         return successResponse(res, 200, 'Device verified', result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const resendDeviceOtpController = async (req, res, next) => {
+    try {
+        const body = { ...req.body };
+        const result = await smartLoginService.resendDeviceOtp(body);
+        return successResponse(res, 200, 'New code sent to your phone and email', result);
     } catch (error) {
         next(error);
     }

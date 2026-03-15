@@ -1,0 +1,24 @@
+Users table columns:
+  id (uuid)
+  school_id (uuid)
+  email (character varying)
+  password_hash (character varying)
+  role_id (integer)
+  is_active (boolean)
+  last_login (timestamp without time zone)
+  created_at (timestamp without time zone)
+  updated_at (timestamp without time zone)
+
+Users:
+  id=e569ea4f-dd7b-4be4-9d54-3cf5312e04ab email=vishal.vish16@gmail.com school_id=null
+  id=99c3fd64-230c-4803-ae0a-c390401509b7 email=vishal@gmail.com school_id=3c3fa9ad-0843-4714-a41e-f2f0eea898a1
+  id=eb94be68-1cd8-421a-b560-4075abf2c93c email=vishal1@gmail.com school_id=3c3fa9ad-0843-4714-a41e-f2f0eea898a1
+  id=147ecb7d-1e70-4727-ab3d-aababe68f409 email=superadmin@schoolerp.com school_id=null
+  id=8bb5d0ca-89ad-4d1f-b2a4-02955e12a0af email=admin@greenvalley.edu school_id=9140adf5-f274-4d0d-8316-89044ccc6218
+
+Roles table columns:
+  id (integer)
+  name (character varying)
+  description (character varying)
+  scope (USER-DEFINED)
+  created_at (timestamp without time zone)

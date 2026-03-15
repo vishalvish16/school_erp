@@ -4,7 +4,10 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../../design_system/design_system.dart';
+import '../../common/searchable_dropdown_form_field.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
+import '../../../design_system/tokens/app_spacing.dart';
 
 class CreateEditPlanDialog extends StatefulWidget {
   const CreateEditPlanDialog({
@@ -82,15 +85,11 @@ class _CreateEditPlanDialogState extends State<CreateEditPlanDialog> {
     final name = _nameController.text.trim();
     final price = double.tryParse(_priceController.text);
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Name is required')),
-      );
+      AppSnackbar.warning(context, 'Name is required');
       return;
     }
     if (price == null || price < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Valid price is required')),
-      );
+      AppSnackbar.warning(context, 'Valid price is required');
       return;
     }
     setState(() => _submitting = true);
@@ -108,15 +107,11 @@ class _CreateEditPlanDialogState extends State<CreateEditPlanDialog> {
       });
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(widget.plan == null ? 'Plan created' : 'Plan updated')),
-        );
+        AppSnackbar.success(context, widget.plan == null ? 'Plan created' : 'Plan updated');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -130,7 +125,7 @@ class _CreateEditPlanDialogState extends State<CreateEditPlanDialog> {
 
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.paddingXl,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -141,64 +136,68 @@ class _CreateEditPlanDialogState extends State<CreateEditPlanDialog> {
                     fontWeight: FontWeight.bold,
                   ),
             ),
-            const SizedBox(height: 24),
+            AppSpacing.vGapXl,
             TextFormField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'Plan Name'),
             ),
-            const SizedBox(height: 12),
+            AppSpacing.vGapMd,
             TextFormField(
               controller: _slugController,
               decoration: const InputDecoration(labelText: 'Slug'),
             ),
-            const SizedBox(height: 12),
+            AppSpacing.vGapMd,
             TextFormField(
               controller: _priceController,
               decoration: const InputDecoration(labelText: 'Price per student (₹)'),
               keyboardType: TextInputType.number,
               onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: 12),
+            AppSpacing.vGapMd,
             TextFormField(
               controller: _descController,
               decoration: const InputDecoration(labelText: 'Description'),
               maxLines: 3,
             ),
-            const SizedBox(height: 12),
+            AppSpacing.vGapMd,
             TextFormField(
               controller: _maxStudentsController,
               decoration: const InputDecoration(labelText: 'Max students (optional)'),
               keyboardType: TextInputType.number,
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
+            AppSpacing.vGapMd,
+            SearchableDropdownFormField<String>.valueItems(
               value: _supportLevel,
+              valueItems: const [
+                MapEntry('standard', 'STANDARD'),
+                MapEntry('priority', 'PRIORITY'),
+                MapEntry('dedicated', 'DEDICATED'),
+              ],
               decoration: const InputDecoration(labelText: 'Support Level'),
-              items: ['standard', 'priority', 'dedicated']
-                  .map((v) => DropdownMenuItem(value: v, child: Text(v.toUpperCase())))
-                  .toList(),
               onChanged: (v) => setState(() => _supportLevel = v ?? 'standard'),
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
+            AppSpacing.vGapMd,
+            SearchableDropdownFormField<String>.valueItems(
               value: _status,
+              valueItems: const [
+                MapEntry('active', 'ACTIVE'),
+                MapEntry('draft', 'DRAFT'),
+                MapEntry('inactive', 'INACTIVE'),
+              ],
               decoration: const InputDecoration(labelText: 'Status'),
-              items: ['active', 'draft', 'inactive']
-                  .map((v) => DropdownMenuItem(value: v, child: Text(v.toUpperCase())))
-                  .toList(),
               onChanged: (v) => setState(() => _status = v ?? 'active'),
             ),
-            const SizedBox(height: 12),
+            AppSpacing.vGapMd,
             TextFormField(
               controller: _emojiController,
               decoration: const InputDecoration(labelText: 'Icon emoji'),
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             Text(
               'Example: 500 students × ₹${price.toStringAsFixed(0)} = ₹${exampleTotal.toStringAsFixed(0)}/month',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 24),
+            AppSpacing.vGapXl,
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -207,12 +206,12 @@ class _CreateEditPlanDialogState extends State<CreateEditPlanDialog> {
                     onPressed: _submitting ? null : () => _submit(asDraft: true),
                     child: const Text('Save as Draft'),
                   ),
-                const SizedBox(width: 8),
+                AppSpacing.hGapSm,
                 TextButton(
                   onPressed: _submitting ? null : () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
-                const SizedBox(width: 8),
+                AppSpacing.hGapSm,
                 FilledButton(
                   onPressed: _submitting ? null : () => _submit(),
                   child: _submitting

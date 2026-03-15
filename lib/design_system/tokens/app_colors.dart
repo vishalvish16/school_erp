@@ -52,6 +52,10 @@ abstract final class AppColors {
   static const Color warning600 = Color(0xFFD97706);
   static const Color warning700 = Color(0xFFB45309);
 
+  // ── Driver Portal — Orange accent (#FF9800, badge #E65100) ─────────────────
+  static const Color driverAccent = Color(0xFFFF9800);
+  static const Color driverBadge  = Color(0xFFE65100);
+
   // ── Semantic — Error (Rose) ─────────────────────────────────────────────────
   static const Color error50  = Color(0xFFFFF1F2);
   static const Color error100 = Color(0xFFFFE4E6);
@@ -63,6 +67,7 @@ abstract final class AppColors {
   // ── Semantic — Info ─────────────────────────────────────────────────────────
   static const Color info500 = Color(0xFF06B6D4);  // cyan-500
   static const Color info600 = Color(0xFF0891B2);
+  static const Color info900 = Color(0xFF164E63);   // cyan-900 (badge bg)
 
   // ── Neutral — Slate ─────────────────────────────────────────────────────────
   static const Color neutral50  = Color(0xFFF8FAFC);

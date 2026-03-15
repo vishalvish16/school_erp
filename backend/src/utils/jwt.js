@@ -48,3 +48,12 @@ export const generateTempToken = (payload) => {
 export const verifyTempToken = (token) => {
     return jwt.verify(token, env.JWT_ACCESS_SECRET);
 };
+
+/**
+ * Generate Parent portal access token — 24h expiry
+ * @param {Object} payload { parent_id, school_id, portal_type, email }
+ * @returns {string} JWT
+ */
+export const generateParentAccessToken = (payload) => {
+    return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '24h' });
+};

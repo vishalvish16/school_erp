@@ -11,8 +11,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/services/local_storage_service.dart';
+import '../../core/services/parent_service.dart';
+import '../../features/auth/auth_guard_provider.dart';
 import '../../models/school_identity.dart';
+import '../../shared/widgets/widgets.dart';
 import 'auth_screen_layout.dart';
 
 /// User type for parent/student combined login
@@ -39,6 +43,9 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
   String? _detectedUserName;
   String? _detectedRole;
   bool _isLoading = false;
+  String? _otpSessionId;
+  String? _schoolId;
+  String? _maskedPhone;
 
   @override
   void initState() {
@@ -58,7 +65,9 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
   @override
   void dispose() {
     _phoneController.dispose();
-    for (final c in _otpControllers) c.dispose();
+    for (final c in _otpControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -83,54 +92,167 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
   Future<void> _findSchoolAndSendOtp() async {
     if (_phoneController.text.trim().length < 10) return;
     setState(() => _isLoading = true);
-    // TODO: POST /auth/resolve-user-by-phone { phone, user_type }
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _step = 2;
-        _detectedSchool = const SchoolIdentity(
-          id: '1',
-          name: 'Demo School',
-          code: 'DEMO001',
-          board: 'CBSE',
-          type: 'school',
-          studentCount: 500,
-          active: true,
+
+    if (_userType == ParentStudentUserType.parent) {
+      try {
+        final phone = _phoneController.text.trim();
+        final normalizedPhone = phone.startsWith('+') ? phone : '+91$phone';
+        final service = ref.read(parentServiceProvider);
+        final res = await service.resolveUserByPhone(
+          phone: normalizedPhone,
+          userType: 'parent',
         );
-        _detectedUserName = _userType == ParentStudentUserType.parent ? 'Parent Name' : 'Student Name';
-        _detectedRole = _userType == ParentStudentUserType.parent
-            ? 'Parent of Child, Class X'
-            : 'Student · Class X · Roll 12';
-      });
+
+        if (!mounted) return;
+        final school = res['school'];
+        final user = res['user'];
+        final otpSessionId = res['otp_session_id'] as String?;
+        final maskedPhone = res['masked_phone'] as String?;
+
+        if (school == null || otpSessionId == null) {
+          setState(() => _isLoading = false);
+          AppFeedback.showError(context, AppStrings.parentResolveFailed);
+          return;
+        }
+
+        final schoolMap = school is Map ? school as Map<String, dynamic> : {};
+        final schoolId = schoolMap['id']?.toString() ?? schoolMap['school_id']?.toString() ?? '';
+        final schoolName = schoolMap['name']?.toString() ?? schoolMap['school_name']?.toString() ?? 'School';
+        final code = schoolMap['code']?.toString() ?? '';
+        final board = schoolMap['board']?.toString() ?? '';
+
+        final userMap = user is Map ? user as Map<String, dynamic> : {};
+        final userName = userMap['name']?.toString() ?? userMap['first_name']?.toString() ?? 'Parent';
+
+        setState(() {
+          _isLoading = false;
+          _step = 2;
+          _otpSessionId = otpSessionId;
+          _schoolId = schoolId;
+          _maskedPhone = maskedPhone;
+          _detectedSchool = SchoolIdentity(
+            id: schoolId,
+            name: schoolName,
+            code: code,
+            board: board,
+            type: 'school',
+            studentCount: 0,
+            active: true,
+          );
+          _detectedUserName = userName;
+          _detectedRole = 'Parent';
+        });
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          AppFeedback.showError(
+            context,
+            e.toString().replaceAll('Exception: ', ''),
+          );
+        }
+      }
+    } else {
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _step = 2;
+          _detectedSchool = const SchoolIdentity(
+            id: '1',
+            name: 'Demo School',
+            code: 'DEMO001',
+            board: 'CBSE',
+            type: 'school',
+            studentCount: 500,
+            active: true,
+          );
+          _detectedUserName = 'Student Name';
+          _detectedRole = 'Student · Class X · Roll 12';
+        });
+      }
     }
   }
 
   Future<void> _confirmAndSendOtp() async {
     setState(() => _isLoading = true);
-    // TODO: Confirm and send OTP
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) setState(() {
-      _isLoading = false;
-      _step = 3;
-    });
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _step = 3;
+      });
+    }
   }
 
   Future<void> _verifyOtp() async {
     final code = _otpControllers.map((c) => c.text).join();
     if (code.length != 6) return;
     setState(() => _isLoading = true);
-    // TODO: Verify OTP
+
     final phone = _phoneController.text.trim();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('parent_login_phone', phone);
-    if (!kIsWeb) {
-      final storage = LocalStorageService();
-      await storage.saveUserPhone(phone.startsWith('+') ? phone : '+91$phone');
-    }
-    if (mounted) {
-      setState(() => _isLoading = false);
-      context.go(_userType == ParentStudentUserType.parent ? '/dashboard/parent' : '/dashboard/student');
+    final normalizedPhone = phone.startsWith('+') ? phone : '+91$phone';
+
+    if (_userType == ParentStudentUserType.parent &&
+        _otpSessionId != null &&
+        _schoolId != null) {
+      try {
+        final service = ref.read(parentServiceProvider);
+        final res = await service.verifyParentOtp(
+          otpSessionId: _otpSessionId!,
+          otp: code,
+          phone: normalizedPhone,
+          schoolId: _schoolId!,
+        );
+
+        final token = res['access_token'] as String?;
+        if (token == null) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            AppFeedback.showError(context, AppStrings.parentOtpFailed);
+          }
+          return;
+        }
+
+        await ref.read(authGuardProvider.notifier).establishSession(
+              token,
+              portalTypeOverride: 'parent',
+            );
+
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('parent_login_phone', normalizedPhone);
+        if (!kIsWeb) {
+          final storage = LocalStorageService();
+          await storage.saveUserPhone(normalizedPhone);
+        }
+
+        if (mounted) {
+          setState(() => _isLoading = false);
+          AppFeedback.showSuccess(context, AppStrings.parentLoginSuccess);
+          context.go('/parent/dashboard');
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          AppFeedback.showError(
+            context,
+            e.toString().replaceAll('Exception: ', ''),
+          );
+        }
+      }
+    } else {
+      await Future.delayed(const Duration(seconds: 1));
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('parent_login_phone', normalizedPhone);
+      if (!kIsWeb) {
+        final storage = LocalStorageService();
+        await storage.saveUserPhone(normalizedPhone);
+      }
+      if (mounted) {
+        setState(() => _isLoading = false);
+        context.go(_userType == ParentStudentUserType.parent
+            ? '/parent/dashboard'
+            : '/student/dashboard');
+      }
     }
   }
 
@@ -163,11 +285,11 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
               Row(
                 children: [
                   _buildWhoToggle(ParentStudentUserType.parent, 'Parent'),
-                  const SizedBox(width: 12),
+                  AppSpacing.hGapMd,
                   _buildWhoToggle(ParentStudentUserType.student, 'Student'),
                 ],
               ),
-              const SizedBox(height: 24),
+              AppSpacing.vGapXl,
               Row(
                 children: [
                   _buildStepPill(1, 'Phone'),
@@ -175,7 +297,7 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
                   _buildStepPill(3, 'OTP'),
                 ],
               ),
-              const SizedBox(height: 24),
+              AppSpacing.vGapXl,
               if (_step == 1) _buildStep1(),
               if (_step == 2) _buildStep2(),
               if (_step == 3) _buildStep3(),
@@ -192,10 +314,10 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
       child: GestureDetector(
         onTap: () => setState(() => _userType = type),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: AppSpacing.paddingVMd,
           decoration: BoxDecoration(
             color: selected ? AuthColors.primary.withValues(alpha: 0.2) : null,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.brMd,
             border: Border.all(
               color: selected ? AuthColors.primary : AuthColors.border,
             ),
@@ -208,7 +330,7 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
                 size: 20,
                 color: selected ? AuthColors.primary : AuthColors.textMuted,
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hGapSm,
               Text(label, style: AuthTextStyles.tagline),
             ],
           ),
@@ -222,12 +344,12 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
     final done = _step > step;
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: AppSpacing.paddingVSm,
         decoration: BoxDecoration(
           color: active || done
               ? AuthColors.primary.withValues(alpha: done ? 0.3 : 0.2)
               : AuthColors.overlayLight(0.3),
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: AppRadius.brMd,
         ),
         child: Center(
           child: Text(
@@ -246,26 +368,26 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text('Country code', style: AuthTextStyles.tagline),
-        const SizedBox(height: 4),
+        Text(AppStrings.countryCode, style: AuthTextStyles.tagline),
+        AppSpacing.vGapXs,
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
               decoration: BoxDecoration(
                 border: Border.all(color: AuthColors.border),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.brMd,
               ),
-              child: const Text('🇮🇳 +91'),
+              child: const Text(AppStrings.indiaFlagWithCode),
             ),
-            const SizedBox(width: 12),
+            AppSpacing.hGapMd,
             Expanded(
               child: TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 maxLength: 10,
                 decoration: const InputDecoration(
-                  labelText: 'Mobile number',
+                  labelText: AppStrings.mobileNumber,
                   border: OutlineInputBorder(),
                   counterText: '',
                 ),
@@ -273,20 +395,20 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        AppSpacing.vGapSm,
         Text(
-          'Must be registered with your child\'s school',
+          AppStrings.mustBeRegisteredWithSchool,
           style: AuthTextStyles.tagline.copyWith(fontSize: 12),
         ),
-        const SizedBox(height: 24),
+        AppSpacing.vGapXl,
         FilledButton(
           onPressed: _isLoading ? null : _findSchoolAndSendOtp,
           style: FilledButton.styleFrom(
             backgroundColor: AuthColors.primary,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: AppSpacing.paddingVLg,
           ),
           child: Text(
-            _isLoading ? 'Finding...' : 'Find My School & Send OTP',
+            _isLoading ? AppStrings.findingSchool : AppStrings.findSchoolSendOtp,
             style: AuthTextStyles.buttonPrimary,
           ),
         ),
@@ -300,39 +422,39 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
       children: [
         if (_detectedSchool != null) ...[
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: AppSpacing.paddingLg,
             decoration: BoxDecoration(
               color: AuthColors.overlayLight(0.3),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.brLg,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(_detectedSchool!.name, style: AuthTextStyles.loginTitle.copyWith(fontSize: 18)),
                 Text('${_detectedSchool!.board} · ${_detectedSchool!.code}', style: AuthTextStyles.tagline),
-                const SizedBox(height: 8),
+                AppSpacing.vGapSm,
                 Row(
                   children: [
                     Icon(Icons.check_circle, size: 16, color: AuthColors.success),
                     const SizedBox(width: 6),
-                    Text('Verified', style: AuthTextStyles.tagline.copyWith(color: AuthColors.success)),
+                    Text(AppStrings.verified, style: AuthTextStyles.tagline.copyWith(color: AuthColors.success)),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          AppSpacing.vGapLg,
           if (_detectedUserName != null)
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: AppSpacing.paddingMd,
               decoration: BoxDecoration(
                 color: AuthColors.overlayLight(0.2),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: AppRadius.brMd,
               ),
               child: Row(
                 children: [
                   Icon(Icons.person, size: 20, color: AuthColors.primary),
-                  const SizedBox(width: 12),
+                  AppSpacing.hGapMd,
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,23 +468,23 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
                 ],
               ),
             ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           Text(
-            'Auto-detected from your number. No school code needed.',
+            AppStrings.autoDetectedFromNumber,
             style: AuthTextStyles.tagline.copyWith(fontSize: 12),
           ),
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           FilledButton(
             onPressed: _isLoading ? null : _confirmAndSendOtp,
             style: FilledButton.styleFrom(
               backgroundColor: AuthColors.primary,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: AppSpacing.paddingVLg,
             ),
-            child: Text('Confirm & Send OTP', style: AuthTextStyles.buttonPrimary),
+            child: Text(AppStrings.confirmAndSendOtp, style: AuthTextStyles.buttonPrimary),
           ),
           TextButton(
-            onPressed: () {},
-            child: Text('Wrong school? Contact your school admin', style: AuthTextStyles.forgotPassword),
+            onPressed: () => setState(() => _step = 1),
+            child: Text(AppStrings.wrongSchoolContactSchoolAdmin, style: AuthTextStyles.forgotPassword),
           ),
         ],
       ],
@@ -375,10 +497,18 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
       children: [
         if (_detectedSchool != null)
           Text(
-            'Signing into ${_detectedSchool!.name}',
+            '${AppStrings.signingInto} ${_detectedSchool!.name}',
             style: AuthTextStyles.tagline,
           ),
-        const SizedBox(height: 16),
+        if (_maskedPhone != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              AppStrings.otpSentTo(_maskedPhone!),
+              style: AuthTextStyles.tagline.copyWith(fontSize: 12),
+            ),
+          ),
+        AppSpacing.vGapLg,
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: List.generate(
@@ -403,14 +533,14 @@ class _ParentLoginScreenState extends ConsumerState<ParentLoginScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
+        AppSpacing.vGapXl,
         FilledButton(
           onPressed: _isLoading ? null : _verifyOtp,
           style: FilledButton.styleFrom(
             backgroundColor: AuthColors.primary,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+            padding: AppSpacing.paddingVLg,
           ),
-          child: Text('Verify & Enter Vidyron', style: AuthTextStyles.buttonPrimary),
+          child: Text(AppStrings.verifyAndEnterVidyron, style: AuthTextStyles.buttonPrimary),
         ),
       ],
     );

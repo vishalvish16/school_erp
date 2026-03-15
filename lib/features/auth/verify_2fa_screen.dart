@@ -6,14 +6,18 @@
 import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/local_storage_service.dart';
 import 'auth_guard_provider.dart';
 import 'auto_lock_provider.dart';
 import 'auth_screen_layout.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class Verify2faScreen extends ConsumerStatefulWidget {
   const Verify2faScreen({
@@ -53,7 +57,7 @@ class _Verify2faScreenState extends ConsumerState<Verify2faScreen> {
   Future<void> _verify() async {
     if (_totpCode.length != 6) return;
     if (_attempts >= 5) {
-      setState(() => _errorMessage = 'Too many attempts. Please go back and log in again.');
+      setState(() => _errorMessage = AppStrings.tooManyAttemptsLoginAgain);
       return;
     }
 
@@ -99,10 +103,10 @@ class _Verify2faScreenState extends ConsumerState<Verify2faScreen> {
           final q = 'otp_session_id=$sessionId&masked_phone=${Uri.encodeComponent(masked)}${portal != null ? '&portal_type=$portal' : ''}';
           context.go('/device-verification?$q');
         } else {
-          setState(() => _errorMessage = 'Verification failed');
+          setState(() => _errorMessage = AppStrings.verificationFailed);
         }
       } else {
-        setState(() => _errorMessage = 'Verification failed');
+        setState(() => _errorMessage = AppStrings.verificationFailed);
       }
     } catch (e) {
       if (mounted) {
@@ -110,7 +114,7 @@ class _Verify2faScreenState extends ConsumerState<Verify2faScreen> {
           _attempts++;
           _isLoading = false;
           _errorMessage = _attempts >= 5
-              ? 'Too many attempts. Please go back and log in again.'
+              ? AppStrings.tooManyAttemptsLoginAgain
               : (e.toString().replaceAll('Exception: ', ''));
         });
       }
@@ -149,64 +153,102 @@ class _Verify2faScreenState extends ConsumerState<Verify2faScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.security, size: 48, color: AuthColors.primary),
-              const SizedBox(height: 16),
+              AppSpacing.vGapLg,
               Text(
-                'Two-Factor Authentication',
+                AppStrings.twoFactorAuth,
                 style: AuthTextStyles.screenTitle,
                 textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
               ),
-              const SizedBox(height: 8),
+              AppSpacing.vGapSm,
               Text(
-                'Enter the 6-digit code from your authenticator app',
+                AppStrings.enter6DigitCode,
                 style: AuthTextStyles.screenSubtitle,
                 textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
               ),
-              const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(6, (i) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: SizedBox(
-                      width: 44,
-                      child: TextFormField(
-                        controller: _controllers[i],
-                        focusNode: _focusNodes[i],
-                        textAlign: TextAlign.center,
-                        keyboardType: TextInputType.number,
-                        maxLength: 1,
-                        onChanged: (v) {
-                          if (v.length == 1 && i < 5) {
-                            _focusNodes[i + 1].requestFocus();
-                          } else if (v.isEmpty && i > 0) {
-                            _focusNodes[i - 1].requestFocus();
-                          }
-                          if (_totpCode.length == 6) {
-                            _verify();
-                          }
-                        },
-                        decoration: InputDecoration(
-                          counterText: '',
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.9),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
+              AppSpacing.vGapXl,
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final availableWidth = constraints.maxWidth;
+                  const gap = 6.0;
+                  const minFieldWidth = 36.0;
+                  const maxFieldWidth = 48.0;
+                  final fieldWidth = ((availableWidth - 5 * gap) / 6)
+                      .clamp(minFieldWidth, maxFieldWidth)
+                      .toDouble();
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(6, (i) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          left: i == 0 ? 0 : gap / 2,
+                          right: i == 5 ? 0 : gap / 2,
+                        ),
+                        child: SizedBox(
+                          width: fieldWidth,
+                          height: 52,
+                          child: TextFormField(
+                            controller: _controllers[i],
+                            focusNode: _focusNodes[i],
+                            textAlign: TextAlign.center,
+                            keyboardType: TextInputType.number,
+                            obscureText: false,
+                            enableSuggestions: false,
+                            autocorrect: false,
+                            maxLength: 1,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
+                            onChanged: (v) {
+                              if (v.length == 1 && i < 5) {
+                                _focusNodes[i + 1].requestFocus();
+                              } else if (v.isEmpty && i > 0) {
+                                _focusNodes[i - 1].requestFocus();
+                              }
+                              if (_totpCode.length == 6) {
+                                _verify();
+                              }
+                            },
+                            style: TextStyle(
+                              fontSize: (fieldWidth * 0.5).clamp(14, 22),
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.neutral800,
+                              height: 1.2,
+                            ),
+                            decoration: InputDecoration(
+                              counterText: '',
+                              filled: true,
+                              fillColor: Colors.white.withValues(alpha: 0.9),
+                              contentPadding: EdgeInsets.symmetric(
+                                vertical: 14,
+                                horizontal: AppSpacing.sm,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                  AuthSizes.formFieldRadius,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    }),
                   );
-                }),
+                },
               ),
               if (_errorMessage != null) ...[
-                const SizedBox(height: 12),
+                AppSpacing.vGapMd,
                 Text(
                   _errorMessage!,
-                  style: AuthTextStyles.screenSubtitle.copyWith(color: Colors.redAccent),
+                  style: AuthTextStyles.screenSubtitle.copyWith(color: AppColors.error500),
                   textAlign: TextAlign.center,
                 ),
               ],
-              const SizedBox(height: 24),
+              AppSpacing.vGapXl,
               Row(
                 children: [
                   Switch(
@@ -219,9 +261,9 @@ class _Verify2faScreenState extends ConsumerState<Verify2faScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Remember this device for 30 days', style: AuthTextStyles.rememberMe),
+                        Text(AppStrings.rememberDevice30Days, style: AuthTextStyles.rememberMe),
                         Text(
-                          'Skip device verification next time',
+                          AppStrings.skipDeviceVerificationNextTime,
                           style: AuthTextStyles.screenSubtitle.copyWith(fontSize: 12),
                         ),
                       ],
@@ -229,7 +271,7 @@ class _Verify2faScreenState extends ConsumerState<Verify2faScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              AppSpacing.vGapXl,
               SizedBox(
                 width: double.infinity,
                 height: AuthSizes.buttonHeight,
@@ -242,14 +284,14 @@ class _Verify2faScreenState extends ConsumerState<Verify2faScreen> {
                       borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
                     ),
                   ),
-                  child: const Text('Verify & Continue'),
+                  child: const Text(AppStrings.verifyAndContinue),
                 ),
               ),
-              const SizedBox(height: 16),
+              AppSpacing.vGapLg,
               TextButton(
                 onPressed: () => context.go('/login'),
                 child: Text(
-                  'Back to login',
+                  AppStrings.backToLogin,
                   style: AuthTextStyles.forgotPassword.copyWith(color: AuthColors.textMuted),
                 ),
               ),

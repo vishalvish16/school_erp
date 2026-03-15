@@ -13,6 +13,9 @@ import '../../models/school_identity.dart';
 import '../../utils/subdomain_resolver.dart';
 import '../../widgets/group_identity_banner.dart';
 import 'auth_screen_layout.dart';
+import 'group_admin_login_provider.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class GroupAdminLoginScreen extends ConsumerStatefulWidget {
   const GroupAdminLoginScreen({super.key});
@@ -25,6 +28,7 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
     with SingleTickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _groupSlugController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isPasswordVisible = false;
   int _selectedTab = 0; // 0=Password, 1=OTP
@@ -46,6 +50,7 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _groupSlugController.dispose();
     _tabController.dispose();
     super.dispose();
   }
@@ -54,10 +59,12 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
     final resolver = ref.read(subdomainResolverProvider);
     final sub = await SubdomainResolver.getCurrentSubdomain();
     if (sub == null || sub.isEmpty) {
-      if (mounted) setState(() {
-        _subdomainResolved = true;
-        _errorMessage = 'Invalid URL. Use {group}.vidyron.in';
-      });
+      if (mounted) {
+        setState(() {
+          _subdomainResolved = true;
+          _errorMessage = null; // Allow manual group slug entry for localhost
+        });
+      }
       return;
     }
     final identity = await resolver.resolve(sub);
@@ -76,19 +83,70 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
     }
   }
 
+  Future<SchoolIdentity?> _resolveGroupBySlug(String slug) async {
+    if (slug.trim().isEmpty) return null;
+    final resolver = ref.read(subdomainResolverProvider);
+    return resolver.resolve(slug.trim());
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-    // TODO: Call POST /auth/group-admin/login
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) setState(() => _isLoading = false);
+
+    String? groupId = _identity?.id;
+    if (groupId == null || groupId.isEmpty) {
+      final slug = _groupSlugController.text.trim();
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+      final identity = await _resolveGroupBySlug(slug);
+      if (!mounted) return;
+      if (identity == null || identity.type != 'group') {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Group not found. Check the slug.';
+        });
+        return;
+      }
+      groupId = identity.id;
+      setState(() => _identity = identity);
+    }
+
+    ref.read(groupAdminLoginProvider.notifier).login(
+      _emailController.text.trim(),
+      _passwordController.text,
+      groupId,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<GroupAdminLoginState>(groupAdminLoginProvider, (previous, next) {
+      if (!mounted) return;
+      if (next.isLoading) {
+        setState(() => _isLoading = true);
+      } else {
+        setState(() => _isLoading = false);
+        if (next.errorMessage != null) {
+          setState(() => _errorMessage = next.errorMessage);
+        }
+      }
+      // Navigate to OTP verification when backend requires device OTP
+      if (next.requiresOtp &&
+          previous?.requiresOtp != true &&
+          next.otpSessionId != null &&
+          next.otpSessionId!.isNotEmpty) {
+        final sessionId = next.otpSessionId!;
+        final masked = next.maskedPhone ?? '';
+        final maskedEmail = next.maskedEmail ?? '';
+        final otpSentTo = next.otpSentTo ?? '';
+        final devOtp = next.devOtp;
+        final q =
+            'otp_session_id=$sessionId&masked_phone=${Uri.encodeComponent(masked)}&masked_email=${Uri.encodeComponent(maskedEmail)}&otp_sent_to=${Uri.encodeComponent(otpSentTo)}&portal_type=group_admin${devOtp != null ? '&dev_otp=$devOtp' : ''}';
+        context.push('/device-verification?$q');
+      }
+    });
+
     Widget content;
     if (!_subdomainResolved) {
       content = const Padding(
@@ -144,12 +202,28 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
                   onTap: (i) => setState(() => _selectedTab = i),
                   labelColor: AuthColors.primary,
                   tabs: const [
-                    Tab(text: 'Password'),
-                    Tab(text: 'OTP'),
+                    Tab(text: AppStrings.passwordTab),
+                    Tab(text: AppStrings.otpTab),
                   ],
                 ),
-                const SizedBox(height: 24),
+                AppSpacing.vGapXl,
                 if (_selectedTab == 0) ...[
+                  if (_identity == null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextFormField(
+                        controller: _groupSlugController,
+                        decoration: const InputDecoration(
+                          labelText: AppStrings.groupSlugOrId,
+                          hintText: AppStrings.groupSlugHint,
+                          border: OutlineInputBorder(),
+                        ),
+                        validator: (v) =>
+                            (v == null || v.trim().isEmpty)
+                                ? AppStrings.groupSlugRequired
+                                : null,
+                      ),
+                    ),
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
@@ -158,7 +232,7 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
                     ),
                     validator: (v) => v == null || v.isEmpty ? AppStrings.enterEmailError : null,
                   ),
-                  const SizedBox(height: 16),
+                  AppSpacing.vGapLg,
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
@@ -172,7 +246,7 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
                     ),
                     validator: (v) => v == null || v.isEmpty ? AppStrings.enterPasswordError : null,
                   ),
-                  const SizedBox(height: 8),
+                  AppSpacing.vGapSm,
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -181,32 +255,46 @@ class _GroupAdminLoginScreenState extends ConsumerState<GroupAdminLoginScreen>
                     ),
                   ),
                 ] else ...[
-                  const Text('OTP login — Enter mobile, send OTP', style: AuthTextStyles.tagline),
-                  const SizedBox(height: 16),
+                  const Text(AppStrings.otpLoginTagline, style: AuthTextStyles.tagline),
+                  AppSpacing.vGapLg,
                   const TextField(
                     decoration: InputDecoration(
-                      labelText: 'Mobile number',
+                      labelText: AppStrings.mobileNumber,
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.phone,
                   ),
-                  const SizedBox(height: 16),
+                  AppSpacing.vGapLg,
                   FilledButton(
                     onPressed: _isLoading ? null : () {},
-                    child: Text(_isLoading ? 'Sending...' : 'Send OTP'),
+                    child: Text(_isLoading ? AppStrings.sending : AppStrings.sendOtp),
                   ),
                 ],
-                const SizedBox(height: 24),
+                AppSpacing.vGapXl,
                 if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 16),
-                    child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_errorMessage!, style: const TextStyle(color: AppColors.error500)),
+                        AppSpacing.vGapSm,
+                        Text(
+                          _errorMessage!.toLowerCase().contains('locked')
+                              ? 'Contact your platform administrator to unlock the account in Super Admin → Groups.'
+                              : 'Ensure you are assigned as group admin in Super Admin → Groups.',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
                 FilledButton(
                   onPressed: _isLoading ? null : _handleLogin,
                   style: FilledButton.styleFrom(
                     backgroundColor: AuthColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: AppSpacing.paddingVLg,
                   ),
                   child: Text(AuthStrings.login, style: AuthTextStyles.buttonPrimary),
                 ),

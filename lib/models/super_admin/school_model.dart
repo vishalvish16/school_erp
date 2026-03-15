@@ -13,6 +13,7 @@ class SuperAdminSchoolModel {
   final String schoolType;
   final String status;
   final String? subdomain;
+  final String? country;
   final String? city;
   final String? state;
   final String? pin;
@@ -36,6 +37,7 @@ class SuperAdminSchoolModel {
     this.schoolType = 'private',
     this.status = 'trial',
     this.subdomain,
+    this.country,
     this.city,
     this.state,
     this.pin,
@@ -75,6 +77,7 @@ class SuperAdminSchoolModel {
       schoolType: json['school_type'] ?? json['schoolType'] ?? 'private',
       status: json['status'] ?? 'trial',
       subdomain: json['subdomain'],
+      country: json['country'],
       city: json['city'],
       state: json['state'],
       pin: json['pin'] ?? json['pin_code'] ?? json['pinCode'],
@@ -110,6 +113,7 @@ class SuperAdminSchoolModel {
         'school_type': schoolType,
         'status': status,
         'subdomain': subdomain,
+        'country': country,
         'city': city,
         'state': state,
         'pin': pin,

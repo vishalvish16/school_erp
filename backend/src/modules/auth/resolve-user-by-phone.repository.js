@@ -2,6 +2,7 @@
  * Resolve user by phone — find school(s) for parent/student
  */
 import { PrismaClient } from '@prisma/client';
+import * as parentResolve from './resolve-parent-by-phone.repository.js';
 
 const prisma = new PrismaClient();
 
@@ -9,9 +10,12 @@ const toStr = (v) => (v == null ? null : String(v));
 
 /**
  * Find user(s) by phone. User has schoolId, role. Role name can be STUDENT, TEACHER, etc.
- * For parent: may be guardian table in future — for now we look for any user with phone + school
+ * For parent: uses Parent model — lookup or create from Student's parentPhone.
  */
-export const resolveUserByPhone = async (phone, userType) => {
+export const resolveUserByPhone = async (phone, userType, schoolId = null) => {
+    if (userType === 'parent') {
+        return parentResolve.resolveParentByPhone(phone, schoolId);
+    }
     // Normalize: extract last 10 digits for Indian mobile
     const digits = phone.replace(/\D/g, '').slice(-10);
     if (digits.length < 10) return null;
@@ -52,7 +56,16 @@ export const resolveUserByPhone = async (phone, userType) => {
 
     if (!validUsers.length) return null;
 
-    const first = validUsers[0];
+    let usersToUse = validUsers;
+    if (userType === 'student') {
+        const filtered = validUsers.filter(
+            (u) => (u.role?.name || '').toUpperCase() === 'STUDENT'
+        );
+        if (filtered.length === 0) return null;
+        usersToUse = filtered;
+    }
+
+    const first = usersToUse[0];
     const schoolPayload = {
         id: toStr(first.school.id),
         name: first.school.name,
@@ -72,7 +85,7 @@ export const resolveUserByPhone = async (phone, userType) => {
     const otpSessionId = `otp_${Date.now()}_${first.id}`;
     const maskedPhone = first.phone ? first.phone.slice(-4).padStart(first.phone.length, '*') : '****';
 
-    if (validUsers.length === 1) {
+    if (usersToUse.length === 1) {
         return {
             schools: [schoolPayload],
             user: {
@@ -87,7 +100,7 @@ export const resolveUserByPhone = async (phone, userType) => {
     }
 
     // Multiple schools — return all
-    const schools = validUsers.map((u) => ({
+    const schools = usersToUse.map((u) => ({
         id: toStr(u.school.id),
         name: u.school.name,
         code: u.school.schoolCode,
@@ -111,3 +124,4 @@ export const resolveUserByPhone = async (phone, userType) => {
         masked_phone: maskedPhone
     };
 };
+

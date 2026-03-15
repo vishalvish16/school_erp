@@ -5,18 +5,25 @@
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../design_system/design_system.dart';
+import '../../../design_system/tokens/app_spacing.dart';
 
 class AssignPlanDialog extends StatefulWidget {
   const AssignPlanDialog({
     super.key,
     required this.schoolName,
     required this.currentPlanName,
+    this.currentPlanId,
     required this.plans,
     required this.onAssign,
   });
 
   final String schoolName;
   final String? currentPlanName;
+  /// School's current plan ID (may be 'BASIC'/'STANDARD'/'PREMIUM' from enum).
+  /// Used to pre-select the matching plan in the list (by id or name).
+  final String? currentPlanId;
   final List<Map<String, dynamic>> plans;
   final Future<void> Function(String planId, DateTime? effectiveDate, String? reason) onAssign;
 
@@ -26,6 +33,26 @@ class AssignPlanDialog extends StatefulWidget {
 
 class _AssignPlanDialogState extends State<AssignPlanDialog> {
   String? _selectedPlanId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedPlanId = _resolveSelectedPlanId();
+  }
+
+  /// Pre-select the school's current plan by matching id or name.
+  String? _resolveSelectedPlanId() {
+    final currentId = widget.currentPlanId;
+    final currentName = widget.currentPlanName?.toLowerCase();
+    if (currentId == null && currentName == null) return null;
+    for (final p in widget.plans) {
+      final id = p['id']?.toString() ?? '';
+      final name = (p['name'] ?? '').toString().toLowerCase();
+      if (currentId != null && id == currentId) return id;
+      if (currentName != null && name == currentName) return id;
+    }
+    return currentId;
+  }
   DateTime _effectiveDate = DateTime.now();
   final _reasonController = TextEditingController();
 
@@ -37,24 +64,18 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
 
   Future<void> _submit() async {
     if (_selectedPlanId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a plan')),
-      );
+      AppSnackbar.warning(context, AppStrings.selectPlanPrompt);
       return;
     }
     try {
       await widget.onAssign(_selectedPlanId!, _effectiveDate, _reasonController.text.trim());
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Plan assigned')),
-        );
+        AppSnackbar.success(context, AppStrings.planAssigned);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, e.toString());
       }
     }
   }
@@ -62,17 +83,17 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: AppSpacing.paddingXl,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('Assign Plan', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          AppSpacing.vGapSm,
           Text(widget.schoolName, style: Theme.of(context).textTheme.bodyLarge),
           if (widget.currentPlanName != null)
             Text('Current: ${widget.currentPlanName}', style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           ...widget.plans.map((p) {
             final id = p['id']?.toString() ?? '';
             final name = p['name'] ?? '';
@@ -86,11 +107,11 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
               child: InkWell(
                 onTap: () => setState(() => _selectedPlanId = id),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: AppSpacing.paddingLg,
                   child: Row(
                     children: [
                       Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off),
-                      const SizedBox(width: 12),
+                      AppSpacing.hGapMd,
                       Expanded(child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -104,9 +125,9 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
               ),
             );
           }),
-          const SizedBox(height: 16),
+          AppSpacing.vGapLg,
           ListTile(
-            title: const Text('Effective date'),
+            title: const Text(AppStrings.effectiveDate),
             subtitle: Text(DateFormat.yMMMd().format(_effectiveDate)),
             trailing: TextButton(
               onPressed: () async {
@@ -118,7 +139,7 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
                 );
                 if (d != null) setState(() => _effectiveDate = d);
               },
-              child: const Text('Change'),
+              child: const Text(AppStrings.change),
             ),
           ),
           TextField(
@@ -126,13 +147,13 @@ class _AssignPlanDialogState extends State<AssignPlanDialog> {
             decoration: const InputDecoration(labelText: 'Reason (optional)'),
             maxLines: 2,
           ),
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-              const SizedBox(width: 8),
-              FilledButton(onPressed: _submit, child: const Text('Assign Plan')),
+              AppSpacing.hGapSm,
+              FilledButton(onPressed: _submit, child: const Text(AppStrings.assignPlan)),
             ],
           ),
         ],

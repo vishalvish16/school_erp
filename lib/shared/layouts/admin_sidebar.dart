@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../design_system/design_system.dart';
 import '../models/sidebar_menu_model.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class AdminSidebar extends StatelessWidget {
   const AdminSidebar({
@@ -23,10 +24,11 @@ class AdminSidebar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final location = GoRouterState.of(context).matchedLocation;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      width: isCollapsed ? 80 : 260,
+    return RepaintBoundary(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        width: isCollapsed ? 80 : 260,
       decoration: BoxDecoration(
         color: scheme.surface,
         border: Border(
@@ -54,13 +56,13 @@ class AdminSidebar extends StatelessWidget {
             Expanded(
               child: ListView(
                 padding: EdgeInsets.symmetric(
-                  vertical: 16,
+                  vertical: AppSpacing.lg,
                   horizontal: isCollapsed ? 8 : 12,
                 ),
                 children: [
                   for (final section in SuperAdminNavigation.sections) ...[
                     if (SuperAdminNavigation.sections.indexOf(section) > 0)
-                      const SizedBox(height: 24),
+                      AppSpacing.vGapXl,
                     _SidebarGroup(title: section.title, isCollapsed: isCollapsed),
                     for (final item in section.items)
                       _SidebarItem(
@@ -115,6 +117,7 @@ class AdminSidebar extends StatelessWidget {
           ],
         ),
       ),
+    ),
     );
   }
 }
@@ -162,7 +165,7 @@ class _SidebarItem extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     final content = AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 120),
       height: 48,
       margin: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
@@ -211,7 +214,7 @@ class _SidebarItem extends StatelessWidget {
                           height: 16,
                           decoration: BoxDecoration(
                             color: scheme.primary,
-                            borderRadius: BorderRadius.circular(2),
+                            borderRadius: AppRadius.brXs,
                           ),
                         ),
                     ],

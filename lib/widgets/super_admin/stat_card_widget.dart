@@ -5,6 +5,8 @@
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../../design_system/tokens/app_spacing.dart';
+import '../../design_system/tokens/app_colors.dart';
 
 class SuperAdminStatCard extends StatelessWidget {
   const SuperAdminStatCard({
@@ -40,10 +42,10 @@ class SuperAdminStatCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: AppSpacing.paddingSm,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: AppRadius.brMd,
                   ),
                   child: Icon(icon, size: isCompact ? 20 : 24, color: color),
                 ),
@@ -54,9 +56,9 @@ class SuperAdminStatCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: isCompact ? 11 : 12,
                       color: changeType == 'up'
-                          ? Colors.green
+                          ? AppColors.success500
                           : changeType == 'down'
-                              ? Colors.red
+                              ? AppColors.error500
                               : scheme.onSurfaceVariant,
                     ),
                   ),
@@ -70,7 +72,7 @@ class SuperAdminStatCard extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
             ),
-            const SizedBox(height: 4),
+            AppSpacing.vGapXs,
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

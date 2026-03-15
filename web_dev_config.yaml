@@ -1,0 +1,8 @@
+# Flutter web dev server config (Flutter 3.41+)
+# Proxies API and uploads to backend at localhost:3000 to avoid CORS
+server:
+  proxy:
+    - target: "http://localhost:3000/"
+      prefix: "/api/"
+    - target: "http://localhost:3000/"
+      prefix: "/uploads/"

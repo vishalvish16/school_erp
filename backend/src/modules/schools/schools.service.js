@@ -1,14 +1,27 @@
 import * as schoolRepo from './schools.repository.js';
 import * as subRepo from './schools.subscription.repository.js';
+import * as auditService from '../audit/audit.service.js';
 import { AppError } from '../../utils/response.js';
 
-// Clean architecture audit mocker
-const logAudit = async (action, details) => {
-    // Audit implementation, e.g. inserting to AuditLog table or publishing to event bus
-    console.log(`[AUDIT LOG] ${action}: `, JSON.stringify(details));
+const buildAuditCtx = (adminUser, opts = {}) => ({
+    actorId: adminUser?.userId || adminUser?.id,
+    actorName: adminUser?.first_name || adminUser?.email ? `${adminUser.first_name || ''} ${adminUser.last_name || ''}`.trim() || adminUser.email : null,
+    actorRole: adminUser?.role || 'super_admin',
+    ipAddress: opts.req?.ip || opts.req?.connection?.remoteAddress || null,
+});
+
+const logAudit = async (action, details, adminUser, opts = {}) => {
+    await auditService.logAudit({
+        ...buildAuditCtx(adminUser, opts),
+        action,
+        entityType: 'schools',
+        entityId: details.schoolId,
+        entityName: details.schoolName,
+        extra: details,
+    });
 };
 
-export const createSchool = async (data, adminUser) => {
+export const createSchool = async (data, adminUser, opts = {}) => {
     const existingCode = await schoolRepo.findByCode(data.schoolCode);
     if (existingCode) {
         throw new AppError('School code already exists', 400);
@@ -16,7 +29,7 @@ export const createSchool = async (data, adminUser) => {
 
     const school = await schoolRepo.createSchool(data);
 
-    await logAudit('CREATE_SCHOOL', { schoolId: school.id, triggeredBy: adminUser.id });
+    await logAudit('CREATE_SCHOOL', { schoolId: school.id, schoolName: school.name, triggeredBy: adminUser?.userId || adminUser?.id }, adminUser, opts);
     return school;
 };
 
@@ -29,13 +42,14 @@ export const getSchools = async (query) => {
     const skip = (page - 1) * limit;
 
     const whereClauses = [];
-    // Single search: matches name OR schoolCode (merged search by name and code)
+    // Single search: matches name, schoolCode, or city (case insensitive)
     const searchTerm = (query.search || query.code || query.schoolCode || '').toString().trim();
     if (searchTerm) {
         whereClauses.push({
             OR: [
                 { name: { contains: searchTerm, mode: 'insensitive' } },
-                { schoolCode: { contains: searchTerm, mode: 'insensitive' } }
+                { code: { contains: searchTerm, mode: 'insensitive' } },
+                { city: { contains: searchTerm, mode: 'insensitive' } }
             ]
         });
     }
@@ -79,7 +93,7 @@ export const getSchoolById = async (id) => {
     return school;
 };
 
-export const updateSchool = async (id, data, adminUser) => {
+export const updateSchool = async (id, data, adminUser, opts = {}) => {
     const school = await schoolRepo.getSchoolById(id);
     if (!school) {
         throw new AppError('School not found', 404);
@@ -94,11 +108,11 @@ export const updateSchool = async (id, data, adminUser) => {
 
     const updated = await schoolRepo.updateSchool(id, data);
 
-    await logAudit('UPDATE_SCHOOL', { schoolId: id, triggeredBy: adminUser.id, changes: data });
+    await logAudit('UPDATE_SCHOOL', { schoolId: id, schoolName: updated?.name, triggeredBy: adminUser?.userId || adminUser?.id, changes: data }, adminUser, opts);
     return updated;
 };
 
-export const deleteSchool = async (id, adminUser) => {
+export const deleteSchool = async (id, adminUser, opts = {}) => {
     const school = await schoolRepo.getSchoolById(id);
     if (!school) {
         throw new AppError('School not found', 404);
@@ -107,11 +121,11 @@ export const deleteSchool = async (id, adminUser) => {
     // Perform soft delete
     const deleted = await schoolRepo.deleteSchool(id);
 
-    await logAudit('SUSPEND_SCHOOL', { schoolId: id, triggeredBy: adminUser.id });
+    await logAudit('SUSPEND_SCHOOL', { schoolId: id, schoolName: school?.name, triggeredBy: adminUser?.userId || adminUser?.id }, adminUser, opts);
     return deleted;
 };
 
-export const assignPlan = async (schoolId, data, adminUser) => {
+export const assignPlan = async (schoolId, data, adminUser, opts = {}) => {
     const school = await subRepo.findSchoolById(schoolId);
     if (!school) {
         throw new AppError('School not found', 404);
@@ -152,8 +166,9 @@ export const assignPlan = async (schoolId, data, adminUser) => {
     await logAudit('ASSIGN_PLAN', {
         schoolId,
         planId: data.plan_id,
-        triggeredBy: adminUser.id
-    });
+        schoolName: school?.name,
+        triggeredBy: adminUser?.userId || adminUser?.id
+    }, adminUser, opts);
 
     return subscription;
 };

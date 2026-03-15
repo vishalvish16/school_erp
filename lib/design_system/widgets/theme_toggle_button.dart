@@ -20,7 +20,7 @@ class ThemeToggleButton extends StatelessWidget {
       message: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
       child: IconButton(
         icon: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 150),
           transitionBuilder: (child, anim) => RotationTransition(
             turns: anim,
             child: FadeTransition(opacity: anim, child: child),

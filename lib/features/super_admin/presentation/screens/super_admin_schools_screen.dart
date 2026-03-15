@@ -9,6 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../../core/data/location_data.dart';
 import '../../../../core/services/super_admin_service.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
 import '../../../../widgets/common/shimmer_loading_widget.dart';
@@ -18,16 +20,11 @@ import '../../../../widgets/super_admin/dialogs/renew_subscription_dialog.dart';
 import '../../../../widgets/super_admin/dialogs/resolve_overdue_dialog.dart';
 import '../../../../widgets/super_admin/dialogs/school_detail_dialog.dart';
 import '../../../../widgets/super_admin/super_admin_dialogs.dart';
-
-// Indian states for filter
-const _indianStates = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
-  'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
-  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
-  'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Puducherry',
-];
+import '../../../../widgets/common/searchable_dropdown_form_field.dart';
+import '../../../../design_system/design_system.dart';
+import '../../../../shared/widgets/list_table_view.dart';
+import '../../../../design_system/tokens/app_colors.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
 class SuperAdminSchoolsScreen extends ConsumerStatefulWidget {
   const SuperAdminSchoolsScreen({super.key});
@@ -43,13 +40,59 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
   List<SuperAdminSchoolModel> _schools = [];
   int _page = 1;
   int _totalPages = 1;
-  bool _loadingMore = false;
+  int _total = 0;
+  int _pageSize = 15;
+  static const _pageSizeOptions = [10, 15, 25, 50];
   final _searchController = TextEditingController();
   Timer? _debounceTimer;
   String _statusFilter = 'all';
   String? _planFilter;
+  String? _countryFilter;
   String? _stateFilter;
+  String? _cityFilter;
   List<SuperAdminPlanModel> _plans = [];
+  List<SuperAdminSchoolGroupModel> _groups = [];
+  int? _sortColumnIndex;
+  bool _sortAscending = true;
+
+  List<SuperAdminSchoolModel> _sortSchools(
+    List<SuperAdminSchoolModel> list,
+    int? columnIndex,
+    bool ascending,
+  ) {
+    if (columnIndex == null || list.isEmpty) return list;
+    final sorted = List<SuperAdminSchoolModel>.from(list);
+    sorted.sort((a, b) {
+      int cmp;
+      switch (columnIndex) {
+        case 0:
+          cmp = a.code.compareTo(b.code);
+          break;
+        case 1:
+          cmp = a.name.compareTo(b.name);
+          break;
+        case 2:
+          cmp = ((a.city ?? '') + (a.state ?? '')).compareTo((b.city ?? '') + (b.state ?? ''));
+          break;
+        case 3:
+          cmp = a.studentCount.compareTo(b.studentCount);
+          break;
+        case 4:
+          cmp = (a.plan?.name ?? '').compareTo(b.plan?.name ?? '');
+          break;
+        case 5:
+          cmp = a.status.compareTo(b.status);
+          break;
+        case 6:
+          cmp = (a.subscriptionEnd ?? DateTime(0)).compareTo(b.subscriptionEnd ?? DateTime(0));
+          break;
+        default:
+          return 0;
+      }
+      return ascending ? cmp : -cmp;
+    });
+    return sorted;
+  }
 
   @override
   void initState() {
@@ -58,6 +101,7 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _loadPlans();
+        _loadGroups();
         _load();
       }
     });
@@ -89,37 +133,39 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
     } catch (_) {}
   }
 
-  Future<void> _load({bool append = false}) async {
+  Future<void> _loadGroups() async {
+    try {
+      final g = await ref.read(superAdminServiceProvider).getGroups();
+      if (mounted) setState(() => _groups = g);
+    } catch (_) {}
+  }
+
+  Future<void> _load() async {
     if (!mounted) return;
-    if (!append) {
-      setState(() {
-        _loading = true;
-        _error = null;
-      });
-    } else {
-      setState(() => _loadingMore = true);
-    }
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final service = ref.read(superAdminServiceProvider);
+      final planIdFromUrl = GoRouterState.of(context).uri.queryParameters['plan_id'];
       final result = await service.getSchools(
         page: _page,
-        limit: 20,
+        limit: _pageSize,
         search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
         status: _statusFilter == 'all' ? null : _statusFilter,
-        planId: GoRouterState.of(context).uri.queryParameters['plan_id'] ?? _planFilter,
+        planId: planIdFromUrl ?? _planFilter,
+        country: _countryFilter,
         state: _stateFilter,
+        city: _cityFilter,
         groupId: GoRouterState.of(context).uri.queryParameters['group_id'],
       );
       if (mounted) {
         setState(() {
-          if (append) {
-            _schools.addAll(result.data);
-          } else {
-            _schools = result.data;
-          }
-          _totalPages = result.totalPages > 0 ? result.totalPages : ((result.total / 20).ceil()).clamp(1, 999);
+          _schools = result.data;
+          _total = result.total;
+          _totalPages = result.totalPages > 0 ? result.totalPages : ((result.total / _pageSize).ceil()).clamp(1, 999);
           _loading = false;
-          _loadingMore = false;
         });
       }
     } catch (e) {
@@ -127,17 +173,25 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
         setState(() {
           _error = e.toString().replaceAll('Exception: ', '');
           _loading = false;
-          _loadingMore = false;
-          if (!append) _schools = [];
+          _schools = [];
         });
       }
     }
   }
 
-  Future<void> _loadMore() async {
-    if (_loadingMore || _page >= _totalPages) return;
-    setState(() => _page++);
-    await _load(append: true);
+  void _goToPage(int page) {
+    if (page < 1 || page > _totalPages) return;
+    setState(() => _page = page);
+    _load();
+  }
+
+  void _onPageSizeChanged(int? value) {
+    if (value == null || value == _pageSize) return;
+    setState(() {
+      _pageSize = value;
+      _page = 1;
+    });
+    _load();
   }
 
   void _openSchoolDetail(SuperAdminSchoolModel s) {
@@ -147,6 +201,7 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
         schoolId: s.id,
         onUpdated: () => _load(),
       ),
+      maxWidth: kDialogMaxWidthLarge,
     );
   }
 
@@ -163,6 +218,7 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
       AssignPlanDialog(
         schoolName: s.name,
         currentPlanName: s.plan?.name,
+        currentPlanId: s.plan?.id,
         plans: plans,
         onAssign: (planId, effectiveDate, reason) async {
           await ref.read(superAdminServiceProvider).assignPlan(s.id, {
@@ -180,9 +236,7 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
     final sub = s.subdomain ?? s.code.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
     final url = 'https://$sub.vidyron.in';
     Clipboard.setData(ClipboardData(text: url));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Login URL copied: $url')),
-    );
+    AppSnackbar.info(context, 'Login URL copied: $url');
   }
 
   void _openRenew(SuperAdminSchoolModel s) {
@@ -223,33 +277,22 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
   }
 
   Future<void> _unsuspend(SuperAdminSchoolModel s) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Unsuspend School?'),
-        content: Text(
-          'Reactivate ${s.name}? Staff and students will regain access.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Unsuspend')),
-        ],
-      ),
+    final ok = await AppDialogs.confirm(
+      context,
+      title: AppStrings.unsuspendSchoolQuestion,
+      message: 'Reactivate ${s.name}? Staff and students will regain access.',
+      confirmLabel: AppStrings.unsuspend,
     );
-    if (ok != true || !mounted) return;
+    if (!ok || !mounted) return;
     try {
       await ref.read(superAdminServiceProvider).updateSchoolStatus(s.id, 'active');
       if (mounted) {
         _load();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('School reactivated')),
-        );
+        AppSnackbar.success(context, AppStrings.schoolReactivated);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, e.toString());
       }
     }
   }
@@ -260,18 +303,16 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
         search: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
         status: _statusFilter == 'all' ? null : _statusFilter,
         planId: _planFilter,
+        country: _countryFilter,
         state: _stateFilter,
+        city: _cityFilter,
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Schools exported')),
-        );
+        AppSnackbar.success(context, AppStrings.schoolsExported);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Export failed: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, 'Export failed: ${e.toString()}');
       }
     }
   }
@@ -288,357 +329,630 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
       context,
       AddSchoolDialog(
         plans: plans,
-        groups: [],
+        groups: _groups.map((g) => {'id': g.id, 'name': g.name}).toList(),
         onCreate: (body) async {
           await ref.read(superAdminServiceProvider).createSchool(body);
           if (mounted) {
             _load();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('School created')),
-            );
+            AppSnackbar.success(context, AppStrings.schoolCreated);
           }
         },
       ),
+      maxWidth: kDialogMaxWidthLarge,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
+    final isNarrow = MediaQuery.of(context).size.width < 600;
 
     return RefreshIndicator(
       onRefresh: () async {
         setState(() => _page = 1);
         await _load();
       },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Schools',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // FIXED Header: title + actions
+              Padding(
+                padding: EdgeInsets.fromLTRB(isNarrow ? 16 : 24, isNarrow ? 16 : 24, isNarrow ? 16 : 24, 16),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    TextButton.icon(
-                      onPressed: _loading ? null : _exportSchools,
-                      icon: const Icon(Icons.download, size: 18),
-                      label: const Text('Export'),
+                    Text(
+                      'Schools',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                     ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      onPressed: _openAddSchool,
-                      icon: const Icon(Icons.add, size: 20),
-                      label: const Text('Add School'),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _loading ? null : _exportSchools,
+                          icon: const Icon(Icons.download, size: 18),
+                          label: const Text(AppStrings.export),
+                        ),
+                        AppSpacing.hGapSm,
+                        FilledButton.icon(
+                          onPressed: _openAddSchool,
+                          icon: const Icon(Icons.add, size: 20),
+                          label: const Text(AppStrings.addSchool),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // Search
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search schools...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _page = 1);
-                          _load();
-                        },
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
               ),
-              onSubmitted: (_) {
-                setState(() => _page = 1);
-                _load();
-              },
-            ),
-            const SizedBox(height: 16),
 
-            // Filter tabs
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _FilterChip(
-                    label: 'All',
-                    selected: _statusFilter == 'all',
-                    onTap: () {
-                      setState(() {
-                        _statusFilter = 'all';
-                        _page = 1;
-                      });
-                      _load();
-                    },
-                  ),
-                  _FilterChip(
-                    label: 'Active',
-                    selected: _statusFilter == 'active',
-                    onTap: () {
-                      setState(() {
-                        _statusFilter = 'active';
-                        _page = 1;
-                      });
-                      _load();
-                    },
-                  ),
-                  _FilterChip(
-                    label: 'Trial',
-                    selected: _statusFilter == 'trial',
-                    onTap: () {
-                      setState(() {
-                        _statusFilter = 'trial';
-                        _page = 1;
-                      });
-                      _load();
-                    },
-                  ),
-                  _FilterChip(
-                    label: 'Suspended',
-                    selected: _statusFilter == 'suspended',
-                    onTap: () {
-                      setState(() {
-                        _statusFilter = 'suspended';
-                        _page = 1;
-                      });
-                      _load();
-                    },
-                  ),
-                  _FilterChip(
-                    label: 'Expiring',
-                    selected: _statusFilter == 'expiring',
-                    onTap: () {
-                      setState(() {
-                        _statusFilter = 'expiring';
-                        _page = 1;
-                      });
-                      _load();
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Plan & State dropdowns
-            if (isWide)
-              Row(
-                children: [
-                  SizedBox(
-                    width: 200,
-                    child: DropdownButtonFormField<String>(
-                      value: _planFilter,
-                      decoration: const InputDecoration(
-                        labelText: 'Plan',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('All plans')),
-                        ..._plans.map((p) => DropdownMenuItem(
-                              value: p.id,
-                              child: Text(p.name, overflow: TextOverflow.ellipsis),
-                            )),
-                      ],
-                      onChanged: (v) {
-                        setState(() {
-                          _planFilter = v;
-                          _page = 1;
-                        });
-                        _load();
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    width: 200,
-                    child: DropdownButtonFormField<String>(
-                      value: _stateFilter,
-                      decoration: const InputDecoration(
-                        labelText: 'State',
-                        border: OutlineInputBorder(),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('All states')),
-                        ..._indianStates.map((s) => DropdownMenuItem(value: s, child: Text(s))),
-                      ],
-                      onChanged: (v) {
-                        setState(() {
-                          _stateFilter = v;
-                          _page = 1;
-                        });
-                        _load();
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            const SizedBox(height: 24),
-
-            if (_loading && _schools.isEmpty)
-              const Padding(
-                padding: EdgeInsets.only(top: 16),
-                child: ShimmerListLoadingWidget(itemCount: 8),
-              )
-            else if (_error != null && _schools.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
-                      const SizedBox(height: 16),
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 16),
-                      FilledButton(onPressed: () => _load(), child: const Text('Retry')),
-                    ],
-                  ),
-                ),
-              )
-            else if (_schools.isEmpty)
+              // FIXED Search + filters — ALL ON ONE LINE (centered)
               Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(48),
-                  child: Column(
-                    children: [
-                      Icon(Icons.school_outlined, size: 64, color: Theme.of(context).colorScheme.outline),
-                      const SizedBox(height: 16),
-                      Text(
-                        _searchController.text.isNotEmpty
-                            ? "No results for '${_searchController.text}'"
-                            : 'No schools found',
-                        style: Theme.of(context).textTheme.titleMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _statusFilter = 'all';
-                            _planFilter = null;
-                            _stateFilter = null;
-                            _page = 1;
-                          });
-                          _load();
-                        },
-                        child: const Text('Clear filters'),
-                      ),
-                    ],
+                  padding: EdgeInsets.symmetric(horizontal: isNarrow ? 16 : 24),
+                  child: Card(
+                  child: Padding(
+                    padding: AppSpacing.paddingMd,
+                    child: Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        SizedBox(
+                          width: 220,
+                          child: TextField(
+                            controller: _searchController,
+                            decoration: InputDecoration(
+                              hintText: AppStrings.searchSchools,
+                              prefixIcon: const Icon(Icons.search, size: 20),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear, size: 18),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() => _page = 1);
+                                        _load();
+                                      },
+                                    )
+                                  : null,
+                              border: const OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
+                            ),
+                            onSubmitted: (_) {
+                              setState(() => _page = 1);
+                              _load();
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 140,
+                          child: SearchableDropdownFormField<String>.valueItems(
+                            value: _statusFilter,
+                            valueItems: const [
+                              MapEntry('all', 'All'),
+                              MapEntry('active', 'Active'),
+                              MapEntry('trial', 'Trial'),
+                              MapEntry('suspended', 'Suspended'),
+                              MapEntry('expiring', 'Expiring'),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: AppStrings.status,
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                              isDense: true,
+                            ),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() { _statusFilter = v; _page = 1; });
+                                _load();
+                              }
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 140,
+                          child: SearchableDropdownFormField<String?>.valueItems(
+                            value: _planFilter,
+                            valueItems: [
+                              const MapEntry(null, 'All plans'),
+                              ..._plans.map((p) => MapEntry<String?, String>(p.id, p.name)),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: AppStrings.plan,
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                              isDense: true,
+                            ),
+                            onChanged: (v) {
+                              setState(() { _planFilter = v; _page = 1; });
+                              _load();
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 140,
+                          child: SearchableDropdownFormField<String?>.valueItems(
+                            value: _countryFilter,
+                            valueItems: [
+                              const MapEntry(null, 'All countries'),
+                              ...LocationData.countries.map((c) => MapEntry<String?, String>(c, c)),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: AppStrings.country,
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                              isDense: true,
+                            ),
+                            onChanged: (v) {
+                              setState(() {
+                                _countryFilter = v;
+                                _stateFilter = null;
+                                _cityFilter = null;
+                                _page = 1;
+                              });
+                              _load();
+                            },
+                          ),
+                        ),
+                        SizedBox(
+                          width: 140,
+                          child: SearchableDropdownFormField<String?>.valueItems(
+                            value: _countryFilter != null ? _stateFilter : null,
+                            valueItems: [
+                              const MapEntry(null, 'All states'),
+                              ...(_countryFilter != null
+                                  ? LocationData.statesFor(_countryFilter!)
+                                  : <String>[]).map((s) => MapEntry<String?, String>(s, s)),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: AppStrings.state,
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                              isDense: true,
+                            ),
+                            enabled: _countryFilter != null,
+                            onChanged: _countryFilter != null
+                                ? (v) {
+                                    setState(() {
+                                      _stateFilter = v;
+                                      _cityFilter = null;
+                                      _page = 1;
+                                    });
+                                    _load();
+                                  }
+                                : null,
+                          ),
+                        ),
+                        SizedBox(
+                          width: 140,
+                          child: SearchableDropdownFormField<String?>.valueItems(
+                            value: (_countryFilter != null && _stateFilter != null) ? _cityFilter : null,
+                            valueItems: [
+                              const MapEntry(null, 'All cities'),
+                              ...(_countryFilter != null && _stateFilter != null
+                                  ? LocationData.citiesFor(_countryFilter!, _stateFilter!)
+                                      .map((c) => MapEntry<String?, String>(c, c))
+                                  : <MapEntry<String?, String>>[]),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: AppStrings.city,
+                              border: OutlineInputBorder(),
+                              contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                              isDense: true,
+                            ),
+                            enabled: _countryFilter != null && _stateFilter != null,
+                            onChanged: _countryFilter != null && _stateFilter != null
+                                ? (v) {
+                                    setState(() { _cityFilter = v; _page = 1; });
+                                    _load();
+                                  }
+                                : null,
+                          ),
+                        ),
+                        TextButton.icon(
+                          icon: const Icon(Icons.filter_alt_off, size: 18),
+                          label: const Text(AppStrings.clearFilters),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _statusFilter = 'all';
+                              _planFilter = null;
+                              _countryFilter = null;
+                              _stateFilter = null;
+                              _cityFilter = null;
+                              _page = 1;
+                            });
+                            _load();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              )
-            else
-              _buildSchoolList(isWide),
-          ],
-        ),
+                ),
+              ),
+
+              AppSpacing.vGapLg,
+
+              // Table area — fixed header, scrollable body (centered)
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(isNarrow ? 16 : 24, 0, isNarrow ? 16 : 24, isNarrow ? 16 : 24),
+                    child: _buildContent(isWide),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
+  Widget _buildContent(bool isWide) {
+    if (_loading && _schools.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 16),
+        child: ShimmerListLoadingWidget(itemCount: 8),
+      );
+    }
+    if (_error != null && _schools.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: AppSpacing.paddingXl,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+              AppSpacing.vGapLg,
+              Text(_error!, textAlign: TextAlign.center),
+              AppSpacing.vGapLg,
+              FilledButton(onPressed: () => _load(), child: const Text(AppStrings.retry)),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_schools.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(48),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.school_outlined, size: 64, color: Theme.of(context).colorScheme.outline),
+              AppSpacing.vGapLg,
+              Text(
+                _searchController.text.isNotEmpty
+                    ? "No results for '${_searchController.text}'"
+                    : 'No schools found',
+                style: Theme.of(context).textTheme.titleMedium,
+                textAlign: TextAlign.center,
+              ),
+              AppSpacing.vGapSm,
+              TextButton(
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _statusFilter = 'all';
+                    _planFilter = null;
+                    _countryFilter = null;
+                    _stateFilter = null;
+                    _cityFilter = null;
+                    _page = 1;
+                  });
+                  _load();
+                },
+                child: const Text(AppStrings.clearFilters),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return _buildSchoolList(isWide);
+  }
+
+  static const _columnWidths = [
+    90.0,  // Code (ID)
+    260.0, // School (Title - wider to avoid truncation)
+    160.0, // City
+    85.0,  // Students
+    110.0, // Plan
+    110.0, // Status
+    110.0, // Expiry
+    180.0, // Subdomain
+    60.0,  // Actions (3-dot menu)
+  ];
+
+  static const _tableContentWidth = 90.0 + 260 + 160 + 85 + 110 + 110 + 110 + 180 + 60 + 32;
+
   Widget _buildSchoolList(bool isWide) {
+    if (isWide) {
+      final sorted = _sortSchools(_schools, _sortColumnIndex, _sortAscending);
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _tableContentWidth),
+          child: Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ListTableView(
+                    columns: const [
+                      'Code',
+                      'School',
+                      'City',
+                      'Students',
+                      'Plan',
+                      'Status',
+                      'Expiry',
+                      'Subdomain',
+                      'Actions',
+                    ],
+                    columnWidths: _columnWidths,
+                    sortableColumns: const [0, 1, 2, 3, 4, 5, 6],
+                    sortColumnIndex: _sortColumnIndex,
+                    sortAscending: _sortAscending,
+                    onSort: (col, asc) => setState(() {
+                      _sortColumnIndex = col;
+                      _sortAscending = asc;
+                    }),
+                    showSrNo: false,
+                    itemCount: sorted.length,
+                    rowBuilder: (i) => _buildDataRow(sorted[i]),
+                  ),
+                ),
+                _buildPaginationRow(),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Column(
       children: [
-        if (isWide)
-          _buildTable()
-        else
-          ..._schools.map((s) => _buildMobileCard(s)),
-        if (_page < _totalPages)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: _loadingMore
-                ? const Center(child: CircularProgressIndicator())
-                : Center(
-                    child: FilledButton(
-                      onPressed: _loadMore,
-                      child: const Text('Load more'),
-                    ),
-                  ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.only(bottom: 8),
+            children: _schools.map((s) => _buildMobileCard(s)).toList(),
           ),
+        ),
+        if (_schools.isNotEmpty)
+          Card(child: _buildPaginationRow()),
       ],
     );
   }
 
-  Widget _buildTable() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columns: const [
-          DataColumn(label: Text('School')),
-          DataColumn(label: Text('Code')),
-          DataColumn(label: Text('Plan')),
-          DataColumn(label: Text('Status')),
-          DataColumn(label: Text('Actions')),
-        ],
-        rows: _schools.map((s) => DataRow(
-          cells: [
-            DataCell(
-              Text(s.name),
-              onTap: () => _openSchoolDetail(s),
-            ),
-            DataCell(Text(s.code)),
-            DataCell(Text(s.plan?.name ?? '—')),
-            DataCell(
-              Chip(
-                label: Text(s.status),
-                backgroundColor: _statusColor(s.status),
+  Widget _buildPaginationRow() {
+    final cs = Theme.of(context).colorScheme;
+    final start = _total == 0 ? 0 : ((_page - 1) * _pageSize) + 1;
+    final end = (_page * _pageSize).clamp(0, _total);
+
+    Widget pageButton(String label, {required int page, bool active = false}) {
+      final enabled = page != _page && page >= 1 && page <= _totalPages;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Material(
+          color: active ? cs.primary : Colors.transparent,
+          borderRadius: AppRadius.brSm,
+          child: InkWell(
+            borderRadius: AppRadius.brSm,
+            onTap: enabled ? () => _goToPage(page) : null,
+            child: Container(
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              alignment: Alignment.center,
+              padding: AppSpacing.paddingHSm,
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  color: active
+                      ? cs.onPrimary
+                      : enabled
+                          ? cs.onSurface
+                          : cs.onSurface.withValues(alpha: 0.35),
+                ),
               ),
             ),
-            DataCell(Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.settings, size: 20),
-                  onPressed: () => _openSchoolDetail(s),
-                  tooltip: 'Manage',
+          ),
+        ),
+      );
+    }
+
+    List<Widget> pageNumbers() {
+      final pages = <Widget>[];
+      const maxVisible = 5;
+      int rangeStart = (_page - (maxVisible ~/ 2)).clamp(1, _totalPages);
+      int rangeEnd = (rangeStart + maxVisible - 1).clamp(1, _totalPages);
+      if (rangeEnd - rangeStart < maxVisible - 1) {
+        rangeStart = (rangeEnd - maxVisible + 1).clamp(1, _totalPages);
+      }
+      for (int i = rangeStart; i <= rangeEnd; i++) {
+        pages.add(pageButton('$i', page: i, active: i == _page));
+      }
+      return pages;
+    }
+
+    final textStyle = Theme.of(context).textTheme.bodySmall!;
+    final mutedStyle = textStyle.copyWith(color: cs.onSurfaceVariant);
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.neutral300)),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text('Showing $start to $end of $_total entries', style: mutedStyle),
+          AppSpacing.hGapXl,
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(AppStrings.show, style: mutedStyle),
+              const SizedBox(width: 6),
+              Container(
+                height: 28,
+                padding: AppSpacing.paddingHSm,
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.neutral400),
+                  borderRadius: AppRadius.brXs,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.layers, size: 20),
-                  onPressed: () => _openAssignPlan(s),
-                  tooltip: 'Assign Plan',
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: _pageSize,
+                    isDense: true,
+                    icon: const Icon(Icons.arrow_drop_down, size: 18),
+                    style: textStyle.copyWith(color: cs.onSurface),
+                    items: _pageSizeOptions.map((n) => DropdownMenuItem(value: n, child: Text('$n'))).toList(),
+                    onChanged: _onPageSizeChanged,
+                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.link, size: 20),
-                  onPressed: () => _copyLoginUrl(s),
-                  tooltip: 'Copy URL',
-                ),
-                if (s.status == 'expiring' || s.status == 'trial')
-                  TextButton(
-                    onPressed: () => _openRenew(s),
-                    child: const Text('Renew'),
-                  ),
-                if (s.status == 'suspended' || s.overdueDays > 0)
-                  TextButton(
-                    onPressed: () => _openResolve(s),
-                    child: const Text('Resolve'),
-                  ),
-                if (s.status == 'suspended')
-                  TextButton(
-                    onPressed: () => _unsuspend(s),
-                    child: const Text('Unsuspend'),
-                  ),
-              ],
-            )),
-          ],
-        )).toList(),
+              ),
+              const SizedBox(width: 6),
+              Text(AppStrings.entries, style: mutedStyle),
+            ],
+          ),
+          const Spacer(),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              pageButton('First', page: 1),
+              pageButton('Previous', page: _page - 1),
+              ...pageNumbers(),
+              pageButton('Next', page: _page + 1),
+              pageButton('Last', page: _totalPages),
+            ],
+          ),
+        ],
       ),
     );
+  }
+
+  DataRow _buildDataRow(SuperAdminSchoolModel s) {
+    return DataRow(
+      cells: [
+        DataCell(Text(s.code, style: TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 12,
+          color: Theme.of(context).colorScheme.primary,
+        ))),
+        DataCell(
+          InkWell(
+            onTap: () => _openSchoolDetail(s),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        s.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 2,
+                      ),
+                      Text(
+                        '${s.board} · ${s.schoolType.isNotEmpty ? (s.schoolType.length > 1 ? s.schoolType[0].toUpperCase() + s.schoolType.substring(1) : s.schoolType.toUpperCase()) : '—'}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        DataCell(Text(s.city ?? '—', overflow: TextOverflow.ellipsis)),
+        DataCell(Text('${s.studentCount}', style: const TextStyle(fontFamily: 'monospace'))),
+        DataCell(Text(s.plan?.name ?? '—', overflow: TextOverflow.ellipsis)),
+        DataCell(
+          Chip(
+            label: Text(s.status),
+            backgroundColor: _statusColor(s.status),
+          ),
+        ),
+        DataCell(Text(
+          _formatExpiry(s),
+          style: s.overdueDays > 0
+              ? TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)
+              : (s.status == 'expiring' || s.status == 'trial'
+                  ? TextStyle(color: Theme.of(context).colorScheme.tertiary, fontSize: 12)
+                  : null),
+        )),
+        DataCell(Text(
+          s.subdomain != null && s.subdomain!.isNotEmpty
+              ? '${s.subdomain}.vidyron.in'
+              : '—',
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 11,
+            color: Theme.of(context).colorScheme.tertiary,
+          ),
+          overflow: TextOverflow.ellipsis,
+        )),
+        DataCell(PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, size: 20),
+          padding: EdgeInsets.zero,
+          tooltip: 'Actions',
+          onSelected: (v) {
+            switch (v) {
+              case 'manage': _openSchoolDetail(s); break;
+              case 'assign': _openAssignPlan(s); break;
+              case 'copy': _copyLoginUrl(s); break;
+              case 'renew': _openRenew(s); break;
+              case 'resolve': _openResolve(s); break;
+              case 'unsuspend': _unsuspend(s); break;
+            }
+          },
+          itemBuilder: (ctx) {
+            final items = <PopupMenuEntry<String>>[
+              const PopupMenuItem(value: 'manage', child: ListTile(leading: Icon(Icons.settings, size: 20), title: Text(AppStrings.manage), dense: true)),
+              const PopupMenuItem(value: 'assign', child: ListTile(leading: Icon(Icons.layers, size: 20), title: Text(AppStrings.assignPlan), dense: true)),
+              const PopupMenuItem(value: 'copy', child: ListTile(leading: Icon(Icons.link, size: 20), title: Text(AppStrings.copyUrl), dense: true)),
+            ];
+            if (s.status == 'expiring' || s.status == 'trial') {
+              items.add(const PopupMenuItem(value: 'renew', child: ListTile(leading: Icon(Icons.refresh, size: 20), title: Text(AppStrings.renew), dense: true)));
+            }
+            if (s.status == 'suspended' || s.overdueDays > 0) {
+              items.add(const PopupMenuItem(value: 'resolve', child: ListTile(leading: Icon(Icons.check_circle, size: 20), title: Text(AppStrings.resolve), dense: true)));
+            }
+            if (s.status == 'suspended') {
+              items.add(const PopupMenuItem(value: 'unsuspend', child: ListTile(leading: Icon(Icons.lock_open, size: 20), title: Text(AppStrings.unsuspend), dense: true)));
+            }
+            return items;
+          },
+        )),
+      ],
+    );
+  }
+
+  String _formatExpiry(SuperAdminSchoolModel s) {
+    if (s.subscriptionEnd == null) return '—';
+    if (s.overdueDays > 0) return AppStrings.overdue;
+    return '${s.subscriptionEnd!.day} ${_monthShort(s.subscriptionEnd!.month)} ${s.subscriptionEnd!.year}';
+  }
+
+  String _monthShort(int m) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[(m - 1).clamp(0, 11)];
   }
 
   Widget _buildMobileCard(SuperAdminSchoolModel s) {
@@ -646,9 +960,9 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: () => _openSchoolDetail(s),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.brLg,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: AppSpacing.paddingLg,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -657,7 +971,7 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
                   CircleAvatar(
                     child: Text(s.name.isNotEmpty ? s.name[0].toUpperCase() : '?'),
                   ),
-                  const SizedBox(width: 12),
+                  AppSpacing.hGapMd,
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,7 +987,7 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              AppSpacing.vGapMd,
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -693,17 +1007,17 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
                   if (s.status == 'expiring' || s.status == 'trial')
                     FilledButton.tonal(
                       onPressed: () => _openRenew(s),
-                      child: const Text('Renew'),
+                      child: const Text(AppStrings.renew),
                     ),
                   if (s.status == 'suspended' || s.overdueDays > 0)
                     FilledButton.tonal(
                       onPressed: () => _openResolve(s),
-                      child: const Text('Resolve'),
+                      child: const Text(AppStrings.resolve),
                     ),
                   if (s.status == 'suspended')
                     TextButton(
                       onPressed: () => _unsuspend(s),
-                      child: const Text('Unsuspend'),
+                      child: const Text(AppStrings.unsuspend),
                     ),
                 ],
               ),
@@ -718,35 +1032,15 @@ class _SuperAdminSchoolsScreenState extends ConsumerState<SuperAdminSchoolsScree
     if (s == null) return null;
     switch (s.toLowerCase()) {
       case 'active':
-        return Colors.green.withValues(alpha: 0.2);
+        return AppColors.success500.withValues(alpha: 0.2);
       case 'trial':
-        return Colors.blue.withValues(alpha: 0.2);
+        return AppColors.secondary500.withValues(alpha: 0.2);
       case 'suspended':
-        return Colors.red.withValues(alpha: 0.2);
+        return AppColors.error500.withValues(alpha: 0.2);
       case 'expiring':
-        return Colors.orange.withValues(alpha: 0.2);
+        return AppColors.warning500.withValues(alpha: 0.2);
       default:
         return null;
     }
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: (_) => onTap(),
-      ),
-    );
   }
 }

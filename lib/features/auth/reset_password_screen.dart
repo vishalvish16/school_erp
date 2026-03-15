@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_auth_constants.dart';
 import '../../core/constants/app_strings.dart';
+import '../../design_system/design_system.dart';
 import 'reset_password_provider.dart';
 import 'reset_password_state.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String token;
@@ -134,20 +137,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
     ref.listen<ResetPasswordState>(resetPasswordProvider, (previous, next) {
       if (next.isSuccess && previous?.isSuccess != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(AuthStrings.passwordUpdated),
-            backgroundColor: AuthColors.success,
-          ),
-        );
+        AppSnackbar.success(context, AuthStrings.passwordUpdated);
         context.go('/login');
       } else if (next.isFailure && previous?.isFailure != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage ?? AuthStrings.resetFailed),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        AppSnackbar.error(context, next.errorMessage ?? AuthStrings.resetFailed);
       }
     });
 
@@ -390,8 +383,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     isPassword: true,
                     focusNode: _passwordFocusNode,
                     validator: (v) {
-                      if (v == null || v.isEmpty)
+                      if (v == null || v.isEmpty) {
                         return AuthStrings.passwordRequired;
+                      }
                       for (final r in _passwordRules) {
                         if (!r.check(v)) return '${r.label} required';
                       }
@@ -523,7 +517,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vGapSm,
             ..._passwordRules.map((r) {
               final satisfied = r.check(password);
               return Padding(
@@ -534,7 +528,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     Icon(
                       satisfied ? Icons.check_circle : Icons.cancel,
                       size: 14,
-                      color: satisfied ? AuthColors.success : Colors.redAccent,
+                      color: satisfied ? AuthColors.success : AppColors.error500,
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -544,7 +538,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                           fontSize: 11,
                           color: satisfied
                               ? AuthColors.success
-                              : Colors.redAccent,
+                              : AppColors.error500,
                           fontWeight: satisfied
                               ? FontWeight.w600
                               : FontWeight.w500,
@@ -575,9 +569,9 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark ||
         MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    final inputTextColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
-    final hintColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
-    final iconColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final inputTextColor = isDark ? AppColors.neutral50 : AppColors.neutral800;
+    final hintColor = isDark ? AppColors.neutral400 : colorScheme.onSurfaceVariant;
+    final iconColor = isDark ? AppColors.neutral400 : colorScheme.onSurfaceVariant;
     final fieldBgColor = isDark ? colorScheme.surface : colorScheme.surfaceContainerHighest;
 
     return Container(

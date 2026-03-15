@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import '../../../../widgets/common/searchable_dropdown_form_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'dart:math';
 
 import '../../../../core/constants/app_strings.dart';
+import '../../../../design_system/design_system.dart';
+import '../../../../widgets/common/address_location_picker.dart';
 import '../../domain/models/school_model.dart';
 import '../../data/providers/schools_providers.dart';
 import '../viewmodels/schools_viewmodel.dart';
+import '../../../../design_system/tokens/app_colors.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
 class AddEditSchoolScreen extends ConsumerStatefulWidget {
   final SchoolModel? school;
@@ -26,9 +31,9 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
   late TextEditingController _addressController;
-  late TextEditingController _cityController;
-  late TextEditingController _stateController;
-  late TextEditingController _countryController;
+  String? _country;
+  String? _state;
+  String? _city;
   late TextEditingController _maxStudentsController;
   late TextEditingController _maxTeachersController;
 
@@ -49,9 +54,9 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
 
     _phoneController = TextEditingController(text: s?.contactPhone ?? '');
     _addressController = TextEditingController(text: s?.address ?? '');
-    _cityController = TextEditingController(text: s?.city ?? '');
-    _stateController = TextEditingController(text: s?.state ?? '');
-    _countryController = TextEditingController(text: s?.country ?? '');
+    _country = s?.country;
+    _state = s?.state;
+    _city = s?.city;
     _maxStudentsController = TextEditingController(
       text: s?.maxStudents?.toString() ?? '',
     );
@@ -74,17 +79,15 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _addressController.dispose();
-    _cityController.dispose();
-    _stateController.dispose();
-    _countryController.dispose();
     _maxStudentsController.dispose();
     _maxTeachersController.dispose();
     super.dispose();
   }
 
   String _generateSchoolCode(String name) {
-    if (name.isEmpty)
+    if (name.isEmpty) {
       return 'SCH${Random().nextInt(9999).toString().padLeft(4, '0')}';
+    }
     final prefix = name.length >= 3
         ? name.substring(0, 3).toUpperCase()
         : name.toUpperCase();
@@ -138,9 +141,9 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
         'contactEmail': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
         'address': _addressController.text.trim(),
-        'city': _cityController.text.trim(),
-        'state': _stateController.text.trim(),
-        'country': _countryController.text.trim(),
+        'country': _country ?? '',
+        'state': _state ?? '',
+        'city': _city ?? '',
         'status': _status,
         'maxStudents': int.tryParse(_maxStudentsController.text) ?? 0,
         'maxTeachers': int.tryParse(_maxTeachersController.text) ?? 0,
@@ -159,23 +162,13 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(AppStrings.schoolSavedSuccess),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppSnackbar.success(context, AppStrings.schoolSavedSuccess);
         ref.read(schoolsViewModelProvider.notifier).fetchSchools();
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppStrings.errorSavingSchool(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackbar.error(context, AppStrings.errorSavingSchool(e.toString()));
       }
     } finally {
       if (mounted) {
@@ -189,12 +182,12 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
     final isEdit = widget.school != null;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: AppColors.neutral50,
       appBar: AppBar(
         title: Text(isEdit ? AppStrings.editSchool : AppStrings.addNewSchool),
         elevation: 0,
         backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        foregroundColor: AppColors.neutral800,
       ),
       body: SafeArea(
         child: Center(
@@ -205,10 +198,10 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
               child: Form(
                 key: _formKey,
                 child: Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: AppSpacing.paddingXl,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.brLg,
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.04),
@@ -242,7 +235,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                       ? AppStrings.required
                                       : null,
                                 ),
-                                const SizedBox(height: 16),
+                                AppSpacing.vGapLg,
                                 _buildTextField(
                                   controller: _codeController,
                                   label:
@@ -262,7 +255,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                       : null,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              AppSpacing.hGapLg,
                               Expanded(
                                 child: _buildTextField(
                                   controller: _codeController,
@@ -274,7 +267,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      AppSpacing.vGapLg,
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final isMobile = constraints.maxWidth < 600;
@@ -285,7 +278,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                   controller: _emailController,
                                   label: AppStrings.emailAddress,
                                 ),
-                                const SizedBox(height: 16),
+                                AppSpacing.vGapLg,
                                 _buildTextField(
                                   controller: _phoneController,
                                   label: AppStrings.phoneNumber,
@@ -301,7 +294,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                   label: AppStrings.emailAddress,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              AppSpacing.hGapLg,
                               Expanded(
                                 child: _buildTextField(
                                   controller: _phoneController,
@@ -312,7 +305,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                           );
                         },
                       ),
-                      const SizedBox(height: 32),
+                      AppSpacing.vGapXl2,
 
                       const Text(
                         AppStrings.addressDetails,
@@ -326,57 +319,19 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                         controller: _addressController,
                         label: AppStrings.streetAddress,
                       ),
-                      const SizedBox(height: 16),
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final isMobile = constraints.maxWidth < 600;
-                          if (isMobile) {
-                            return Column(
-                              children: [
-                                _buildTextField(
-                                  controller: _cityController,
-                                  label: AppStrings.city,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildTextField(
-                                  controller: _stateController,
-                                  label: AppStrings.state,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildTextField(
-                                  controller: _countryController,
-                                  label: AppStrings.country,
-                                ),
-                              ],
-                            );
-                          }
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: _buildTextField(
-                                  controller: _cityController,
-                                  label: AppStrings.city,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildTextField(
-                                  controller: _stateController,
-                                  label: AppStrings.state,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: _buildTextField(
-                                  controller: _countryController,
-                                  label: AppStrings.country,
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                      AppSpacing.vGapLg,
+                      AddressLocationPicker(
+                        country: _country,
+                        state: _state,
+                        city: _city,
+                        onCountryChanged: (v) => setState(() => _country = v),
+                        onStateChanged: (v) => setState(() => _state = v),
+                        onCityChanged: (v) => setState(() => _city = v),
+                        countryLabel: AppStrings.country,
+                        stateLabel: AppStrings.state,
+                        cityLabel: AppStrings.city,
                       ),
-                      const SizedBox(height: 32),
+                      AppSpacing.vGapXl2,
 
                       const Text(
                         AppStrings.subscriptionCapacity,
@@ -397,7 +352,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                   date: _subStart,
                                   onTap: () => _selectDate(context, true),
                                 ),
-                                const SizedBox(height: 16),
+                                AppSpacing.vGapLg,
                                 _buildDateField(
                                   label: AppStrings.subscriptionEnd,
                                   date: _subEnd,
@@ -415,7 +370,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                   onTap: () => _selectDate(context, true),
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              AppSpacing.hGapLg,
                               Expanded(
                                 child: _buildDateField(
                                   label: AppStrings.subscriptionEnd,
@@ -427,7 +382,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                           );
                         },
                       ),
-                      const SizedBox(height: 16),
+                      AppSpacing.vGapLg,
                       LayoutBuilder(
                         builder: (context, constraints) {
                           final isMobile = constraints.maxWidth < 600;
@@ -439,32 +394,27 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                   label: AppStrings.maxStudents,
                                   isNumber: true,
                                 ),
-                                const SizedBox(height: 16),
+                                AppSpacing.vGapLg,
                                 _buildTextField(
                                   controller: _maxTeachersController,
                                   label: AppStrings.maxTeachers,
                                   isNumber: true,
                                 ),
-                                const SizedBox(height: 16),
-                                DropdownButtonFormField<String>(
+                                AppSpacing.vGapLg,
+                                SearchableDropdownFormField<String>.valueItems(
                                   value: _status,
+                                  valueItems: const [
+                                    MapEntry('ACTIVE', AppStrings.statusActive),
+                                    MapEntry('SUSPENDED', AppStrings.statusSuspended),
+                                  ],
                                   decoration: const InputDecoration(
                                     labelText: AppStrings.statusLabel,
                                     border: OutlineInputBorder(),
                                   ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'ACTIVE',
-                                      child: Text(AppStrings.statusActive),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'SUSPENDED',
-                                      child: Text(AppStrings.statusSuspended),
-                                    ),
-                                  ],
                                   onChanged: (val) {
-                                    if (val != null)
+                                    if (val != null) {
                                       setState(() => _status = val);
+                                    }
                                   },
                                 ),
                               ],
@@ -479,7 +429,7 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                   isNumber: true,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              AppSpacing.hGapLg,
                               Expanded(
                                 child: _buildTextField(
                                   controller: _maxTeachersController,
@@ -487,27 +437,22 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                                   isNumber: true,
                                 ),
                               ),
-                              const SizedBox(width: 16),
+                              AppSpacing.hGapLg,
                               Expanded(
-                                child: DropdownButtonFormField<String>(
+                                child: SearchableDropdownFormField<String>.valueItems(
                                   value: _status,
+                                  valueItems: const [
+                                    MapEntry('ACTIVE', AppStrings.statusActive),
+                                    MapEntry('SUSPENDED', AppStrings.statusSuspended),
+                                  ],
                                   decoration: const InputDecoration(
                                     labelText: AppStrings.statusLabel,
                                     border: OutlineInputBorder(),
                                   ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: 'ACTIVE',
-                                      child: Text(AppStrings.statusActive),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 'SUSPENDED',
-                                      child: Text(AppStrings.statusSuspended),
-                                    ),
-                                  ],
                                   onChanged: (val) {
-                                    if (val != null)
+                                    if (val != null) {
                                       setState(() => _status = val);
+                                    }
                                   },
                                 ),
                               ),
@@ -528,20 +473,20 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                               AppStrings.cancel,
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey,
+                                color: AppColors.neutral400,
                               ),
                             ),
                           ),
-                          const SizedBox(width: 16),
+                          AppSpacing.hGapLg,
                           ElevatedButton(
                             onPressed: _isSaving ? null : _saveForm,
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 32,
-                                vertical: 16,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: AppSpacing.xl2,
+                                vertical: AppSpacing.lg,
                               ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: AppRadius.brMd,
                               ),
                             ),
                             child: _isSaving
@@ -583,8 +528,8 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
           vertical: 14,
         ),
       ),
@@ -603,8 +548,8 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
             vertical: 14,
           ),
         ),
@@ -619,8 +564,8 @@ class _AddEditSchoolScreenState extends ConsumerState<AddEditSchoolScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+            AppSpacing.hGapSm,
+            const Icon(Icons.calendar_today, size: 20, color: AppColors.neutral400),
           ],
         ),
       ),

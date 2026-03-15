@@ -3,10 +3,14 @@
  */
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
+import { PrismaClient } from '@prisma/client';
 import * as jwtUtils from '../../utils/jwt.js';
 import { AppError } from '../../utils/response.js';
 import * as authRepository from './auth.repository.js';
 import * as smartRepo from './smart-login.repository.js';
+import { sendEmail } from '../../config/mailer.js';
+
+const prisma = new PrismaClient();
 
 const MAX_LOGIN_ATTEMPTS_PER_IP = 5;
 const LOGIN_ATTEMPT_WINDOW_MINUTES = 15;
@@ -14,44 +18,99 @@ const MAX_OTP_PER_PHONE_PER_HOUR = 3;
 const ACCOUNT_LOCKOUT_MINUTES = 30;
 const MAX_FAILED_PASSWORD_ATTEMPTS = 5;
 
+/** Send OTP to phone (SMS) and email. In dev, logs to console; in prod uses SMS provider + mailer */
+async function sendOtpDelivery(otpCode, phone, email) {
+    const channels = [];
+    // SMS — TODO: integrate with SMS provider; for now log in dev
+    if (phone) {
+        console.log(`[DEV] OTP to ${phone}: ${otpCode}`);
+        channels.push('phone');
+    }
+    // Email (skipped when SMTP not configured)
+    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        try {
+            const sent = await sendEmail({
+                to: email,
+                subject: 'Your 6-digit verification code — School AI ERP',
+                text: `Your verification code is: ${otpCode}. It expires in 2 minutes.`,
+                html: `
+                    <p>Your verification code is: <strong>${otpCode}</strong></p>
+                    <p>It expires in 2 minutes. If you didn't request this, please ignore.</p>
+                `
+            });
+            if (sent) channels.push('email');
+        } catch (e) {
+            console.error('[Smart Login] Email OTP failed:', e.message);
+        }
+    }
+    return channels;
+}
+
 /** Resolve subdomain to school/group identity */
 export const resolveSubdomain = async (subdomain) => {
     const sanitized = String(subdomain || '').replace(/[^a-z0-9\-]/gi, '').toLowerCase().slice(0, 50);
     if (!sanitized) throw new AppError('Invalid subdomain', 400);
 
     const school = await smartRepo.findSchoolBySubdomain(sanitized);
-    if (!school) throw new AppError('School not found', 404);
+    if (school) {
+        const studentCount = school.subscriptions?.[0] ? 0 : 0;
+        return {
+            type: 'school',
+            id: school.id.toString(),
+            name: school.name,
+            code: school.schoolCode,
+            logo_url: null,
+            board: '',
+            student_count: studentCount,
+            active: school.isActive
+        };
+    }
 
-    const studentCount = school.subscriptions?.[0] ? 0 : 0; // Could join school_subscriptions for count
-    return {
-        type: 'school',
-        id: school.id.toString(),
-        name: school.name,
-        code: school.schoolCode,
-        logo_url: null,
-        board: '',
-        student_count: studentCount,
-        active: school.isActive
-    };
+    const group = await smartRepo.findGroupBySlugOrId(sanitized);
+    if (group) {
+        return {
+            type: 'group',
+            id: group.id.toString(),
+            name: group.name,
+            code: group.slug || group.id,
+            logo_url: null,
+            board: '',
+            student_count: 0,
+            active: true
+        };
+    }
+
+    throw new AppError('School or group not found', 404);
 };
 
 /** Smart login with device fingerprinting */
 export const smartLogin = async (input) => {
-    const { identifier, password, portal_type, school_id, device_fingerprint, device_meta } = input;
+    const { identifier, password, portal_type, school_id, group_id, device_fingerprint, device_meta } = input;
     const ip = input.ip_address || input.ipAddress || null;
 
     // Rate limiting
-    if (ip) {
-        const recentAttempts = await smartRepo.countRecentLoginAttemptsByIp(ip, LOGIN_ATTEMPT_WINDOW_MINUTES);
-        if (recentAttempts >= MAX_LOGIN_ATTEMPTS_PER_IP) {
-            await smartRepo.logLoginAttempt(identifier, ip, false);
-            throw new AppError(`Too many login attempts. Try again in ${LOGIN_ATTEMPT_WINDOW_MINUTES} minutes.`, 429);
-        }
-    }
+    // if (ip) {
+    //     const recentAttempts = await smartRepo.countRecentLoginAttemptsByIp(ip, LOGIN_ATTEMPT_WINDOW_MINUTES);
+    //     if (recentAttempts >= MAX_LOGIN_ATTEMPTS_PER_IP) {
+    //         await smartRepo.logLoginAttempt(identifier, ip, false);
+    //         throw new AppError(`Too many login attempts. Try again in ${LOGIN_ATTEMPT_WINDOW_MINUTES} minutes.`, 429);
+    //     }
+    // }
 
-    const user = await smartRepo.findUserByIdentifier(identifier, school_id, portal_type);
+    let user;
+    let groupHasNoAdmin = false;
+    if (portal_type === 'group_admin' && group_id) {
+        const result = await smartRepo.findGroupAdminUserWithGroupCheck(identifier, group_id);
+        user = result?.user ?? null;
+        groupHasNoAdmin = result?.groupHasNoAdmin ?? false;
+    } else {
+        user = await smartRepo.findUserByIdentifier(identifier, school_id, portal_type);
+    }
     if (!user) {
         await smartRepo.logLoginAttempt(identifier, ip, false);
+        if (portal_type === 'group_admin' && groupHasNoAdmin) {
+            throw new AppError('This group has no admin assigned. Contact your platform administrator.', 401);
+        }
         throw new AppError('Invalid email or password', 401);
     }
 
@@ -81,23 +140,42 @@ export const smartLogin = async (input) => {
     await authRepository.updateUserFailedAttempts(user.id, 0, null);
     await smartRepo.logLoginAttempt(identifier, ip, true);
 
+    // Driver portal: require school_id and verify Driver record exists
+    if (portal_type === 'driver') {
+        if (!school_id) {
+            throw new AppError('School ID is required for driver login', 400);
+        }
+        const driver = await prisma.driver.findFirst({
+            where: {
+                userId: user.id,
+                schoolId: String(school_id),
+                deletedAt: null,
+                isActive: true,
+            },
+        });
+        if (!driver) {
+            throw new AppError('Driver account not found', 403);
+        }
+    }
+
     const meta = device_meta || {};
     const fingerprint = device_fingerprint || '';
-    const isPlatformAdmin = !user.schoolId && (user.role?.roleType === 'PLATFORM');
+    const isPlatformAdmin = !user.schoolId && (user.role?.scope === 'GLOBAL' || user.role?.name === 'super_admin');
     const isPlatformUser = !user.schoolId; // school_id null = platform-level (fallback when role.roleType missing)
 
     // Super Admin with 2FA enabled — require TOTP before device check
     if (user.mfaEnabled && (portal_type === 'super_admin' || isPlatformAdmin || isPlatformUser)) {
         const tempToken = jwtUtils.generateTempToken({
-            userId: user.id.toString(),
+            userId: String(user.id),
             email: user.email,
+            portal_type: 'super_admin',
         });
         return {
             success: true,
             requires_2fa: true,
             temp_token: tempToken,
             expires_in: 300,
-        ...((portal_type === 'super_admin' || isPlatformUser) && { portal_type: 'super_admin' }),
+            ...((portal_type === 'super_admin' || isPlatformUser) && { portal_type: 'super_admin' }),
         };
     }
 
@@ -116,15 +194,15 @@ export const smartLogin = async (input) => {
     if (!requiresOtp) {
         const effectivePortal = (portal_type === 'super_admin' || isPlatformAdmin || isPlatformUser) ? 'super_admin' : (portal_type || 'school_admin');
         const accessToken = jwtUtils.generateAccessToken({
-            userId: user.id.toString(),
+            userId: String(user.id),
             email: user.email,
-            role: user.role?.roleType || 'SCHOOL',
-            school_id: user.schoolId ? user.schoolId.toString() : null,
+            role: user.role?.name || 'school_admin',
+            school_id: user.schoolId ? String(user.schoolId) : null,
             portal_type: effectivePortal
         });
         const refreshToken = jwtUtils.generateRefreshToken({
-            userId: user.id.toString(),
-            school_id: user.schoolId ? user.schoolId.toString() : null
+            userId: String(user.id),
+            school_id: user.schoolId ? String(user.schoolId) : null
         });
         return {
             success: true,
@@ -133,12 +211,12 @@ export const smartLogin = async (input) => {
             refresh_token: refreshToken,
             portal_type: effectivePortal,
             user: {
-                user_id: user.id.toString(),
+                user_id: String(user.id),
                 first_name: user.firstName,
                 last_name: user.lastName,
                 email: user.email,
-                role: user.role?.roleType,
-                school_id: user.schoolId ? user.schoolId.toString() : null
+                role: user.role?.name,
+                school_id: user.schoolId ? String(user.schoolId) : null
             }
         };
     }
@@ -155,8 +233,8 @@ export const smartLogin = async (input) => {
             otpType: 'device_verify',
             deviceFingerprint: fingerprint
         });
-        // TODO: Send SMS via existing SMS provider - for now log
-        console.log(`[DEV] OTP for ${user.phone || user.email}: ${otpCode}`);
+        console.log(`[DEV] OTP created: ${otpCode}`);
+        await sendOtpDelivery(otpCode, user.phone, user.email);
     } catch (e) {
         console.error('[Smart Login] OTP creation failed:', e.message);
         throw new AppError(
@@ -165,13 +243,65 @@ export const smartLogin = async (input) => {
         );
     }
 
+    const maskedPhone = user.phone ? `+91 ${user.phone.slice(-4).padStart(user.phone.length - 4, 'X')}` : null;
+    const maskedEmail = user.email ? (user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')) : null;
+    const otp_sent_to = maskedPhone && maskedEmail ? 'phone and email' : maskedPhone ? 'phone' : maskedEmail ? 'email' : null;
+
     return {
         success: true,
         requires_otp: true,
         otp_session_id: otpRecord.id,
         expires_in: 120,
-        masked_phone: user.phone ? `+91 ${user.phone.slice(-4).padStart(user.phone.length - 4, 'X')}` : null,
+        masked_phone: maskedPhone,
+        masked_email: maskedEmail,
+        otp_sent_to,
+        ...(process.env.NODE_ENV !== 'production' && { dev_otp: otpCode }),
         ...((portal_type === 'super_admin' || isPlatformUser) && { portal_type: 'super_admin' })
+    };
+};
+
+/** Resend device OTP — creates new OTP, sends to phone + email */
+export const resendDeviceOtp = async (input) => {
+    const { otp_session_id, device_fingerprint } = input;
+
+    const oldOtp = await smartRepo.findOtpByIdForResend(otp_session_id);
+    if (!oldOtp) throw new AppError('Invalid or expired OTP session. Please go back and login again.', 400);
+
+    const user = await authRepository.findUserById(oldOtp.user_id);
+    if (!user) throw new AppError('User not found', 404);
+
+    // Rate limit: 5 in prod, 20 in dev (for testing)
+    const maxOtpPerHour = process.env.NODE_ENV === 'production' ? 5 : 20;
+    const recentCount = await smartRepo.countRecentOtpByUserId(user.id, 60);
+    if (recentCount >= maxOtpPerHour) {
+        throw new AppError('Too many OTP requests. Try again in an hour.', 429);
+    }
+
+    await smartRepo.markOtpUsed(otp_session_id);
+
+    const otpCode = crypto.randomInt(100000, 999999).toString();
+    const otpRecord = await smartRepo.createOtpVerification({
+        userId: user.id,
+        phone: user.phone,
+        email: user.email,
+        otpCode,
+        otpType: 'device_verify',
+        deviceFingerprint: device_fingerprint || null
+    });
+
+    console.log(`[DEV] OTP created: ${otpCode}`);
+    await sendOtpDelivery(otpCode, user.phone, user.email);
+
+    const maskedPhone = user.phone ? `+91 ${user.phone.slice(-4).padStart(user.phone.length - 4, 'X')}` : null;
+    const maskedEmail = user.email ? (user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3')) : null;
+    const otp_sent_to = maskedPhone && maskedEmail ? 'phone and email' : maskedPhone ? 'phone' : maskedEmail ? 'email' : null;
+
+    return {
+        otp_session_id: otpRecord.id,
+        expires_in: 120,
+        masked_phone: maskedPhone,
+        masked_email: maskedEmail,
+        otp_sent_to
     };
 };
 
@@ -195,6 +325,21 @@ export const verifyDeviceOtp = async (input) => {
 
     const user = await authRepository.findUserById(otp.user_id);
     if (!user) throw new AppError('User not found', 404);
+
+    // Driver portal: verify Driver record exists before issuing tokens
+    if (portal_type === 'driver') {
+        const schoolId = user.schoolId;
+        if (!schoolId) throw new AppError('Driver account requires school context', 403);
+        const driver = await prisma.driver.findFirst({
+            where: {
+                userId: user.id,
+                schoolId: String(schoolId),
+                deletedAt: null,
+                isActive: true,
+            },
+        });
+        if (!driver) throw new AppError('Driver account not found', 403);
+    }
 
     const meta = device_meta || {};
     let deviceId = null;
@@ -220,22 +365,30 @@ export const verifyDeviceOtp = async (input) => {
                 });
                 deviceId = inserted?.id;
             }
-        } catch (_) {}
+        } catch (_) { }
     }
 
-    const isPlatformAdmin = !user.schoolId && (user.role?.roleType === 'PLATFORM');
+    const isPlatformAdmin = !user.schoolId && (user.role?.scope === 'GLOBAL' || user.role?.name === 'super_admin');
     const isPlatformUser = !user.schoolId;
-    const effectivePortal = (portal_type === 'super_admin' || isPlatformAdmin || isPlatformUser) ? 'super_admin' : 'school_admin';
+    // Respect explicit portal_type from client (e.g. group_admin, driver)
+    let effectivePortal = 'school_admin';
+    if (portal_type === 'group_admin') {
+        effectivePortal = 'group_admin';
+    } else if (portal_type === 'driver') {
+        effectivePortal = 'driver';
+    } else if (portal_type === 'super_admin' || isPlatformAdmin || isPlatformUser) {
+        effectivePortal = 'super_admin';
+    }
     const accessToken = jwtUtils.generateAccessToken({
-        userId: user.id.toString(),
+        userId: String(user.id),
         email: user.email,
-        role: user.role?.roleType || 'SCHOOL',
-        school_id: user.schoolId ? user.schoolId.toString() : null,
+        role: user.role?.name || 'school_admin',
+        school_id: user.schoolId ? String(user.schoolId) : null,
         portal_type: effectivePortal
     });
     const refreshToken = jwtUtils.generateRefreshToken({
-        userId: user.id.toString(),
-        school_id: user.schoolId ? user.schoolId.toString() : null
+        userId: String(user.id),
+        school_id: user.schoolId ? String(user.schoolId) : null
     });
 
     const expiresAt = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
@@ -251,19 +404,19 @@ export const verifyDeviceOtp = async (input) => {
             ipAddress: meta.ip_address,
             expiresAt
         });
-    } catch (_) {}
+    } catch (_) { }
 
     return {
         session_token: accessToken,
         refresh_token: refreshToken,
         portal_type: effectivePortal,
         user: {
-            user_id: user.id.toString(),
+            user_id: String(user.id),
             first_name: user.firstName,
             last_name: user.lastName,
             email: user.email,
-            role: user.role?.roleType,
-            school_id: user.schoolId ? user.schoolId.toString() : null
+            role: user.role?.name,
+            school_id: user.schoolId ? String(user.schoolId) : null
         }
     };
 };
@@ -281,7 +434,7 @@ export const sessionCheck = async (token) => {
                 role: session.role
             };
         }
-    } catch (_) {}
+    } catch (_) { }
     return null;
 };
 
@@ -289,7 +442,7 @@ export const sessionCheck = async (token) => {
 export const logout = async (token, removeDeviceTrust = false) => {
     try {
         await smartRepo.deactivateAuthSession(token);
-    } catch (_) {}
+    } catch (_) { }
 };
 
 /** Get my devices */

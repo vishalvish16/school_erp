@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
+import '../../design_system/design_system.dart';
 import 'forgot_password_provider.dart';
 import 'forgot_password_state.dart';
+import '../../design_system/tokens/app_colors.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -42,14 +45,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       if (next.isFailure && previous?.isFailure != true) {
         final msg = next.errorMessage ?? AuthStrings.recoveryFailed;
         final isRateLimit = msg.toLowerCase().contains('too many') || msg.contains('429');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isRateLimit
-                ? 'Too many attempts. Try again in 60 minutes.'
-                : msg),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        AppSnackbar.error(context, isRateLimit
+                ? AppStrings.tooManyAttemptsWait
+                : msg);
       }
     });
 
@@ -296,8 +294,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                   hint: AuthStrings.enterpriseEmail,
                   icon: Icons.alternate_email_rounded,
                   validator: (v) {
-                    if (v == null || v.isEmpty)
+                    if (v == null || v.isEmpty) {
                       return AuthStrings.emailRequired;
+                    }
                     if (!RegExp(
                       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                     ).hasMatch(v)) {
@@ -402,9 +401,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark ||
         MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    final inputTextColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
-    final hintColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
-    final iconColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
+    final inputTextColor = isDark ? AppColors.neutral50 : AppColors.neutral800;
+    final hintColor = isDark ? AppColors.neutral400 : colorScheme.onSurfaceVariant;
+    final iconColor = isDark ? AppColors.neutral400 : colorScheme.onSurfaceVariant;
     final fieldBgColor = isDark ? colorScheme.surface : colorScheme.surfaceContainerHighest;
 
     return Container(

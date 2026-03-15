@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'settings_provider.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -11,13 +13,13 @@ class SettingsScreen extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: AppColors.neutral50,
       appBar: AppBar(
         title: const Text(
           'Settings',
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1E293B),
+            color: AppColors.neutral800,
           ),
         ),
         backgroundColor: Colors.white,
@@ -25,7 +27,7 @@ class SettingsScreen extends ConsumerWidget {
         centerTitle: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.paddingXl,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -34,16 +36,16 @@ class SettingsScreen extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
+                color: AppColors.neutral800,
               ),
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
 
             // Biometric Settings Card
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: AppRadius.brXl2,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -56,7 +58,7 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   _buildSettingTile(
                     icon: Icons.fingerprint_rounded,
-                    iconColor: const Color(0xFF6366F1),
+                    iconColor: AppColors.primary500,
                     title: 'Biometric Login',
                     subtitle: state.isBiometricSupported
                         ? 'Use fingerprint or face ID to log in'
@@ -68,14 +70,14 @@ class SettingsScreen extends ConsumerWidget {
                                 .read(settingsProvider.notifier)
                                 .toggleBiometric(val)
                           : null,
-                      activeColor: Colors.white,
-                      activeTrackColor: const Color(0xFF6366F1),
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: AppColors.primary500,
                     ),
                   ),
                   const Divider(height: 1, indent: 70),
                   _buildSettingTile(
                     icon: Icons.security_rounded,
-                    iconColor: const Color(0xFF3B82F6),
+                    iconColor: AppColors.secondary500,
                     title: 'Auto-Lock Session',
                     subtitle: 'Securely lock session after 30 minutes of inactivity',
                     trailing: Switch(
@@ -83,29 +85,29 @@ class SettingsScreen extends ConsumerWidget {
                       onChanged: (val) => ref
                           .read(settingsProvider.notifier)
                           .toggleAutoLock(val),
-                      activeColor: Colors.white,
-                      activeTrackColor: const Color(0xFF3B82F6),
+                      activeThumbColor: Colors.white,
+                      activeTrackColor: AppColors.secondary500,
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 32),
+            AppSpacing.vGapXl2,
             const Text(
               'Hardware & Infrastructure',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF1E293B),
+                color: AppColors.neutral800,
               ),
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
 
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: AppRadius.brXl2,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -118,23 +120,23 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   _buildSettingTile(
                     icon: Icons.api_rounded,
-                    iconColor: const Color(0xFFF59E0B),
+                    iconColor: AppColors.warning500,
                     title: 'System Endpoint',
                     subtitle: '192.168.1.14 (Active Node)',
                     trailing: const Icon(
                       Icons.chevron_right_rounded,
-                      color: Color(0xFF94A3B8),
+                      color: AppColors.neutral400,
                     ),
                   ),
                   const Divider(height: 1, indent: 70),
                   _buildSettingTile(
                     icon: Icons.cloud_sync_rounded,
-                    iconColor: const Color(0xFF10B981),
+                    iconColor: AppColors.success500,
                     title: 'Node Sync Strategy',
                     subtitle: 'Real-time (High Priority)',
                     trailing: const Icon(
                       Icons.chevron_right_rounded,
-                      color: Color(0xFF94A3B8),
+                      color: AppColors.neutral400,
                     ),
                   ),
                 ],
@@ -166,14 +168,14 @@ class SettingsScreen extends ConsumerWidget {
     required Widget trailing,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: iconColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: AppRadius.brLg,
           ),
           child: Icon(icon, color: iconColor, size: 24),
         ),
@@ -181,13 +183,13 @@ class SettingsScreen extends ConsumerWidget {
           title,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
-            color: Color(0xFF1E293B),
+            color: AppColors.neutral800,
             fontSize: 15,
           ),
         ),
         subtitle: Text(
           subtitle,
-          style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+          style: const TextStyle(color: AppColors.neutral500, fontSize: 13),
         ),
         trailing: trailing,
       ),

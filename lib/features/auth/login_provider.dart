@@ -152,6 +152,12 @@ class LoginNotifier extends StateNotifier<LoginState> {
         }
 
         if (result['requires_2fa'] == true) {
+          // Save credentials for biometric login (user will complete 2FA next)
+          if (!kIsWeb) {
+            final secureStorage = _ref.read(secureStorageServiceProvider);
+            await secureStorage.write('biometric_email', state.email);
+            await secureStorage.write('biometric_password', state.password);
+          }
           state = state.copyWith(
             isLoading: false,
             requires2fa: true,
@@ -162,12 +168,21 @@ class LoginNotifier extends StateNotifier<LoginState> {
         }
 
         if (result['requires_otp'] == true) {
+          // Save credentials for biometric login (user will complete OTP next)
+          if (!kIsWeb) {
+            final secureStorage = _ref.read(secureStorageServiceProvider);
+            await secureStorage.write('biometric_email', state.email);
+            await secureStorage.write('biometric_password', state.password);
+          }
           state = state.copyWith(
             isLoading: false,
             requiresOtp: true,
             otpSessionId: result['otp_session_id']?.toString(),
             maskedPhone: result['masked_phone']?.toString(),
+            maskedEmail: result['masked_email']?.toString(),
+            otpSentTo: result['otp_sent_to']?.toString(),
             portalType: result['portal_type']?.toString(),
+            devOtp: result['dev_otp']?.toString(),
           );
           return;
         }
@@ -184,7 +199,9 @@ class LoginNotifier extends StateNotifier<LoginState> {
               await LocalStorageService().setPortalType(pt);
             }
           }
-          await _ref.read(authGuardProvider.notifier).establishSession(
+          await _ref
+              .read(authGuardProvider.notifier)
+              .establishSession(
                 token,
                 portalTypeOverride: result['portal_type']?.toString(),
               );

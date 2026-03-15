@@ -3,22 +3,74 @@ import 'package:intl/intl.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../domain/models/subscription_models.dart';
 import '../../../../shared/widgets/reusable_data_table.dart';
+import '../../../../design_system/tokens/app_colors.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
-class SubscriptionHistoryModal extends StatelessWidget {
+class SubscriptionHistoryModal extends StatefulWidget {
   final List<SubscriptionHistoryModel> history;
 
   const SubscriptionHistoryModal({super.key, required this.history});
 
   @override
+  State<SubscriptionHistoryModal> createState() => _SubscriptionHistoryModalState();
+}
+
+class _SubscriptionHistoryModalState extends State<SubscriptionHistoryModal> {
+  int? _sortColumnIndex;
+  bool _sortAscending = true;
+
+  List<SubscriptionHistoryModel> _sortHistory(
+    List<SubscriptionHistoryModel> list,
+    int? columnIndex,
+    bool ascending,
+  ) {
+    if (columnIndex == null || list.isEmpty) return list;
+    final sorted = List<SubscriptionHistoryModel>.from(list);
+    sorted.sort((a, b) {
+      int cmp;
+      switch (columnIndex) {
+        case 0:
+          cmp = a.planName.compareTo(b.planName);
+          break;
+        case 1:
+          cmp = a.billingCycle.compareTo(b.billingCycle);
+          break;
+        case 2:
+          cmp = a.startDate.compareTo(b.startDate);
+          break;
+        case 3:
+          cmp = a.endDate.compareTo(b.endDate);
+          break;
+        case 4:
+          cmp = a.status.compareTo(b.status);
+          break;
+        case 5:
+          cmp = a.createdAt.compareTo(b.createdAt);
+          break;
+        default:
+          return 0;
+      }
+      return ascending ? cmp : -cmp;
+    });
+    return sorted;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final sortedHistory = _sortHistory(
+      widget.history,
+      _sortColumnIndex,
+      _sortAscending,
+    );
+
     return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xl),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.brXl2),
       child: Container(
         width: MediaQuery.of(context).size.width > 900
             ? 800
             : MediaQuery.of(context).size.width * 0.95,
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.paddingXl,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -40,12 +92,12 @@ class SubscriptionHistoryModal extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            AppSpacing.vGapXl,
             Flexible(
               child: Container(
                 decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.neutral400.withOpacity(0.2)),
+                  borderRadius: AppRadius.brLg,
                 ),
                 child: SingleChildScrollView(
                   child: ReusableDataTable(
@@ -57,7 +109,14 @@ class SubscriptionHistoryModal extends StatelessWidget {
                       AppStrings.tableStatus,
                       AppStrings.tableCreatedAt,
                     ],
-                    rows: history.map((h) {
+                    sortableColumns: const [0, 1, 2, 3, 4, 5],
+                    sortColumnIndex: _sortColumnIndex,
+                    sortAscending: _sortAscending,
+                    onSort: (col, asc) => setState(() {
+                      _sortColumnIndex = col;
+                      _sortAscending = asc;
+                    }),
+                    rows: sortedHistory.map((h) {
                       return DataRow(
                         cells: [
                           DataCell(
@@ -92,12 +151,12 @@ class SubscriptionHistoryModal extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                AppStrings.totalRecords(history.length),
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                AppStrings.totalRecords(widget.history.length),
+                style: TextStyle(color: AppColors.neutral600, fontSize: 13),
               ),
             ),
           ],

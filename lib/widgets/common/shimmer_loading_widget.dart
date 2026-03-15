@@ -4,6 +4,7 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 /// Shimmer loading placeholder for list items, cards, etc.
 class ShimmerLoadingWidget extends StatefulWidget {
@@ -54,7 +55,7 @@ class _ShimmerLoadingWidgetState extends State<ShimmerLoadingWidget>
         width: widget.width,
         height: widget.height,
         decoration: BoxDecoration(
-          borderRadius: widget.borderRadius ?? BorderRadius.circular(4),
+          borderRadius: widget.borderRadius ?? AppRadius.brXs,
           gradient: LinearGradient(
             begin: Alignment(_animation.value - 1, 0),
             end: Alignment(_animation.value, 0),
@@ -88,11 +89,11 @@ class ShimmerListLoadingWidget extends StatelessWidget {
       itemBuilder: (_, i) => Card(
         margin: const EdgeInsets.only(bottom: 8),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: AppSpacing.paddingLg,
           child: Row(
             children: [
               const ShimmerLoadingWidget(width: 40, height: 40),
-              const SizedBox(width: 16),
+              AppSpacing.hGapLg,
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,7 +102,7 @@ class ShimmerListLoadingWidget extends StatelessWidget {
                       width: double.infinity,
                       height: 14,
                     ),
-                    const SizedBox(height: 8),
+                    AppSpacing.vGapSm,
                     ShimmerLoadingWidget(
                       width: 120,
                       height: 12,

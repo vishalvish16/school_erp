@@ -40,7 +40,9 @@ class SuperAdminService {
     String? search,
     String? status,
     String? planId,
+    String? country,
     String? state,
+    String? city,
     String? groupId,
   }) async {
     final q = <String, String>{
@@ -50,7 +52,9 @@ class SuperAdminService {
     if (search != null && search.isNotEmpty) q['search'] = search;
     if (status != null && status.isNotEmpty) q['status'] = status;
     if (planId != null && planId.isNotEmpty) q['plan_id'] = planId;
+    if (country != null && country.isNotEmpty) q['country'] = country;
     if (state != null && state.isNotEmpty) q['state'] = state;
+    if (city != null && city.isNotEmpty) q['city'] = city;
     if (groupId != null && groupId.isNotEmpty) q['group_id'] = groupId;
 
     final res = await _dio.get('$_basePath/schools', queryParameters: q);
@@ -107,25 +111,31 @@ class SuperAdminService {
     await _dio.put('$_basePath/schools/$schoolId/admin/$userId/deactivate');
   }
 
+  Future<void> assignSchoolAdmin(String schoolId, Map<String, dynamic> body) async {
+    await _dio.post('$_basePath/schools/$schoolId/admin/assign', data: body);
+  }
+
   Future<bool> checkSubdomainAvailable(String value) async {
     try {
       final res = await _dio.get(
         '$_basePath/schools/check-subdomain',
         queryParameters: {'value': value},
       );
-      final data = res.data is Map ? res.data : {};
+      final data = res.data is Map ? res.data['data'] ?? res.data : {};
       return data['available'] == true;
     } catch (_) {
       return false;
     }
   }
 
-  Future<List<int>> exportSchools({String? search, String? status, String? planId, String? state}) async {
+  Future<List<int>> exportSchools({String? search, String? status, String? planId, String? country, String? state, String? city}) async {
     final q = <String, String>{};
     if (search != null && search.isNotEmpty) q['search'] = search;
     if (status != null && status.isNotEmpty) q['status'] = status;
     if (planId != null && planId.isNotEmpty) q['plan_id'] = planId;
+    if (country != null && country.isNotEmpty) q['country'] = country;
     if (state != null && state.isNotEmpty) q['state'] = state;
+    if (city != null && city.isNotEmpty) q['city'] = city;
     final res = await _dio.get<List<int>>(
       '$_basePath/schools/export',
       queryParameters: q.isEmpty ? null : q,
@@ -135,15 +145,82 @@ class SuperAdminService {
   }
 
   // ── Groups ───────────────────────────────────────────────────────────────
-  Future<List<SuperAdminSchoolGroupModel>> getGroups() async {
-    final res = await _dio.get('$_basePath/groups');
-    final list = res.data is Map ? res.data['data'] ?? res.data : res.data;
+  Future<List<SuperAdminSchoolGroupModel>> getGroups({
+    int? page,
+    int? limit,
+    String? search,
+    String? status,
+  }) async {
+    final q = <String, String>{};
+    if (page != null) q['page'] = page.toString();
+    if (limit != null) q['limit'] = limit.toString();
+    if (search != null && search.isNotEmpty) q['search'] = search;
+    if (status != null && status.isNotEmpty) q['status'] = status;
+
+    final res = await _dio.get('$_basePath/groups', queryParameters: q.isEmpty ? null : q);
+    final raw = res.data;
+    // API returns { success, message, data: { data: [...], pagination: {...} } }
+    dynamic list;
+    if (raw is Map) {
+      final inner = raw['data'];
+      if (inner is Map && inner['data'] is List) {
+        list = inner['data'];
+      } else if (inner is List) {
+        list = inner;
+      }
+    }
     if (list is! List) return [];
     return list
         .map((e) => SuperAdminSchoolGroupModel.fromJson(
               e is Map<String, dynamic> ? e : {},
             ))
         .toList();
+  }
+
+  Future<Map<String, dynamic>> getGroupById(String id) async {
+    final response = await _dio.get('$_basePath/groups/$id');
+    return response.data is Map<String, dynamic> ? response.data : {};
+  }
+
+  Future<void> deleteGroup(String id) async {
+    await _dio.delete('$_basePath/groups/$id');
+  }
+
+  Future<Map<String, dynamic>> assignGroupAdmin(String groupId, Map<String, dynamic> data) async {
+    final response = await _dio.post('$_basePath/groups/$groupId/admin/assign', data: data);
+    return response.data is Map<String, dynamic> ? response.data : {};
+  }
+
+  Future<void> resetGroupAdminPassword(String groupId, String newPassword) async {
+    await _dio.put('$_basePath/groups/$groupId/admin/reset-password',
+      data: {'new_password': newPassword});
+  }
+
+  Future<void> lockGroupAdmin(String groupId) async {
+    await _dio.put('$_basePath/groups/$groupId/admin/lock');
+  }
+
+  Future<void> unlockGroupAdmin(String groupId) async {
+    await _dio.put('$_basePath/groups/$groupId/admin/unlock');
+  }
+
+  Future<void> deactivateGroupAdmin(String groupId) async {
+    await _dio.put('$_basePath/groups/$groupId/admin/deactivate');
+  }
+
+  Future<bool> checkGroupSlugAvailable(String value, {String? excludeId}) async {
+    try {
+      final q = <String, String>{'value': value};
+      if (excludeId != null && excludeId.isNotEmpty) q['exclude_id'] = excludeId;
+      final res = await _dio.get(
+        '$_basePath/groups/check-slug',
+        queryParameters: q,
+      );
+      final data = res.data is Map ? res.data['data'] ?? res.data : {};
+      return data['available'] == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<SuperAdminSchoolGroupModel> createGroup(Map<String, dynamic> body) async {
@@ -277,7 +354,7 @@ class SuperAdminService {
     final res = await _dio.get('$_basePath/features/school/$schoolId');
     final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
     if (data is! Map) return {};
-    return (data as Map).map((k, v) => MapEntry(k.toString(), v == true));
+    return (data).map((k, v) => MapEntry(k.toString(), v == true));
   }
 
   Future<void> toggleSchoolFeature(String schoolId, String featureKey, bool enabled) async {
@@ -357,6 +434,20 @@ class SuperAdminService {
 
   Future<void> removeSuperAdmin(String id) async {
     await _dio.delete('$_basePath/admins/$id');
+  }
+
+  Future<void> resetSuperAdminPassword(String id, {String newPassword = 'Password@123'}) async {
+    await _dio.put('$_basePath/admins/$id/reset-password', data: {'new_password': newPassword});
+  }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _dio.put('$_basePath/change-password', data: {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+    });
   }
 
   // ── Audit Logs ─────────────────────────────────────────────────────────────

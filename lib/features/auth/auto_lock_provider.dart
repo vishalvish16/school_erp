@@ -45,8 +45,9 @@ class AutoLockNotifier extends StateNotifier<AutoLockState> {
     final settings = _ref.read(settingsProvider);
     final auth = _ref.read(authGuardProvider);
 
-    if (!auth.isAuthenticated || !settings.isAutoLockEnabled || state.isLocked)
+    if (!auth.isAuthenticated || !settings.isAutoLockEnabled || state.isLocked) {
       return;
+    }
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final last = state.lastInteraction == 0 ? now : state.lastInteraction;

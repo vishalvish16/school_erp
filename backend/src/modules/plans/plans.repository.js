@@ -12,11 +12,8 @@ const convertBigInts = (obj) => {
 
 export const getAllPlans = async (filters = {}) => {
     const where = {};
-    if (filters.isActive !== undefined) {
-        where.isActive = filters.isActive;
-    }
 
-    // 1. Fetch all plans
+    // 1. Fetch all plans (platform_plans has: name, description, price, max_branches, max_users)
     const plans = await prisma.platformPlan.findMany({
         where,
         orderBy: {
@@ -24,22 +21,21 @@ export const getAllPlans = async (filters = {}) => {
         }
     });
 
-    // 2. Fetch active school counts per plan for all plans at once (Optimized)
-    const activeCounts = await prisma.schoolSubscription.groupBy({
-        by: ['planId'],
-        where: {
-            status: 'ACTIVE'
-        },
-        _count: {
-            schoolId: true
-        }
-    });
-
-    // 3. Map counts to plans
-    const countsMap = activeCounts.reduce((acc, curr) => {
-        acc[curr.planId.toString()] = curr._count.schoolId;
-        return acc;
-    }, {});
+    // 2. Map counts (school_subscriptions may not exist; use 0 if unavailable)
+    let countsMap = {};
+    try {
+        const activeCounts = await prisma.schoolSubscription.groupBy({
+            by: ['planId'],
+            where: { status: 'ACTIVE' },
+            _count: { schoolId: true }
+        });
+        countsMap = activeCounts.reduce((acc, curr) => {
+            acc[curr.planId.toString()] = curr._count.schoolId;
+            return acc;
+        }, {});
+    } catch (_) {
+        // school_subscriptions table may not exist
+    }
 
     const results = plans.map(plan => ({
         ...plan,

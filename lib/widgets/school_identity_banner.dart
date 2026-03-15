@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 import '../models/school_identity.dart';
 import '../core/constants/app_auth_constants.dart';
+import '../design_system/tokens/app_spacing.dart';
 
 class SchoolIdentityBanner extends StatelessWidget {
   const SchoolIdentityBanner({
@@ -30,7 +31,7 @@ class SchoolIdentityBanner extends StatelessWidget {
       builder: (context, constraints) {
         return Container(
           width: double.infinity,
-          padding: EdgeInsets.all(isNarrow ? 16 : AuthSizes.cardPadding),
+          padding: EdgeInsets.all(isNarrow ? 14 : 20),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
@@ -52,10 +53,10 @@ class SchoolIdentityBanner extends StatelessWidget {
               else
                 _buildDesktopLayout(),
               if (showStats) ...[
-                const SizedBox(height: 16),
+                AppSpacing.vGapMd,
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: [
                     _buildStatChip('Students', identity.studentCount?.toString() ?? '—'),
                     _buildStatChip('Attendance', '—'),
@@ -69,12 +70,12 @@ class SchoolIdentityBanner extends StatelessWidget {
     );
   }
 
-  Widget _buildMobileLayout() {
-    final badge = Container(
+  Widget _buildBadge() {
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: AuthColors.success.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: AppRadius.brXl2,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -91,25 +92,18 @@ class SchoolIdentityBanner extends StatelessWidget {
         ],
       ),
     );
-    final changeBtn = showChangeLink
-        ? TextButton(
-            onPressed: onChangeTap,
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-            child: const Text('Change'),
-          )
-        : const SizedBox.shrink();
+  }
+
+  Widget _buildMobileLayout() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.brLg,
               child: identity.logoUrl != null
                   ? Image.network(
                       identity.logoUrl!,
@@ -120,7 +114,7 @@ class SchoolIdentityBanner extends StatelessWidget {
                     )
                   : _buildPlaceholderIcon(48),
             ),
-            const SizedBox(width: 12),
+            AppSpacing.hGapMd,
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +123,7 @@ class SchoolIdentityBanner extends StatelessWidget {
                   Text(
                     identity.name,
                     style: AuthTextStyles.loginTitle.copyWith(fontSize: 18),
-                    maxLines: 2,
+                    maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (identity.code.isNotEmpty) ...[
@@ -147,14 +141,23 @@ class SchoolIdentityBanner extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Wrap(
           spacing: 8,
-          runSpacing: 8,
+          runSpacing: 4,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            badge,
-            if (showChangeLink) changeBtn,
+            _buildBadge(),
+            if (showChangeLink)
+              TextButton(
+                onPressed: onChangeTap,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Change'),
+              ),
           ],
         ),
       ],
@@ -162,77 +165,78 @@ class SchoolIdentityBanner extends StatelessWidget {
   }
 
   Widget _buildDesktopLayout() {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: identity.logoUrl != null
-              ? Image.network(
-                  identity.logoUrl!,
-                  width: 56,
-                  height: 56,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildPlaceholderIcon(),
-                )
-              : _buildPlaceholderIcon(),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                identity.name,
-                style: AuthTextStyles.loginTitle.copyWith(fontSize: 20),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (identity.code.isNotEmpty)
-                Text(
-                  identity.code,
-                  style: AuthTextStyles.inputHint.copyWith(
-                    fontFamily: 'monospace',
-                    fontSize: 13,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: AppRadius.brLg,
+              child: identity.logoUrl != null
+                  ? Image.network(
+                      identity.logoUrl!,
+                      width: 52,
+                      height: 52,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildPlaceholderIcon(52),
+                    )
+                  : _buildPlaceholderIcon(52),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    identity.name,
+                    style: AuthTextStyles.loginTitle.copyWith(fontSize: 18),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              if (identity.board.isNotEmpty)
-                Text(
-                  identity.board,
-                  style: AuthTextStyles.tagline,
-                ),
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: AuthColors.success.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, size: 16, color: AuthColors.success),
-              const SizedBox(width: 6),
-              Text(
-                'Active on Vidyron',
-                style: AuthTextStyles.tagline.copyWith(
-                  color: AuthColors.success,
-                  fontSize: 12,
-                ),
+                  if (identity.code.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      identity.code,
+                      style: AuthTextStyles.inputHint.copyWith(
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  if (identity.board.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      identity.board,
+                      style: AuthTextStyles.tagline.copyWith(fontSize: 12),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-        if (showChangeLink) ...[
-          const SizedBox(width: 12),
-          TextButton(
-            onPressed: onChangeTap,
-            child: const Text('Change'),
-          ),
-        ],
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            _buildBadge(),
+            if (showChangeLink)
+              TextButton(
+                onPressed: onChangeTap,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Change'),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -243,7 +247,7 @@ class SchoolIdentityBanner extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: AuthColors.primary.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.brLg,
       ),
       child: Icon(Icons.school_rounded, color: AuthColors.primary, size: size * 0.5),
     );
@@ -251,14 +255,14 @@ class SchoolIdentityBanner extends StatelessWidget {
 
   Widget _buildStatChip(String label, String value) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
         color: AuthColors.overlayLight(0.3),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.brMd,
       ),
       child: Text(
         '$label: $value',
-        style: AuthTextStyles.tagline.copyWith(fontSize: 13),
+        style: AuthTextStyles.tagline.copyWith(fontSize: 12),
       ),
     );
   }

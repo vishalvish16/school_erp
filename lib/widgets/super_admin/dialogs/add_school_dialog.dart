@@ -8,16 +8,13 @@ import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../design_system/design_system.dart';
 import '../../../../core/services/super_admin_service.dart';
-
-const _indianStates = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
-  'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
-  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
-  'West Bengal', 'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Puducherry',
-];
+import '../../../../models/super_admin/super_admin_models.dart';
+import '../../common/address_location_picker.dart';
+import '../../common/searchable_dropdown_form_field.dart';
+import '../../../design_system/tokens/app_colors.dart';
+import '../../../design_system/tokens/app_spacing.dart';
 
 class AddSchoolDialog extends ConsumerStatefulWidget {
   const AddSchoolDialog({
@@ -46,8 +43,9 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _subdomainController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _stateController = TextEditingController();
+  String? _country;
+  String? _state;
+  String? _city;
   final _pinController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
@@ -67,6 +65,8 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
   bool _subdomainChecking = false;
   Timer? _subdomainDebounce;
   final Map<String, bool> _features = {};
+  List<SuperAdminPlatformFeatureModel> _platformFeatures = [];
+  bool _loadingPlatformFeatures = false;
   bool _submitting = false;
   bool _passwordVisible = false;
 
@@ -75,6 +75,26 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
     super.initState();
     _nameController.addListener(_suggestSubdomain);
     _subdomainController.addListener(_checkSubdomainDebounced);
+    _loadPlatformFeatures();
+  }
+
+  Future<void> _loadPlatformFeatures() async {
+    if (_platformFeatures.isNotEmpty) return;
+    setState(() => _loadingPlatformFeatures = true);
+    try {
+      final service = ref.read(superAdminServiceProvider);
+      final list = await service.getPlatformFeatures();
+      if (mounted) {
+        setState(() {
+          _platformFeatures = list;
+          _loadingPlatformFeatures = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingPlatformFeatures = false);
+      }
+    }
   }
 
   void _suggestSubdomain() {
@@ -135,7 +155,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
 
   String _generateSchoolCode() {
     final name = _nameController.text.trim();
-    final city = _cityController.text.trim();
+    final city = _city ?? '';
     final n = name.length >= 3 ? name.substring(0, 3).toUpperCase() : 'SCH';
     final c = city.length >= 3 ? city.substring(0, 3).toUpperCase() : 'XXX';
     final seq = (Random().nextInt(999) + 1).toString().padLeft(3, '0');
@@ -154,8 +174,6 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
     _subdomainController.removeListener(_checkSubdomainDebounced);
     _nameController.dispose();
     _subdomainController.dispose();
-    _cityController.dispose();
-    _stateController.dispose();
     _pinController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
@@ -173,8 +191,9 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
     if (_nameController.text.trim().isEmpty) return false;
     if (_subdomainController.text.trim().isEmpty) return false;
     if (!_subdomainAvailable) return false;
-    if (_cityController.text.trim().isEmpty) return false;
-    if (_stateController.text.trim().isEmpty) return false;
+    if (_country == null || _country!.isEmpty) return false;
+    if (_state == null || _state!.isEmpty) return false;
+    if (_city == null || _city!.isEmpty) return false;
     return true;
   }
   bool _canProceedStep2() => _selectedPlanId != null;
@@ -194,8 +213,9 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
       await widget.onCreate({
         'name': _nameController.text.trim(),
         'subdomain': _subdomainController.text.trim().toLowerCase(),
-        'city': _cityController.text.trim(),
-        'state': _stateController.text.trim(),
+        'country': _country ?? '',
+        'state': _state ?? '',
+        'city': _city ?? '',
         'pin': _pinController.text.trim(),
         'phone': _phoneController.text.trim(),
         'email': _emailController.text.trim(),
@@ -216,15 +236,11 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
         final sub = _subdomainController.text.trim().toLowerCase();
         final url = 'https://$sub.vidyron.in';
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('School created! Login URL: $url')),
-        );
+        AppSnackbar.success(context, 'School created! Login URL: $url');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -240,7 +256,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
         maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.paddingXl,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -260,7 +276,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             Row(
               children: List.generate(5, (i) {
                 final active = _step >= i;
@@ -272,13 +288,13 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
                       color: active
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: AppRadius.brXs,
                     ),
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 24),
+            AppSpacing.vGapXl,
             Expanded(
               child: SingleChildScrollView(
                 child: Column(
@@ -293,7 +309,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            AppSpacing.vGapXl,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -326,9 +342,14 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
                             });
                           } else if (_step == 3 && _canProceedStep3()) {
                             setState(() {
-                              const defaults = ['attendance', 'fees', 'exams', 'timetable', 'library', 'transport', 'hostel', 'reports'];
-                              for (final k in defaults) {
-                                _features.putIfAbsent(k, () => true);
+                              for (final f in _platformFeatures) {
+                                _features.putIfAbsent(f.featureKey, () => f.isEnabled);
+                              }
+                              if (_features.isEmpty) {
+                                const defaults = ['attendance', 'fees', 'exams', 'timetable', 'library', 'transport', 'hostel', 'reports'];
+                                for (final k in defaults) {
+                                  _features.putIfAbsent(k, () => true);
+                                }
                               }
                               _step++;
                             });
@@ -359,7 +380,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text('Group', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          AppSpacing.vGapSm,
           RadioListTile<String>(
             title: const Text('Standalone (no group)'),
             value: 'none',
@@ -375,14 +396,14 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
             }),
           ),
           if (widget.groups.isNotEmpty && _groupId != null)
-            DropdownButtonFormField<String>(
+            SearchableDropdownFormField.valueItems(
               value: _groupId,
-              decoration: const InputDecoration(labelText: 'Group'),
-              items: widget.groups.map<DropdownMenuItem<String>>((g) {
+              valueItems: widget.groups.map((g) {
                 final id = g['id']?.toString() ?? '';
-                final name = g['name'] ?? '';
-                return DropdownMenuItem(value: id, child: Text(name));
+                final name = (g['name'] ?? '').toString();
+                return MapEntry(id, name);
               }).toList(),
+              decoration: const InputDecoration(labelText: 'Group'),
               onChanged: (v) => setState(() => _groupId = v),
             ),
         ],
@@ -401,7 +422,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
             decoration: const InputDecoration(labelText: 'School Name *'),
             validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
           ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           TextFormField(
             controller: _subdomainController,
             decoration: InputDecoration(
@@ -409,12 +430,12 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
               hintText: 'e.g. dpssurat',
               suffixIcon: _subdomainChecking
                   ? const SizedBox(width: 24, height: 24, child: Padding(
-                      padding: EdgeInsets.all(4),
+                      padding: AppSpacing.paddingXs,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ))
                   : Icon(
                       _subdomainAvailable ? Icons.check_circle : Icons.cancel,
-                      color: _subdomainAvailable ? Colors.green : Colors.red,
+                      color: _subdomainAvailable ? AppColors.success500 : AppColors.error500,
                       size: 24,
                     ),
             ),
@@ -425,7 +446,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
               return null;
             },
           ),
-          const SizedBox(height: 8),
+          AppSpacing.vGapSm,
           Text(
             'School Code (auto-generated): ${_generateSchoolCode()}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -433,50 +454,49 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
           ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
+          AppSpacing.vGapMd,
+          SearchableDropdownFormField<String>(
             value: _board,
+            items: const ['CBSE', 'ICSE', 'State Board', 'IB'],
             decoration: const InputDecoration(labelText: 'Board'),
-            items: ['CBSE', 'ICSE', 'State Board', 'IB']
-                .map((v) => DropdownMenuItem(value: v, child: Text(v)))
-                .toList(),
             onChanged: (v) => setState(() => _board = v ?? 'CBSE'),
           ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
+          AppSpacing.vGapMd,
+          SearchableDropdownFormField.valueItems(
             value: _schoolType,
+            valueItems: const [
+              MapEntry('private', 'Private'),
+              MapEntry('government', 'Government'),
+              MapEntry('trust', 'Trust'),
+            ],
             decoration: const InputDecoration(labelText: 'Type'),
-            items: ['Private', 'Government', 'Trust']
-                .map((v) => DropdownMenuItem(value: v.toLowerCase(), child: Text(v)))
-                .toList(),
             onChanged: (v) => setState(() => _schoolType = v ?? 'private'),
           ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _cityController,
-            decoration: const InputDecoration(labelText: 'City *'),
-            validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+          AppSpacing.vGapMd,
+          AddressLocationPicker(
+            country: _country,
+            state: _state,
+            city: _city,
+            onCountryChanged: (v) => setState(() => _country = v),
+            onStateChanged: (v) => setState(() => _state = v),
+            onCityChanged: (v) => setState(() => _city = v),
+            countryLabel: 'Country *',
+            stateLabel: 'State *',
+            cityLabel: 'City *',
           ),
-          const SizedBox(height: 12),
-          DropdownButtonFormField<String>(
-            value: _indianStates.contains(_stateController.text) ? _stateController.text : null,
-            decoration: const InputDecoration(labelText: 'State *'),
-            items: _indianStates.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-            onChanged: (v) => setState(() => _stateController.text = v ?? ''),
-          ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           TextFormField(
             controller: _pinController,
             decoration: const InputDecoration(labelText: 'PIN Code'),
             keyboardType: TextInputType.number,
           ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           TextFormField(
             controller: _phoneController,
             decoration: const InputDecoration(labelText: 'Phone'),
             keyboardType: TextInputType.phone,
           ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           TextFormField(
             controller: _emailController,
             decoration: const InputDecoration(labelText: 'Contact Email'),
@@ -488,7 +508,7 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
               return null;
             },
           ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           TextFormField(
             controller: _estStudentsController,
             decoration: const InputDecoration(labelText: 'Est. Students'),
@@ -533,11 +553,11 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
             child: InkWell(
               onTap: () => setState(() => _selectedPlanId = id),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: AppSpacing.paddingLg,
                 child: Row(
                   children: [
                     Icon(selected ? Icons.radio_button_checked : Icons.radio_button_off),
-                    const SizedBox(width: 12),
+                    AppSpacing.hGapMd,
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,30 +573,30 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
             ),
           );
         }),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String>(
+        AppSpacing.vGapLg,
+        SearchableDropdownFormField.valueItems(
           value: _duration,
-          decoration: const InputDecoration(labelText: 'Duration'),
-          items: [
-            const DropdownMenuItem(value: '3', child: Text('3 Months (Trial)')),
-            const DropdownMenuItem(value: '6', child: Text('6 Months')),
-            const DropdownMenuItem(value: '12', child: Text('1 Year')),
+          valueItems: const [
+            MapEntry('3', '3 Months (Trial)'),
+            MapEntry('6', '6 Months'),
+            MapEntry('12', '1 Year'),
           ],
+          decoration: const InputDecoration(labelText: 'Duration'),
           onChanged: (v) => setState(() => _duration = v ?? '12'),
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vGapMd,
         TextFormField(
           controller: _studentLimitController,
           decoration: const InputDecoration(labelText: 'Student Limit'),
           keyboardType: TextInputType.number,
           onChanged: (v) => setState(() => _studentLimit = int.tryParse(v) ?? _studentLimit),
         ),
-        const SizedBox(height: 16),
+        AppSpacing.vGapLg,
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: AppSpacing.paddingLg,
             child: Text(
-              'Estimated: ₹${total.toStringAsFixed(0)} for $months months (${_studentLimit} × ₹${price.toStringAsFixed(0)} × $months)',
+              'Estimated: ₹${total.toStringAsFixed(0)} for $months months ($_studentLimit × ₹${price.toStringAsFixed(0)} × $months)',
               style: Theme.of(context).textTheme.titleSmall,
             ),
           ),
@@ -593,20 +613,20 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
           controller: _adminNameController,
           decoration: const InputDecoration(labelText: 'Admin Name *'),
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vGapMd,
         TextFormField(
           controller: _adminEmailController,
           decoration: const InputDecoration(labelText: 'Admin Email *'),
           keyboardType: TextInputType.emailAddress,
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vGapMd,
         TextFormField(
           controller: _adminMobileController,
           decoration: const InputDecoration(labelText: 'Admin Mobile * (10 digits)'),
           keyboardType: TextInputType.phone,
           maxLength: 10,
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vGapMd,
         TextFormField(
           controller: _tempPasswordController,
           obscureText: !_passwordVisible,
@@ -633,6 +653,33 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
   }
 
   Widget _buildStep4() {
+    final featureKeys = _features.keys.toList();
+    if (_loadingPlatformFeatures && _platformFeatures.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+    if (featureKeys.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Features (based on plan)',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          AppSpacing.vGapLg,
+          Text(
+            'No platform features configured. Enable features in Global Feature Flags first.',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+        ],
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -640,12 +687,28 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
           'Features (based on plan)',
           style: Theme.of(context).textTheme.titleMedium,
         ),
-        const SizedBox(height: 12),
-        ..._features.keys.toList().map((key) => SwitchListTile(
-          title: Text(key.replaceAll('_', ' ')),
-          value: _features[key] ?? false,
-          onChanged: (v) => setState(() => _features[key] = v),
-        )),
+        AppSpacing.vGapSm,
+        Text(
+          'Toggle features for this school. Platform-wide defaults apply when enabled globally.',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        AppSpacing.vGapMd,
+        ...featureKeys.map((key) {
+          final pf = _platformFeatures.where((f) => f.featureKey == key).toList();
+          final f = pf.isEmpty ? null : pf.first;
+          final label = f?.featureName ?? key.replaceAll('_', ' ');
+          final desc = f?.description;
+          return SwitchListTile(
+            title: Text(label),
+            subtitle: desc != null && desc.isNotEmpty
+                ? Text(desc, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant))
+                : null,
+            value: _features[key] ?? false,
+            onChanged: (v) => setState(() => _features[key] = v),
+          );
+        }),
       ],
     );
   }

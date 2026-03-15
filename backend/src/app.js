@@ -1,5 +1,9 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import cors from 'cors';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
 import { errorHandler } from './middleware/errorHandler.js';
@@ -13,15 +17,27 @@ import subscriptionRoutes from './modules/subscription/subscription.routes.js';
 import plansRoutes from './modules/plans/plans.routes.js';
 import schoolManagementRoutes from './modules/school/school.routes.js';
 import superAdminRoutes from './modules/super-admin/super-admin.routes.js';
+import groupAdminRoutes from './modules/group-admin/group-admin.routes.js';
+import schoolAdminRoutes from './modules/school-admin/school-admin.routes.js';
+import teacherRoutes from './modules/teacher/teacher.routes.js';
+import staffPortalRoutes from './modules/staff/staff-portal.routes.js';
+import studentRoutes from './modules/student/student.routes.js';
+import nonTeachingStaffRoutes from './modules/non-teaching-staff/non-teaching-staff.routes.js';
+import driverRoutes from './modules/driver/driver.routes.js';
+import parentRoutes from './modules/parent/parent.routes.js';
 
 const app = express();
 
-// Secure CORS Config
+// Secure CORS Config — in development allow all origins for Flutter web
 const allowedOrigins = env.CORS_ORIGIN.split(',').map(o => o.trim());
 app.use(cors({
     origin: (origin, callback) => {
-        // allow requests with no origin (like mobile apps or curl requests)
-        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        // In development: allow ALL origins (Flutter web, any port, HTTP/HTTPS)
+        if (env.NODE_ENV === 'development') {
             return callback(null, true);
         }
         return callback(new AppError('CORS policy violation', 403), false);
@@ -30,8 +46,12 @@ app.use(cors({
 }));
 
 // Body Parser Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static files for avatars
+const uploadsPath = path.join(__dirname, '..', 'uploads');
+app.use('/uploads', express.static(uploadsPath));
 
 // Http request logging
 app.use((req, res, next) => {
@@ -50,9 +70,31 @@ app.use(`${API_PREFIX}/schools`, schoolRoutes);
 app.use(`${API_PREFIX}/subscriptions`, subscriptionRoutes);
 app.use(`${API_PREFIX}/plans`, plansRoutes);
 app.use(`${API_PREFIX}/super-admin`, superAdminRoutes);
+app.use(`${API_PREFIX}/group-admin`, groupAdminRoutes);
 
-// School-level operations (e.g., student/teacher/branch management)
-app.use('/api/school', schoolManagementRoutes);
+// Non-Teaching Staff module — mounted BEFORE generic /api/school to avoid prefix conflict
+app.use('/api/school/non-teaching', nonTeachingStaffRoutes);
+
+// School Admin portal — full CRUD for students, staff, classes, attendance, fees, timetable, notices
+app.use('/api/school', schoolAdminRoutes);
+
+// Teacher portal — attendance, homework, diary, dashboard
+app.use('/api/teacher', teacherRoutes);
+
+// Staff/Clerk portal — fee collection, student lookup, notices (read-only)
+app.use('/api/staff', staffPortalRoutes);
+
+// Student portal — profile, dashboard, attendance, fees, timetable, notices, documents
+app.use('/api/student', studentRoutes);
+
+// Driver portal — dashboard, profile, change password
+app.use('/api/driver', driverRoutes);
+
+// Parent portal — profile, children, attendance, fees, notices
+app.use('/api/parent', parentRoutes);
+
+// Legacy school-level operations (kept for backwards compat — student/teacher/branch management)
+app.use('/api/school/legacy', schoolManagementRoutes);
 
 // 404 handler
 app.all('*', (req, res, next) => {

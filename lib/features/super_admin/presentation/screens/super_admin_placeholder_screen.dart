@@ -4,6 +4,8 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
 class SuperAdminPlaceholderScreen extends StatelessWidget {
   const SuperAdminPlaceholderScreen({super.key, required this.title});
@@ -12,22 +14,24 @@ class SuperAdminPlaceholderScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final padding = isNarrow ? 16.0 : 24.0;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(padding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.construction, size: 64, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             Text(
               title,
               style: Theme.of(context).textTheme.headlineSmall,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vGapSm,
             Text(
-              'Development in progress',
+              AppStrings.developmentInProgress,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),

@@ -33,6 +33,8 @@ class PortalResolver {
         return '/login/school';
       case 'school_staff':
         return '/login/staff';
+      case 'driver':
+        return '/login/driver';
       case 'parent':
         return '/login/parent';
       case 'student':
@@ -45,7 +47,7 @@ class PortalResolver {
   static String getDashboardRoute(String role) {
     switch (role) {
       case 'super_admin':
-        return '/dashboard';
+        return '/super-admin/dashboard';
       case 'group_admin':
         return '/dashboard';
       case 'principal':
@@ -54,12 +56,13 @@ class PortalResolver {
       case 'teacher':
       case 'clerk':
       case 'accountant':
-      case 'driver':
         return '/dashboard';
+      case 'driver':
+        return '/driver/dashboard';
       case 'parent':
         return '/dashboard';
       case 'student':
-        return '/dashboard';
+        return '/student/dashboard';
       default:
         return '/login';
     }

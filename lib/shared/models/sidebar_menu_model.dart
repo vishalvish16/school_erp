@@ -5,6 +5,8 @@
 
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_strings.dart';
+
 class SidebarMenuModel {
   const SidebarMenuModel({
     required this.title,
@@ -41,28 +43,28 @@ class SidebarSection {
 abstract final class SuperAdminNavigation {
   static const List<SidebarSection> sections = [
     SidebarSection(
-      title: 'Platform',
+      title: AppStrings.platform,
       items: [
         SidebarMenuModel(
-          title: 'Dashboard',
+          title: AppStrings.dashboard,
           route: '/dashboard',
           icon: Icons.dashboard_outlined,
           activeIcon: Icons.dashboard,
         ),
         SidebarMenuModel(
-          title: 'Schools',
+          title: AppStrings.schools,
           route: '/schools',
           icon: Icons.school_outlined,
           activeIcon: Icons.school,
         ),
         SidebarMenuModel(
-          title: 'Branches',
+          title: AppStrings.branches,
           route: '/branches',
           icon: Icons.account_tree_outlined,
           activeIcon: Icons.account_tree,
         ),
         SidebarMenuModel(
-          title: 'Plans',
+          title: AppStrings.plans,
           route: '/plans',
           icon: Icons.layers_outlined,
           activeIcon: Icons.layers,
@@ -70,22 +72,22 @@ abstract final class SuperAdminNavigation {
       ],
     ),
     SidebarSection(
-      title: 'Administration',
+      title: AppStrings.administration,
       items: [
         SidebarMenuModel(
-          title: 'Users',
+          title: AppStrings.users,
           route: '/users',
           icon: Icons.people_outline_rounded,
           activeIcon: Icons.people_rounded,
         ),
         SidebarMenuModel(
-          title: 'Roles',
+          title: AppStrings.roles,
           route: '/roles',
           icon: Icons.admin_panel_settings_outlined,
           activeIcon: Icons.admin_panel_settings,
         ),
         SidebarMenuModel(
-          title: 'Modules',
+          title: AppStrings.modules,
           route: '/modules',
           icon: Icons.extension_outlined,
           activeIcon: Icons.extension,
@@ -93,10 +95,10 @@ abstract final class SuperAdminNavigation {
       ],
     ),
     SidebarSection(
-      title: 'Financials',
+      title: AppStrings.financials,
       items: [
         SidebarMenuModel(
-          title: 'Subscriptions',
+          title: AppStrings.subscriptions,
           route: '/subscriptions',
           icon: Icons.subscriptions_outlined,
           activeIcon: Icons.subscriptions,
@@ -110,10 +112,10 @@ abstract final class SuperAdminNavigation {
       ],
     ),
     SidebarSection(
-      title: 'System',
+      title: AppStrings.system,
       items: [
         SidebarMenuModel(
-          title: 'Audit Logs',
+          title: AppStrings.auditLogs,
           route: '/audit-logs',
           icon: Icons.history_edu_outlined,
           activeIcon: Icons.history_edu,
@@ -125,7 +127,7 @@ abstract final class SuperAdminNavigation {
           activeIcon: Icons.health_and_safety,
         ),
         SidebarMenuModel(
-          title: 'Settings',
+          title: AppStrings.settings,
           route: '/settings',
           icon: Icons.settings_outlined,
           activeIcon: Icons.settings,

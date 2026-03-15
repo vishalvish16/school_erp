@@ -48,7 +48,7 @@ class SuperAdminPlanModel {
       }
     } else if (pf is Map) {
       featuresMap.addAll(
-        (pf as Map).map((k, v) => MapEntry(k.toString(), v == true)),
+        (pf).map((k, v) => MapEntry(k.toString(), v == true)),
       );
     }
     return SuperAdminPlanModel(

@@ -585,3 +585,60 @@ abstract final class AppSnackbar {
     onAction: onAction,
   );
 }
+
+// ── AppDialogs — standardized confirmation / alert dialogs ───────────────────
+
+abstract final class AppDialogs {
+  static Future<bool> confirm(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String confirmLabel = 'Confirm',
+    String cancelLabel = 'Cancel',
+    bool isDestructive = false,
+  }) async {
+    final cs = Theme.of(context).colorScheme;
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(cancelLabel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: isDestructive
+                ? FilledButton.styleFrom(backgroundColor: cs.error)
+                : null,
+            child: Text(confirmLabel),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  static Future<void> alert(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String okLabel = 'OK',
+  }) {
+    return showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(okLabel),
+          ),
+        ],
+      ),
+    );
+  }
+}

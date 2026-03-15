@@ -21,7 +21,7 @@ class SchoolsViewModel
   Timer? _debounceTimer;
 
   int _currentPage = 1;
-  final int _limit = 10;
+  final int _limit = 15;
   String _searchQuery = '';
   String _statusFilter = 'ALL';
   String _planIdFilter = '';
@@ -38,13 +38,13 @@ class SchoolsViewModel
     super.dispose();
   }
 
-  Future<void> fetchSchools({int? page, bool isRefresh = false}) async {
+  Future<void> fetchSchools({int? page, bool isRefresh = false, bool append = false}) async {
     if (page != null) _currentPage = page;
 
-    if (!isRefresh && state.hasValue) {
+    if (!append && !isRefresh && state.hasValue) {
       state = const AsyncLoading<PaginationModel<SchoolModel>>()
           .copyWithPrevious(state);
-    } else if (!isRefresh) {
+    } else if (!append && !isRefresh) {
       state = const AsyncLoading();
     }
 
@@ -58,8 +58,20 @@ class SchoolsViewModel
         sortBy: _sortBy,
         sortOrder: _sortOrder,
       );
-      state = AsyncData(response);
+      if (append && state.hasValue) {
+        final prev = state.value!;
+        state = AsyncData(PaginationModel<SchoolModel>(
+          data: [...prev.data, ...response.data],
+          total: response.total,
+          page: response.page,
+          limit: response.limit,
+          totalPages: response.totalPages,
+        ));
+      } else {
+        state = AsyncData(response);
+      }
     } catch (e, st) {
+      if (append) _currentPage--;
       state = AsyncError<PaginationModel<SchoolModel>>(
         e,
         st,
@@ -111,6 +123,12 @@ class SchoolsViewModel
     _sortOrder = sortOrder;
     _currentPage = 1;
     fetchSchools();
+  }
+
+  Future<void> loadMore() async {
+    if (!hasMorePages) return;
+    _currentPage++;
+    await fetchSchools(page: _currentPage, append: true);
   }
 
   Future<void> suspendSchool(String id) async {
@@ -178,6 +196,12 @@ class SchoolsViewModel
   }
 
   int get currentPage => _currentPage;
+  int get limit => _limit;
+  bool get hasMorePages {
+    if (!state.hasValue) return false;
+    final d = state.value!;
+    return d.page < d.totalPages;
+  }
   String get currentStatus => _statusFilter;
   String get currentSearch => _searchQuery;
   String get currentPlanIdFilter => _planIdFilter;

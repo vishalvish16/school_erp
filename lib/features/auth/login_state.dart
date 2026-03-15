@@ -21,9 +21,12 @@ class LoginState {
     this.requiresOtp = false,
     this.otpSessionId,
     this.maskedPhone,
+    this.maskedEmail,
+    this.otpSentTo,
     this.portalType,
     this.requires2fa = false,
     this.tempToken,
+    this.devOtp,
   });
 
   final bool isLoading;
@@ -38,9 +41,12 @@ class LoginState {
   final bool requiresOtp;
   final String? otpSessionId;
   final String? maskedPhone;
+  final String? maskedEmail;
+  final String? otpSentTo;
   final String? portalType;
   final bool requires2fa;
   final String? tempToken;
+  final String? devOtp;
 
   /// Helper to check if state is failure
   bool get isFailure => errorMessage != null;
@@ -58,9 +64,12 @@ class LoginState {
     bool? requiresOtp,
     String? otpSessionId,
     String? maskedPhone,
+    String? maskedEmail,
+    String? otpSentTo,
     String? portalType,
     bool? requires2fa,
     String? tempToken,
+    String? devOtp,
   }) {
     return LoginState(
       isLoading: isLoading ?? this.isLoading,
@@ -75,9 +84,12 @@ class LoginState {
       requiresOtp: requiresOtp ?? this.requiresOtp,
       otpSessionId: otpSessionId ?? this.otpSessionId,
       maskedPhone: maskedPhone ?? this.maskedPhone,
+      maskedEmail: maskedEmail ?? this.maskedEmail,
+      otpSentTo: otpSentTo ?? this.otpSentTo,
       portalType: portalType ?? this.portalType,
       requires2fa: requires2fa ?? this.requires2fa,
       tempToken: tempToken ?? this.tempToken,
+      devOtp: devOtp ?? this.devOtp,
     );
   }
 

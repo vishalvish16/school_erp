@@ -1,9 +1,12 @@
 /**
  * Portal-specific auth controllers: verify-2fa, group-admin login, qr-login
  */
-import { successResponse } from '../../utils/response.js';
+import { successResponse, AppError } from '../../utils/response.js';
 import * as smartLoginService from './smart-login.service.js';
 import * as twoFaService from './two-fa.service.js';
+import * as authService from './auth.service.js';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 /** POST /auth/super-admin/verify-2fa */
 export const verify2faController = async (req, res, next) => {
@@ -26,27 +29,69 @@ export const verify2faController = async (req, res, next) => {
 /** POST /auth/group-admin/login */
 export const groupAdminLoginController = async (req, res, next) => {
     try {
-        const { identifier, password, otp_code, group_id, device_fingerprint, device_meta, trust_device } = req.body;
-        const ip = req.ip || req.connection?.remoteAddress || null;
-        // TODO: Verify user with portal_type group_admin, group_id match
-        // TODO: Password or OTP verification, device check
-        // Stub: use existing smart login when password provided
-        if (password && device_fingerprint) {
-            const result = await smartLoginService.smartLogin({
-                identifier,
-                password,
-                portal_type: 'group_admin',
-                school_id: null,
-                device_fingerprint,
-                device_meta: device_meta || {},
-                ip_address: ip
-            });
-            const data = result.requires_otp
-                ? { requires_otp: true, otp_session_id: result.otp_session_id, expires_in: result.expires_in, masked_phone: result.masked_phone }
-                : { access_token: result.session_token, refresh_token: result.refresh_token, user: result.user, group_id };
-            return successResponse(res, 200, 'Login successful', data);
+        const { identifier, password, group_id, device_fingerprint, device_meta, trust_device } = req.body;
+        const ip = req.ip || req.headers['x-forwarded-for'] || '127.0.0.1';
+
+        const result = await smartLoginService.smartLogin({
+            identifier,
+            password,
+            group_id,
+            deviceFingerprint: device_fingerprint || `anon_${Date.now()}`,
+            deviceMeta: device_meta || {},
+            ipAddress: ip,
+            portalType: 'group_admin',
+            trustDevice: trust_device || false
+        });
+
+        if (result.requires_otp) {
+            const data = {
+                requires_otp: true,
+                otp_session_id: result.otp_session_id,
+                masked_phone: result.masked_phone,
+                masked_email: result.masked_email,
+                otp_sent_to: result.otp_sent_to
+            };
+            if (result.dev_otp) data.dev_otp = result.dev_otp;
+            return successResponse(res, 200, 'OTP required', data);
         }
-        throw new AppError('Group admin login not fully implemented', 501);
+
+        if (result.session_token) {
+            const group = await prisma.schoolGroup.findFirst({
+                where: { groupAdminUserId: result.user.user_id },
+                select: { id: true, name: true, slug: true }
+            });
+            return successResponse(res, 200, 'Login successful', {
+                access_token: result.session_token,
+                refresh_token: result.refresh_token,
+                user: result.user,
+                group: group ? { id: group.id, name: group.name, slug: group.slug } : null
+            });
+        }
+
+        return successResponse(res, 200, 'Login initiated', result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+/** POST /auth/group-admin/forgot-password */
+export const groupAdminForgotPasswordController = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+        const origin = req.headers.origin || req.headers.referer || 'http://localhost:3000';
+        const result = await authService.forgotPassword(email, origin);
+        return successResponse(res, 200, result.message || 'Reset instructions sent', result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+/** POST /auth/group-admin/reset-password */
+export const groupAdminResetPasswordController = async (req, res, next) => {
+    try {
+        const { token, new_password } = req.body;
+        const result = await authService.resetPassword(token, new_password);
+        return successResponse(res, 200, result.message || 'Password reset successfully', result);
     } catch (error) {
         next(error);
     }

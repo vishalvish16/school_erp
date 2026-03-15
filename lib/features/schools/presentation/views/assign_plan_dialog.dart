@@ -1,13 +1,24 @@
 import 'package:flutter/material.dart';
+import '../../../../widgets/common/searchable_dropdown_form_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../design_system/design_system.dart';
 import '../../../subscription/provider/plan_provider.dart';
 import '../viewmodels/school_detail_viewmodel.dart';
+import '../../../../design_system/tokens/app_colors.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
 class AssignPlanDialog extends ConsumerStatefulWidget {
   final String schoolId;
+  final int? currentPlanId;
+  final String? currentPlanName;
 
-  const AssignPlanDialog({super.key, required this.schoolId});
+  const AssignPlanDialog({
+    super.key,
+    required this.schoolId,
+    this.currentPlanId,
+    this.currentPlanName,
+  });
 
   @override
   ConsumerState<AssignPlanDialog> createState() => _AssignPlanDialogState();
@@ -18,12 +29,25 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
   String _billingCycle = 'MONTHLY';
   final TextEditingController _durationController = TextEditingController();
   bool _isSubmitting = false;
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    // Pre-fetch plans if not already loaded
     Future.microtask(() => ref.read(planProvider).fetchPlans());
+  }
+
+  int? _resolveSelectedPlanId(List<dynamic> plans) {
+    final currentId = widget.currentPlanId;
+    final currentName = widget.currentPlanName?.toLowerCase();
+    if (currentId == null && (currentName == null || currentName.isEmpty)) return null;
+    for (final p in plans) {
+      final planId = p.planId is int ? p.planId : int.tryParse(p.planId.toString());
+      final planName = (p.planName ?? '').toString().toLowerCase();
+      if (currentId != null && planId == currentId) return planId;
+      if (currentName != null && planName == currentName) return planId;
+    }
+    return currentId;
   }
 
   @override
@@ -37,6 +61,16 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
     final planState = ref.watch(planProvider);
     final theme = Theme.of(context);
 
+    if (!_initialized && planState.plans.isNotEmpty && (widget.currentPlanId != null || (widget.currentPlanName?.isNotEmpty ?? false))) {
+      _initialized = true;
+      final resolved = _resolveSelectedPlanId(planState.plans);
+      if (resolved != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() => _selectedPlanId = resolved);
+        });
+      }
+    }
+
     return AlertDialog(
       title: const Text(AppStrings.assignSubscriptionPlan),
       content: SingleChildScrollView(
@@ -48,23 +82,18 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
               AppStrings.choosePlan,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<int>(
+            AppSpacing.vGapSm,
+            SearchableDropdownFormField<int>.valueItems(
               value: _selectedPlanId,
-              hint: const Text(AppStrings.selectPlan),
-              isExpanded: true,
-              items: planState.plans.map((plan) {
-                return DropdownMenuItem(
-                  value: plan.planId,
-                  child: Text(
-                    '${plan.planName} (₹${plan.priceMonthly.toStringAsFixed(0)}/mo)',
-                  ),
-                );
-              }).toList(),
-              onChanged: (val) => setState(() => _selectedPlanId = val),
+              valueItems: planState.plans.map((plan) => MapEntry(
+                plan.planId,
+                '${plan.planName} (₹${plan.priceMonthly.toStringAsFixed(0)}/mo)',
+              )).toList(),
+              hintText: AppStrings.selectPlan,
               decoration: const InputDecoration(border: OutlineInputBorder()),
+              onChanged: (val) => setState(() => _selectedPlanId = val),
             ),
-            const SizedBox(height: 24),
+            AppSpacing.vGapXl,
             const Text(
               AppStrings.billingCycle,
               style: TextStyle(fontWeight: FontWeight.bold),
@@ -91,12 +120,12 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             const Text(
               AppStrings.customDuration,
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vGapSm,
             TextField(
               controller: _durationController,
               keyboardType: TextInputType.number,
@@ -107,10 +136,10 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
               ),
             ),
             if (planState.error != null) ...[
-              const SizedBox(height: 16),
+              AppSpacing.vGapLg,
               Text(
                 planState.error!,
-                style: const TextStyle(color: Colors.red, fontSize: 12),
+                style: const TextStyle(color: AppColors.error500, fontSize: 12),
               ),
             ],
           ],
@@ -159,21 +188,11 @@ class _AssignPlanDialogState extends ConsumerState<AssignPlanDialog> {
 
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(AppStrings.planAssignedSuccess),
-            backgroundColor: Colors.green,
-          ),
-        );
+        AppSnackbar.success(context, AppStrings.planAssignedSuccess);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(AppStrings.errorWithMessage(e.toString())),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppSnackbar.error(context, AppStrings.errorWithMessage(e.toString()));
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

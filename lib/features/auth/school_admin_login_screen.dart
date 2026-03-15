@@ -9,12 +9,17 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_auth_constants.dart';
-import '../../core/services/local_storage_service.dart';
 import '../../core/constants/app_strings.dart';
+import '../../design_system/design_system.dart';
+import '../../core/services/local_storage_service.dart';
 import '../../models/school_identity.dart';
 import '../../utils/subdomain_resolver.dart';
 import '../../widgets/school_identity_banner.dart';
 import 'auth_screen_layout.dart';
+import 'school_staff_login_provider.dart';
+import 'school_setup_search_widget.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class SchoolAdminLoginScreen extends ConsumerStatefulWidget {
   const SchoolAdminLoginScreen({super.key});
@@ -32,6 +37,7 @@ class _SchoolAdminLoginScreenState extends ConsumerState<SchoolAdminLoginScreen>
   int _selectedTab = 0;
   SchoolIdentity? _identity;
   bool _isLoading = false;
+  String? _errorMessage;
 
   late TabController _tabController;
 
@@ -66,53 +72,107 @@ class _SchoolAdminLoginScreenState extends ConsumerState<SchoolAdminLoginScreen>
     } else {
       final storage = LocalStorageService();
       final savedSchool = await storage.getSavedSchool();
-      if (savedSchool == null && mounted) {
-        context.go('/school-setup');
-        return;
-      }
       if (mounted && savedSchool != null) setState(() => _identity = savedSchool);
     }
   }
 
   Future<void> _onChangeSchool() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Change School?'),
-        content: const Text(
-          'This will remove your saved school. '
-          'You will need to search for your school again.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, Change')),
-        ],
-      ),
+    final ok = await AppDialogs.confirm(
+      context,
+      title: AppStrings.changeSchoolQuestion,
+      message: AppStrings.changeSchoolMessage,
+      confirmLabel: AppStrings.yesChange,
     );
-    if (ok != true || !mounted) return;
-    final storage = LocalStorageService();
-    await storage.clearSchool();
-    await storage.clearSession();
-    if (mounted) context.go('/school-setup');
+    if (!ok || !mounted) return;
+    setState(() {
+      _identity = null;
+      _errorMessage = null;
+    });
+    if (!kIsWeb) {
+      final storage = LocalStorageService();
+      await storage.clearSchool();
+      await storage.clearSession();
+    }
   }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    // TODO: Call school admin login API
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) setState(() => _isLoading = false);
+    if (_identity == null) {
+      setState(() => _errorMessage = AppStrings.selectSchoolAbove);
+      return;
+    }
+    ref.read(schoolStaffLoginProvider.notifier).login(
+          _emailController.text.trim(),
+          _passwordController.text,
+          schoolId: _identity!.id,
+          portalType: 'school_admin',
+          schoolIdentity: _identity,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<SchoolStaffLoginState>(schoolStaffLoginProvider, (prev, next) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = next.isLoading;
+        _errorMessage = next.errorMessage;
+      });
+      if (next.requiresOtp &&
+          prev?.requiresOtp != true &&
+          next.otpSessionId != null &&
+          next.otpSessionId!.isNotEmpty) {
+        final q =
+            'otp_session_id=${next.otpSessionId!}&masked_phone=${Uri.encodeComponent(next.maskedPhone ?? '')}&masked_email=${Uri.encodeComponent(next.maskedEmail ?? '')}&otp_sent_to=${Uri.encodeComponent(next.otpSentTo ?? '')}&portal_type=school_admin${next.devOtp != null ? '&dev_otp=${next.devOtp}' : ''}';
+        context.push('/device-verification?$q');
+      }
+      if (next.requires2fa &&
+          prev?.requires2fa != true &&
+          next.tempToken != null &&
+          next.tempToken!.isNotEmpty) {
+        final q = 'temp_token=${Uri.encodeComponent(next.tempToken!)}&portal_type=school_admin';
+        context.push('/verify-2fa?$q');
+      }
+      if (next.isSuccess && prev?.isSuccess != true) {
+        context.go('/school-admin/dashboard');
+      }
+    });
+
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_identity != null)
+        if (_identity == null)
           Padding(
             padding: const EdgeInsets.only(bottom: 24),
+            child: SchoolSetupSearchWidget(
+              onSchoolSelected: (school) {
+                setState(() {
+                  _identity = school;
+                  _errorMessage = null;
+                });
+              },
+              layout: SchoolSearchLayout.popup,
+              middleContent: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: AppColors.error700),
+                      ),
+                    ),
+                  _buildLoginCard(),
+                ],
+              ),
+            ),
+          )
+        else ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
             child: SchoolIdentityBanner(
               identity: _identity!,
               showStats: true,
@@ -120,7 +180,16 @@ class _SchoolAdminLoginScreenState extends ConsumerState<SchoolAdminLoginScreen>
               onChangeTap: _onChangeSchool,
             ),
           ),
-        _buildLoginCard(),
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                _errorMessage!,
+                style: TextStyle(color: AppColors.error700),
+              ),
+            ),
+          _buildLoginCard(),
+        ],
       ],
     );
 
@@ -154,16 +223,16 @@ class _SchoolAdminLoginScreenState extends ConsumerState<SchoolAdminLoginScreen>
                   controller: _tabController,
                   onTap: (i) => setState(() => _selectedTab = i),
                   labelColor: AuthColors.primary,
-                  tabs: const [Tab(text: 'Password'), Tab(text: 'OTP')],
+                  tabs: const [Tab(text: AppStrings.passwordTab), Tab(text: AppStrings.otpTab)],
                 ),
-                const SizedBox(height: 24),
+                AppSpacing.vGapXl,
                 if (_selectedTab == 0) ...[
                   TextFormField(
                     controller: _emailController,
-                    decoration: const InputDecoration(labelText: 'Email / Mobile', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: AppStrings.emailMobileLabel, border: OutlineInputBorder()),
                     validator: (v) => v == null || v.isEmpty ? AppStrings.enterEmailError : null,
                   ),
-                  const SizedBox(height: 16),
+                  AppSpacing.vGapLg,
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
@@ -177,7 +246,7 @@ class _SchoolAdminLoginScreenState extends ConsumerState<SchoolAdminLoginScreen>
                     ),
                     validator: (v) => v == null || v.isEmpty ? AppStrings.enterPasswordError : null,
                   ),
-                  const SizedBox(height: 8),
+                  AppSpacing.vGapSm,
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -188,25 +257,25 @@ class _SchoolAdminLoginScreenState extends ConsumerState<SchoolAdminLoginScreen>
                 ] else ...[
                   const TextField(
                     decoration: InputDecoration(
-                      labelText: 'Mobile number',
+                      labelText: AppStrings.mobileNumber,
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.phone,
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton(onPressed: () {}, child: const Text('Send OTP')),
+                  AppSpacing.vGapLg,
+                  FilledButton(onPressed: () {}, child: const Text(AppStrings.sendOtp)),
                 ],
-                const SizedBox(height: 8),
+                AppSpacing.vGapSm,
                 Text(
-                  'Signing in as: School Admin / Principal',
+                  AppStrings.signingInAsSchoolAdmin,
                   style: AuthTextStyles.tagline.copyWith(fontSize: 12),
                 ),
-                const SizedBox(height: 24),
+                AppSpacing.vGapXl,
                 FilledButton(
                   onPressed: _isLoading ? null : _handleLogin,
                   style: FilledButton.styleFrom(
                     backgroundColor: AuthColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: AppSpacing.paddingVLg,
                   ),
                   child: Text(AuthStrings.login, style: AuthTextStyles.buttonPrimary),
                 ),

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../design_system/design_system.dart';
 import '../../core/constants/app_strings.dart';
 import '../../features/auth/auth_guard_provider.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
   const AdminTopbar({
@@ -34,7 +35,7 @@ class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
           bottom: BorderSide(color: scheme.outlineVariant, width: 1),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: AppSpacing.paddingHLg,
       child: Row(
         children: [
           // ── Mobile/Tablet Menu Button ──────────────────────────────────────
@@ -60,7 +61,7 @@ class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
                   prefixIcon: Icon(Icons.search_rounded, size: 20, color: scheme.primary),
                   filled: true,
                   fillColor: scheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  contentPadding: AppSpacing.paddingHLg,
                   border: OutlineInputBorder(
                     borderRadius: AppRadius.brMd,
                     borderSide: BorderSide.none,
@@ -130,8 +131,12 @@ class _ProfileDropdown extends ConsumerWidget {
       offset: const Offset(0, 8), // Small, clean 8px gap just below the profile container
       position: PopupMenuPosition.under,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.brLg),
+      popUpAnimationStyle: AnimationStyle(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
         child: Row(
           children: [
             CircleAvatar(

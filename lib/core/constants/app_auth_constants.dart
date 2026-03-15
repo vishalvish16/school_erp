@@ -5,6 +5,8 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 /// Auth screen strings — labels, titles, hints, buttons
 abstract final class AuthStrings {
@@ -78,29 +80,31 @@ abstract final class AuthStrings {
   static const String resetFailed = 'Failed to reset password';
 }
 
-/// Auth screen colors
+/// Auth screen colors — delegates to the master [AppColors] palette.
 abstract final class AuthColors {
   AuthColors._();
 
-  static const Color textPrimary = Color(0xFF0F172A);
-  static const Color textSecondary = Color(0xFF475569);
-  static const Color textMuted = Color(0xFF64748B);
-  static const Color textHint = Color(0xFF94A3B8);
-  static const Color textInput = Color(0xFF1E293B);
+  static const Color textPrimary = AppColors.neutral900;     // 0xFF0F172A
+  static const Color textSecondary = AppColors.neutral600;   // 0xFF475569
+  static const Color textMuted = AppColors.neutral500;       // 0xFF64748B
+  static const Color textHint = AppColors.neutral400;        // 0xFF94A3B8
+  static const Color textInput = AppColors.neutral800;       // 0xFF1E293B
 
-  static const Color border = Color(0xFFE2E8F0);
-  static const Color primary = Color(0xFF2563EB);
+  static const Color border = AppColors.neutral200;          // 0xFFE2E8F0
+  static const Color primary = AppColors.secondary600;       // 0xFF2563EB
   /// Switch track when OFF — visible on glass background
-  static const Color switchInactiveTrack = Color(0xFFCBD5E1);
-  static const Color primaryDark = Color(0xFF1D4ED8);
-  static const Color accent = Color(0xFF3B82F6);
-  static const Color success = Color(0xFF10B981);
+  static const Color switchInactiveTrack = AppColors.neutral300; // 0xFFCBD5E1
+  static const Color primaryDark = AppColors.secondary700;   // 0xFF1D4ED8
+  static const Color accent = AppColors.secondary500;        // 0xFF3B82F6
+  static const Color success = AppColors.success500;         // 0xFF10B981
 
   static Color overlayLight(double alpha) => Colors.white.withValues(alpha: alpha);
   static Color overlayDark(double alpha) => Colors.black.withValues(alpha: alpha);
 }
 
-/// Auth screen sizes — heights, widths, padding, radius
+/// Auth screen sizes — heights, widths, padding, radius.
+/// Uses [AppSpacing] / [AppRadius] / [AppBreakpoints] tokens where they map
+/// cleanly; auth-specific values that don't fit the 4px grid stay explicit.
 abstract final class AuthSizes {
   AuthSizes._();
 
@@ -109,17 +113,17 @@ abstract final class AuthSizes {
   static const double breakpointLogin = 1000;
 
   // Layout
-  static const double maxContentWidth = 1200;
+  static const double maxContentWidth = AppBreakpoints.contentMaxWidth; // 1200
   static const double cardWidthFixed = 450;
-  static const double brandingGap = 80;
-  static const double sectionGap = 32;
-  static const double cardPadding = 40;
+  static const double brandingGap = AppSpacing.xl6;       // 80
+  static const double sectionGap = AppSpacing.xl2;        // 32
+  static const double cardPadding = AppSpacing.xl3;       // 40
   static const double headerPaddingV = 20;
-  static const double headerPaddingH = 24;
-  static const double scrollPadding = 24;
-  static const double taglineGap = 16;
+  static const double headerPaddingH = AppSpacing.xl;     // 24
+  static const double scrollPadding = AppSpacing.xl;      // 24
+  static const double taglineGap = AppSpacing.lg;         // 16
   static const double footerPaddingV = 20;
-  static const double footerPaddingH = 24;
+  static const double footerPaddingH = AppSpacing.xl;     // 24
 
   // Logo
   static const double logoHeightMobile = 100;
@@ -127,33 +131,33 @@ abstract final class AuthSizes {
 
   // Tagline (mobile)
   static const double taglineIconSize = 28;
-  static const double taglineIconGap = 12;
-  static const double taglineDotSize = 4;
-  static const double taglineDotPadding = 8;
+  static const double taglineIconGap = AppSpacing.md;     // 12
+  static const double taglineDotSize = AppSpacing.xs;     // 4
+  static const double taglineDotPadding = AppSpacing.sm;  // 8
 
   // Footer
   static const double footerIconMobile = 36;
-  static const double footerIconWeb = 48;
-  static const double footerGapMobile = 32;
-  static const double footerGapWeb = 48;
+  static const double footerIconWeb = AppSpacing.xl4;     // 48
+  static const double footerGapMobile = AppSpacing.xl2;   // 32
+  static const double footerGapWeb = AppSpacing.xl4;      // 48
   static const double footerIconPadding = 2;
-  static const double footerTextGap = 8;
+  static const double footerTextGap = AppSpacing.sm;      // 8
 
   // Glass panel
-  static const double glassRadius = 32;
+  static const double glassRadius = AppSpacing.xl2;       // 32
   static const double glassBorderWidth = 1.5;
-  static const double glassBlur = 4;
-  static const double glassBlurStrong = 24;
-  static const double glassShadowBlur = 40;
+  static const double glassBlur = AppSpacing.xs;          // 4
+  static const double glassBlurStrong = AppSpacing.xl;    // 24
+  static const double glassShadowBlur = AppSpacing.xl3;   // 40
   static const double glassShadowOffset = 10;
 
   // Branding panel
   static const double brandingPaddingMobile = 28;
-  static const double brandingPaddingWeb = 48;
+  static const double brandingPaddingWeb = AppSpacing.xl4; // 48
   static const double featurePointGap = 20;
-  static const double featurePointIconPadding = 4;
+  static const double featurePointIconPadding = AppSpacing.xs; // 4
   static const double featurePointIconSize = 14;
-  static const double featurePointTextGap = 16;
+  static const double featurePointTextGap = AppSpacing.lg; // 16
 
   // Form
   static const double formTitleSize = 28;
@@ -161,43 +165,43 @@ abstract final class AuthSizes {
   static const double formFieldPaddingH = 20;
   static const double formFieldPaddingV = 18;
   static const double formFieldIconSize = 20;
-  static const double formFieldShadowBlur = 8;
+  static const double formFieldShadowBlur = AppSpacing.sm; // 8
   static const double formFieldShadowOffset = 2;
   static const double formSpacingSmall = 20;
-  static const double formSpacingMedium = 24;
-  static const double formSpacingLarge = 32;
+  static const double formSpacingMedium = AppSpacing.xl;   // 24
+  static const double formSpacingLarge = AppSpacing.xl2;   // 32
   static const double formSpacingBackLink = 28;
 
   // Button
   static const double buttonHeight = 56;
-  static const double buttonRadius = 16;
-  static const double buttonShadowBlur = 12;
+  static const double buttonRadius = AppSpacing.lg;        // 16
+  static const double buttonShadowBlur = AppSpacing.md;    // 12
   static const double buttonShadowOffset = 6;
 
   // Checkbox
-  static const double checkboxSize = 24;
-  static const double checkboxRadius = 4;
-  static const double checkboxLabelGap = 8;
+  static const double checkboxSize = AppSpacing.xl;        // 24
+  static const double checkboxRadius = AppSpacing.xs;      // 4
+  static const double checkboxLabelGap = AppSpacing.sm;    // 8
 
   // Biometric
   static const double biometricIconSize = 22;
-  static const double biometricPaddingV = 16;
-  static const double biometricDividerPadding = 16;
+  static const double biometricPaddingV = AppSpacing.lg;   // 16
+  static const double biometricDividerPadding = AppSpacing.lg; // 16
 
   // Success card (forgot/reset)
-  static const double successIconSize = 80;
-  static const double successSpacing = 32;
-  static const double successBodySpacing = 16;
-  static const double successButtonSpacing = 48;
+  static const double successIconSize = AppSpacing.xl6;    // 80
+  static const double successSpacing = AppSpacing.xl2;     // 32
+  static const double successBodySpacing = AppSpacing.lg;  // 16
+  static const double successButtonSpacing = AppSpacing.xl4; // 48
 
   // Stats bubble
-  static const double statBubblePaddingH = 16;
-  static const double statBubblePaddingV = 12;
+  static const double statBubblePaddingH = AppSpacing.lg;  // 16
+  static const double statBubblePaddingV = AppSpacing.md;  // 12
   static const double statBubbleRadius = 20;
-  static const double statBubbleGap = 12;
+  static const double statBubbleGap = AppSpacing.md;       // 12
 
   // Loading overlay
-  static const double loadingBlur = 4;
+  static const double loadingBlur = AppSpacing.xs;         // 4
   static const double loadingStrokeWidth = 3;
 }
 

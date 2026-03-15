@@ -10,6 +10,7 @@ export const resolveUserByPhoneController = async (req, res, next) => {
     try {
         let phone = (req.body.phone || '').toString().trim();
         const userType = req.body.user_type || 'parent';
+        const schoolId = req.body.school_id || null;
 
         // Normalize to E.164-ish (allow +91 or 10 digits)
         if (!phone.startsWith('+')) {
@@ -20,7 +21,7 @@ export const resolveUserByPhoneController = async (req, res, next) => {
             }
         }
 
-        const result = await resolveRepo.resolveUserByPhone(phone, userType);
+        const result = await resolveRepo.resolveUserByPhone(phone, userType, schoolId);
 
         if (!result) {
             throw new AppError(
@@ -29,10 +30,11 @@ export const resolveUserByPhoneController = async (req, res, next) => {
             );
         }
 
-        // Single school
-        if (result.schools && result.schools.length === 1) {
+        // Single school (parent returns schools array; legacy User returns schools)
+        const school = result.school || (result.schools && result.schools[0]);
+        if (school && (!result.schools || result.schools.length === 1)) {
             return successResponse(res, 200, 'School found', {
-                school: result.schools[0],
+                school,
                 user: result.user,
                 otp_session_id: result.otp_session_id,
                 masked_phone: result.masked_phone

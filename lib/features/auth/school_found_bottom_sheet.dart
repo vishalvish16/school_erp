@@ -5,7 +5,9 @@
 
 import 'package:flutter/material.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
 import '../../models/school_identity.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class SchoolFoundBottomSheet extends StatelessWidget {
   const SchoolFoundBottomSheet({
@@ -43,7 +45,7 @@ class SchoolFoundBottomSheet extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: AppSpacing.paddingXl,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -54,23 +56,23 @@ class SchoolFoundBottomSheet extends StatelessWidget {
                   height: 4,
                   decoration: BoxDecoration(
                     color: AuthColors.textHint.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: AppRadius.brXs,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              AppSpacing.vGapXl,
               Text(
-                'We found your school! 🎉',
+                AppStrings.weFoundYourSchool,
                 style: AuthTextStyles.loginTitle.copyWith(fontSize: 22),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 24),
+              AppSpacing.vGapXl,
               _buildSchoolCard(),
               if (userName != null) ...[
-                const SizedBox(height: 16),
+                AppSpacing.vGapLg,
                 _buildLinkedAccountCard(),
               ],
-              const SizedBox(height: 24),
+              AppSpacing.vGapXl,
               SizedBox(
                 height: AuthSizes.buttonHeight,
                 child: ElevatedButton(
@@ -82,14 +84,14 @@ class SchoolFoundBottomSheet extends StatelessWidget {
                       borderRadius: BorderRadius.circular(AuthSizes.buttonRadius),
                     ),
                   ),
-                  child: const Text('This is my school'),
+                  child: const Text(AppStrings.thisIsMySchool),
                 ),
               ),
-              const SizedBox(height: 12),
+              AppSpacing.vGapMd,
               TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(
-                  'Wrong school? Contact admin',
+                  AppStrings.wrongSchoolContactAdmin,
                   style: AuthTextStyles.tagline.copyWith(fontSize: 13),
                 ),
               ),
@@ -102,7 +104,7 @@ class SchoolFoundBottomSheet extends StatelessWidget {
 
   Widget _buildSchoolCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.paddingLg,
       decoration: BoxDecoration(
         color: AuthColors.overlayLight(0.25),
         borderRadius: BorderRadius.circular(AuthSizes.glassRadius),
@@ -121,7 +123,7 @@ class SchoolFoundBottomSheet extends StatelessWidget {
                   )
                 : null,
           ),
-          const SizedBox(width: 16),
+          AppSpacing.hGapLg,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,17 +138,17 @@ class SchoolFoundBottomSheet extends StatelessWidget {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: 10, vertical: AppSpacing.xs),
             decoration: BoxDecoration(
               color: AuthColors.success.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: AppRadius.brXl2,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.check_circle, size: 16, color: AuthColors.success),
                 const SizedBox(width: 6),
-                Text('✓ Verified', style: AuthTextStyles.tagline.copyWith(color: AuthColors.success, fontSize: 12)),
+                Text(AppStrings.verifiedBadge, style: AuthTextStyles.tagline.copyWith(color: AuthColors.success, fontSize: 12)),
               ],
             ),
           ),
@@ -168,16 +170,16 @@ class SchoolFoundBottomSheet extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: AppSpacing.paddingLg,
       decoration: BoxDecoration(
         color: AuthColors.overlayLight(0.2),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.brLg,
         border: Border.all(color: AuthColors.overlayLight(0.4)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(userName ?? 'User', style: AuthTextStyles.featurePoint.copyWith(fontSize: 16)),
+          Text(userName ?? AppStrings.user, style: AuthTextStyles.featurePoint.copyWith(fontSize: 16)),
           if (subtitle.isNotEmpty)
             Text(subtitle, style: AuthTextStyles.tagline.copyWith(fontSize: 13)),
         ],

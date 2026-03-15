@@ -9,6 +9,8 @@ import 'package:intl/intl.dart';
 import '../../design_system/design_system.dart';
 import '../../core/constants/app_strings.dart';
 import 'dashboard_provider.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -35,7 +37,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 32)),
+        const SliverToBoxAdapter(child: AppSpacing.vGapXl2),
 
         /// ───────────────── KPI GRID ─────────────────
         SliverPadding(
@@ -53,25 +55,25 @@ class DashboardScreen extends ConsumerWidget {
                   title: AppStrings.totalSchoolsCard,
                   value: data.metrics.totalSchools.toString(),
                   icon: Icons.business_rounded,
-                  color: Colors.blue,
+                  color: AppColors.secondary500,
                 ),
                 _KpiCard(
                   title: AppStrings.activeSchoolsCard,
                   value: data.metrics.activeSchools.toString(),
                   icon: Icons.school_rounded,
-                  color: Colors.green,
+                  color: AppColors.success500,
                 ),
                 _KpiCard(
                   title: AppStrings.monthlyRevenueCard,
                   value: NumberFormat.currency(locale: 'en_US', symbol: '\$').format(data.metrics.monthlyRevenue),
                   icon: Icons.payments_rounded,
-                  color: Colors.orange,
+                  color: AppColors.warning500,
                 ),
                 _KpiCard(
                   title: AppStrings.expiringSoonCard,
                   value: data.metrics.expiringSoon.toString(),
                   icon: Icons.warning_rounded,
-                  color: Colors.red,
+                  color: AppColors.error500,
                 ),
               ]),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -84,7 +86,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+        const SliverToBoxAdapter(child: AppSpacing.vGapXl3),
 
         /// ───────────────── ACTIVITY TITLE ─────────────────
         SliverToBoxAdapter(
@@ -97,7 +99,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 16)),
+        const SliverToBoxAdapter(child: AppSpacing.vGapLg),
 
         /// ───────────────── ACTIVITY LIST ─────────────────
         SliverPadding(
@@ -114,7 +116,7 @@ class DashboardScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final activity = data.recentActivities[index];
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  contentPadding: EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.sm),
                   leading: CircleAvatar(
                     backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                     child: Text(
@@ -145,7 +147,7 @@ class DashboardScreen extends ConsumerWidget {
           ),
         ),
 
-        const SliverToBoxAdapter(child: SizedBox(height: 40)),
+        const SliverToBoxAdapter(child: AppSpacing.vGapXl3),
       ],
     );
   }
@@ -176,7 +178,7 @@ class _HeaderSection extends StatelessWidget {
           ),
         ),
         if (!ResponsiveWrapper.isMobile(context)) ...[
-          const SizedBox(width: 16),
+          AppSpacing.hGapLg,
           IntrinsicWidth(
             child: AppPrimaryButton(
               onPressed: () {},

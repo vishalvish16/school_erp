@@ -59,10 +59,12 @@ abstract final class AppButtonStyles {
         animationDuration: const Duration(milliseconds: 200),
       ).copyWith(
         overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered))
+          if (states.contains(WidgetState.hovered)) {
             return Colors.white.withAlpha(25);
-          if (states.contains(WidgetState.pressed))
+          }
+          if (states.contains(WidgetState.pressed)) {
             return Colors.white.withAlpha(40);
+          }
           return null;
         }),
         elevation: WidgetStateProperty.resolveWith((states) {
@@ -87,10 +89,12 @@ abstract final class AppButtonStyles {
         shape: RoundedRectangleBorder(borderRadius: AppRadius.brMd),
       ).copyWith(
         overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered))
+          if (states.contains(WidgetState.hovered)) {
             return Colors.white.withAlpha(25);
-          if (states.contains(WidgetState.pressed))
+          }
+          if (states.contains(WidgetState.pressed)) {
             return Colors.white.withAlpha(40);
+          }
           return null;
         }),
       );
@@ -155,10 +159,12 @@ abstract final class AppButtonStyles {
         shape: RoundedRectangleBorder(borderRadius: AppRadius.brMd),
       ).copyWith(
         overlayColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.hovered))
+          if (states.contains(WidgetState.hovered)) {
             return Colors.white.withAlpha(25);
-          if (states.contains(WidgetState.pressed))
+          }
+          if (states.contains(WidgetState.pressed)) {
             return Colors.white.withAlpha(40);
+          }
           return null;
         }),
       );

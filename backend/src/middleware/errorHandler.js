@@ -6,14 +6,14 @@ export const errorHandler = (err, req, res, next) => {
 
     if (!err.isOperational) {
         statusCode = 500;
-        message = 'Internal Server Error';
+        message = err.message || 'Internal Server Error';
         errorCode = 'ERR_500';
         logger.error(`[UNHANDLED ERROR] ${err.message}`, { stack: err.stack, url: req.originalUrl, method: req.method });
     } else {
         logger.warn(`[OPERATIONAL ERROR] ${err.message}`, { url: req.originalUrl, method: req.method });
     }
 
-    const details = process.env.NODE_ENV === 'development' ? err.stack : null;
+    const details = err.stack;
 
     errorResponse(res, statusCode || 500, message, errorCode || `ERR_${statusCode || 500}`, details);
 };

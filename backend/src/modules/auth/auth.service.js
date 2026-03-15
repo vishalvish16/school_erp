@@ -16,38 +16,33 @@ export const login = async (email, password) => {
         throw new AppError('Account is inactive. Please contact support.', 403);
     }
 
-    // Allow both PLATFORM and SCHOOL role types
-    if (user.role.roleType !== 'PLATFORM' && user.role.roleType !== 'SCHOOL') {
-        throw new AppError('Access denied. Invalid account type.', 403);
-    }
-
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
         throw new AppError('Invalid email or password', 401);
     }
 
     const accessToken = jwtUtils.generateAccessToken({
-        userId: user.id.toString(),
+        userId: String(user.id),
         email: user.email,
-        role: user.role.roleType,
-        school_id: user.schoolId ? user.schoolId.toString() : null
+        role: user.role?.name || 'school_admin',
+        school_id: user.schoolId ? String(user.schoolId) : null
     });
 
     const refreshToken = jwtUtils.generateRefreshToken({
-        userId: user.id.toString(),
-        school_id: user.schoolId ? user.schoolId.toString() : null
+        userId: String(user.id),
+        school_id: user.schoolId ? String(user.schoolId) : null
     });
 
     return {
         access_token: accessToken,
         refresh_token: refreshToken,
         user: {
-            user_id: user.id.toString(),
+            user_id: String(user.id),
             first_name: user.firstName,
             last_name: user.lastName,
             email: user.email,
-            role: user.role.roleType,
-            school_id: user.schoolId ? user.schoolId.toString() : null
+            role: user.role?.name,
+            school_id: user.schoolId ? String(user.schoolId) : null
         }
     };
 };
@@ -64,7 +59,7 @@ export const forgotPassword = async (email, origin) => {
         return { message: 'If a user with that email exists, a reset link has been sent.' };
     }
 
-    await smartRepo.trackForgotPasswordRequest(email).catch(() => {});
+    await smartRepo.trackForgotPasswordRequest(email).catch(() => { });
 
     const token = crypto.randomBytes(32).toString('hex');
     const expiry = new Date(Date.now() + 3600000); // 1 hour

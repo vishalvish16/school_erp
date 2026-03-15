@@ -4,6 +4,10 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../design_system/design_system.dart';
+import '../../../design_system/tokens/app_colors.dart';
+import '../../../design_system/tokens/app_spacing.dart';
 
 class ResolveOverdueDialog extends StatefulWidget {
   const ResolveOverdueDialog({
@@ -43,15 +47,11 @@ class _ResolveOverdueDialogState extends State<ResolveOverdueDialog> {
       await widget.onResolve(_action, _paymentRefController.text.trim().isEmpty ? null : _paymentRefController.text.trim());
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Overdue resolved')),
-        );
+        AppSnackbar.success(context, AppStrings.overdueResolved);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -61,26 +61,26 @@ class _ResolveOverdueDialogState extends State<ResolveOverdueDialog> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: AppSpacing.paddingXl,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('Resolve Overdue', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          Text(AppStrings.resolveOverdue, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+          AppSpacing.vGapSm,
           Text(widget.schoolName, style: Theme.of(context).textTheme.bodyLarge),
-          Text('${widget.overdueDays} days overdue', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.red)),
-          const SizedBox(height: 24),
+          Text('${widget.overdueDays} days overdue', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.error500)),
+          AppSpacing.vGapXl,
           RadioListTile<String>(
-            title: const Text('Mark as Paid'),
-            subtitle: const Text('Payment received, extend subscription'),
+            title: const Text(AppStrings.markAsPaid),
+            subtitle: const Text(AppStrings.markAsPaidSubtitle),
             value: 'paid',
             groupValue: _action,
             onChanged: (v) => setState(() => _action = v!),
           ),
           RadioListTile<String>(
-            title: const Text('Grace Period'),
-            subtitle: const Text('Give 7 days extension'),
+            title: const Text(AppStrings.gracePeriod),
+            subtitle: const Text(AppStrings.gracePeriodSubtitle),
             value: 'grace_period',
             groupValue: _action,
             onChanged: (v) => setState(() => _action = v!),
@@ -93,23 +93,23 @@ class _ResolveOverdueDialogState extends State<ResolveOverdueDialog> {
             onChanged: (v) => setState(() => _action = v!),
           ),
           if (_action == 'paid') ...[
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             TextField(
               controller: _paymentRefController,
-              decoration: const InputDecoration(labelText: 'Payment reference'),
+              decoration: const InputDecoration(labelText: AppStrings.paymentReference),
             ),
           ],
           if (_action == 'terminate') ...[
-            const SizedBox(height: 16),
+            AppSpacing.vGapLg,
             Text(
               'Type the school name exactly to confirm:',
               style: Theme.of(context).textTheme.bodyMedium,
             ),
-            const SizedBox(height: 8),
+            AppSpacing.vGapSm,
             TextField(
               controller: _terminateConfirmController,
               decoration: InputDecoration(
-                labelText: 'School name',
+                labelText: AppStrings.schoolName,
                 hintText: widget.schoolName,
                 errorText: _terminateConfirmController.text.isNotEmpty &&
                         _terminateConfirmController.text.trim() != widget.schoolName
@@ -119,12 +119,12 @@ class _ResolveOverdueDialogState extends State<ResolveOverdueDialog> {
               onChanged: (_) => setState(() {}),
             ),
           ],
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(onPressed: _submitting ? null : () => Navigator.of(context).pop(), child: const Text('Cancel')),
-              const SizedBox(width: 8),
+              TextButton(onPressed: _submitting ? null : () => Navigator.of(context).pop(), child: const Text(AppStrings.cancel)),
+              AppSpacing.hGapSm,
               FilledButton(
                 onPressed: _submitting
                     ? null
@@ -132,11 +132,11 @@ class _ResolveOverdueDialogState extends State<ResolveOverdueDialog> {
                         ? null
                         : _submit,
                 style: _action == 'terminate'
-                    ? FilledButton.styleFrom(backgroundColor: Colors.red)
+                    ? FilledButton.styleFrom(backgroundColor: AppColors.error500)
                     : null,
                 child: _submitting
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Confirm Resolution'),
+                    : const Text(AppStrings.confirmResolution),
               ),
             ],
           ),

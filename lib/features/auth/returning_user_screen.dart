@@ -6,9 +6,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
 import '../../models/school_identity.dart';
 import '../../widgets/school_identity_banner.dart';
 import 'auth_screen_layout.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class ReturningUserScreen extends StatelessWidget {
   const ReturningUserScreen({
@@ -51,7 +53,7 @@ class ReturningUserScreen extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'Welcome back',
+                    AppStrings.welcomeBack,
                     style: AuthTextStyles.loginTitle,
                   ),
                   if (userName != null)
@@ -59,19 +61,19 @@ class ReturningUserScreen extends StatelessWidget {
                       userName!,
                       style: AuthTextStyles.tagline,
                     ),
-                  const SizedBox(height: 24),
+                  AppSpacing.vGapXl,
                   FilledButton(
                     onPressed: () => context.go('/dashboard'),
                     style: FilledButton.styleFrom(
                       backgroundColor: AuthColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                      padding: EdgeInsets.symmetric(vertical: AppSpacing.lg, horizontal: AppSpacing.xl2),
                     ),
                     child: Text('Continue to $contextLabel', style: AuthTextStyles.buttonPrimary),
                   ),
-                  const SizedBox(height: 12),
+                  AppSpacing.vGapMd,
                   TextButton(
                     onPressed: () => context.go('/login'),
-                    child: const Text('Sign in as different user'),
+                    child: const Text(AppStrings.signInDifferentUser),
                   ),
                 ],
               ),

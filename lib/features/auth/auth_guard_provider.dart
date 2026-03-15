@@ -20,6 +20,7 @@ class AuthGuardState {
     this.accessToken,
     this.userEmail,
     this.portalType,
+    this.designation,
     this.isInitializing = true,
   });
 
@@ -27,22 +28,38 @@ class AuthGuardState {
   final String? accessToken;
   final String? userEmail;
   final String? portalType;
+  final String? designation;
   final bool isInitializing;
 
   bool get isSuperAdmin => portalType == 'super_admin';
+
+  static const _teachingDesignations = {
+    'TEACHER', 'PRINCIPAL', 'VICE_PRINCIPAL', 'HOD',
+  };
+
+  bool get isTeacher =>
+      portalType == 'teacher' ||
+      (designation != null &&
+          _teachingDesignations.contains(designation!.toUpperCase()));
 
   AuthGuardState copyWith({
     bool? isAuthenticated,
     String? accessToken,
     String? userEmail,
     String? portalType,
+    String? designation,
     bool? isInitializing,
+    bool clearPortalType = false,
+    bool clearUserEmail = false,
+    bool clearAccessToken = false,
+    bool clearDesignation = false,
   }) {
     return AuthGuardState(
       isAuthenticated: isAuthenticated ?? this.isAuthenticated,
-      accessToken: accessToken ?? this.accessToken,
-      userEmail: userEmail ?? this.userEmail,
-      portalType: portalType ?? this.portalType,
+      accessToken: clearAccessToken ? null : (accessToken ?? this.accessToken),
+      userEmail: clearUserEmail ? null : (userEmail ?? this.userEmail),
+      portalType: clearPortalType ? null : (portalType ?? this.portalType),
+      designation: clearDesignation ? null : (designation ?? this.designation),
       isInitializing: isInitializing ?? false,
     );
   }
@@ -70,12 +87,13 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
 
     if (token != null && token.isNotEmpty) {
       if (_isTokenValid(token)) {
-        // Valid Session
+        final storedDesignation = prefs.getString('staff_designation');
         state = state.copyWith(
           isAuthenticated: true,
           accessToken: token,
           userEmail: _extractEmail(token),
           portalType: _extractPortalType(token),
+          designation: storedDesignation,
           isInitializing: false,
         );
       } else {
@@ -148,9 +166,17 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
 
   /// Establishes a new authenticated session (called after login success)
   /// [portalTypeOverride] — use API response portal_type when token may not have it
-  Future<void> establishSession(String token, {String? portalTypeOverride}) async {
+  /// [designation] — staff designation for teacher portal detection
+  Future<void> establishSession(
+    String token, {
+    String? portalTypeOverride,
+    String? designation,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('access_token', token);
+    if (designation != null) {
+      await prefs.setString('staff_designation', designation);
+    }
 
     final portalType = portalTypeOverride ?? _extractPortalType(token);
     state = state.copyWith(
@@ -158,6 +184,7 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
       accessToken: token,
       userEmail: _extractEmail(token),
       portalType: portalType,
+      designation: designation,
       isInitializing: false,
     );
   }
@@ -166,12 +193,14 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
   Future<void> clearSession() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
+    await prefs.remove('staff_designation');
 
-    state = state.copyWith(
+    state = const AuthGuardState(
       isAuthenticated: false,
       accessToken: null,
       userEmail: null,
       portalType: null,
+      designation: null,
       isInitializing: false,
     );
   }

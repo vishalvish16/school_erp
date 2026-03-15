@@ -12,14 +12,20 @@ import '../../core/services/local_storage_service.dart';
 import '../../utils/device_fingerprint.dart';
 import '../../utils/subdomain_resolver.dart';
 import '../../utils/hostname_stub.dart'
-    if (dart.library.html) '../../utils/hostname_web.dart' as hostname_impl;
+    if (dart.library.html) '../../utils/hostname_web.dart'
+    as hostname_impl;
 
 /// Result: either direct token or requires OTP
 typedef LoginResult = Map<String, dynamic>;
 
 /// Abstract interface for Login operations
 abstract class LoginRepository {
-  Future<LoginResult> login(String email, String password, {bool trustDevice = false, String? portalType});
+  Future<LoginResult> login(
+    String email,
+    String password, {
+    bool trustDevice = false,
+    String? portalType,
+  });
 }
 
 /// Production implementation using Dio
@@ -54,7 +60,12 @@ class AuthRepository implements LoginRepository {
   }
 
   @override
-  Future<LoginResult> login(String email, String password, {bool trustDevice = false, String? portalType}) async {
+  Future<LoginResult> login(
+    String email,
+    String password, {
+    bool trustDevice = false,
+    String? portalType,
+  }) async {
     try {
       String fingerprint = '';
       try {
@@ -71,10 +82,7 @@ class AuthRepository implements LoginRepository {
         'device_meta': {'device_type': 'unknown', 'trust_device': trustDevice},
       };
       if (resolvedPortal != null) body['portal_type'] = resolvedPortal;
-      final response = await _dio.post(
-        ApiConfig.loginEndpoint,
-        data: body,
-      );
+      final response = await _dio.post(ApiConfig.loginEndpoint, data: body);
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = response.data['data'] as Map<String, dynamic>?;
@@ -95,7 +103,10 @@ class AuthRepository implements LoginRepository {
             'otp_session_id': data['otp_session_id'],
             'expires_in': data['expires_in'] ?? 120,
             'masked_phone': data['masked_phone'],
+            'masked_email': data['masked_email'],
+            'otp_sent_to': data['otp_sent_to'],
             if (data['portal_type'] != null) 'portal_type': data['portal_type'],
+            if (data['dev_otp'] != null) 'dev_otp': data['dev_otp'],
           };
         }
 
@@ -110,11 +121,15 @@ class AuthRepository implements LoginRepository {
         }
         throw Exception('Access token missing from response payload');
       } else if (response.statusCode == 429) {
-        throw Exception(response.data['message'] ?? 'Too many attempts. Try again later.');
+        throw Exception(
+          response.data['message'] ?? 'Too many attempts. Try again later.',
+        );
       } else if (response.statusCode == 401) {
         throw Exception('Invalid email or password. Access denied.');
       } else {
-        throw Exception(response.data['message'] ?? 'Server error: ${response.statusCode}');
+        throw Exception(
+          response.data['message'] ?? 'Server error: ${response.statusCode}',
+        );
       }
     } on DioException catch (e) {
       if (e.type == DioExceptionType.connectionTimeout ||
@@ -123,7 +138,11 @@ class AuthRepository implements LoginRepository {
       } else if (e.type == DioExceptionType.connectionError) {
         throw Exception('Network unreachable. Please try again later.');
       } else {
-        throw Exception(e.response?.data?['message'] ?? e.message ?? 'An unexpected network error occurred.');
+        throw Exception(
+          e.response?.data?['message'] ??
+              e.message ??
+              'An unexpected network error occurred.',
+        );
       }
     } catch (e) {
       throw Exception('Login failed: $e');
@@ -134,7 +153,12 @@ class AuthRepository implements LoginRepository {
 /// Mock implementation for local testing without backend
 class MockLoginRepository implements LoginRepository {
   @override
-  Future<LoginResult> login(String email, String password, {bool trustDevice = false, String? portalType}) async {
+  Future<LoginResult> login(
+    String email,
+    String password, {
+    bool trustDevice = false,
+    String? portalType,
+  }) async {
     await Future.delayed(const Duration(seconds: 2));
     if (email == 'vishal.vish16@gmail.com' && password == 'password123') {
       return {'access_token': 'mock_jwt_token_123'};

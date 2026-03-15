@@ -1,0 +1,249 @@
+=== All tables ===
+  academic_years
+  audit_logs
+  auth_sessions
+  billing
+  certificates
+  class_teachers
+  classes
+  drivers
+  enquiries
+  exam_results
+  exam_schedules
+  exams
+  fee_heads
+  fee_structure_items
+  fee_structures
+  gps_logs
+  holidays
+  id_cards
+  leave_requests
+  login_attempts
+  notices
+  notification_logs
+  notification_providers
+  otp_verifications
+  payroll
+  permissions
+  rate_limit_tracking
+  registered_devices
+  rfid_events
+  role_permissions
+  roles
+  school_features
+  school_metrics_daily
+  school_notification_config
+  schools
+  sections
+  staff
+  staff_attendance
+  student_attendance
+  student_documents
+  student_transport
+  students
+  subjects
+  system_alerts
+  teacher_subjects
+  timetables
+  transport_routes
+  transport_settings
+  transport_stops
+  users
+  vehicles
+
+=== users ===
+  id (uuid) nullable=NO
+  school_id (uuid) nullable=YES
+  email (character varying) nullable=NO
+  password_hash (character varying) nullable=NO
+  role_id (integer) nullable=NO
+  is_active (boolean) nullable=NO
+  last_login (timestamp without time zone) nullable=YES
+  created_at (timestamp without time zone) nullable=NO
+  updated_at (timestamp without time zone) nullable=NO
+
+=== roles ===
+  id (integer) nullable=NO
+  name (character varying) nullable=NO
+  description (character varying) nullable=YES
+  scope (USER-DEFINED) nullable=NO
+  created_at (timestamp without time zone) nullable=NO
+
+=== schools ===
+  id (uuid) nullable=NO
+  name (character varying) nullable=NO
+  code (character varying) nullable=NO
+  board (character varying) nullable=YES
+  email (character varying) nullable=NO
+  phone (character varying) nullable=NO
+  address (text) nullable=YES
+  city (character varying) nullable=YES
+  state (character varying) nullable=YES
+  country (character varying) nullable=NO
+  timezone (character varying) nullable=NO
+  logo_url (text) nullable=YES
+  status (USER-DEFINED) nullable=NO
+  subscription_plan (USER-DEFINED) nullable=NO
+  subscription_start (date) nullable=YES
+  subscription_end (date) nullable=YES
+  created_at (timestamp without time zone) nullable=NO
+  updated_at (timestamp without time zone) nullable=NO
+
+=== registered_devices ===
+  id (uuid) nullable=NO
+  user_id (uuid) nullable=NO
+  school_id (uuid) nullable=YES
+  device_fingerprint (text) nullable=NO
+  device_name (character varying) nullable=YES
+  device_type (character varying) nullable=YES
+  browser (character varying) nullable=YES
+  os (character varying) nullable=YES
+  ip_address (inet) nullable=YES
+  city (character varying) nullable=YES
+  country (character varying) nullable=YES
+  is_trusted (boolean) nullable=YES
+  trusted_at (timestamp with time zone) nullable=YES
+  trusted_until (timestamp with time zone) nullable=YES
+  last_used_at (timestamp with time zone) nullable=YES
+  created_at (timestamp with time zone) nullable=YES
+
+=== otp_verifications ===
+  id (uuid) nullable=NO
+  user_id (uuid) nullable=YES
+  phone (character varying) nullable=YES
+  email (character varying) nullable=YES
+  otp_code (character varying) nullable=NO
+  otp_type (character varying) nullable=YES
+  device_fingerprint (text) nullable=YES
+  is_used (boolean) nullable=YES
+  attempts (integer) nullable=YES
+  max_attempts (integer) nullable=YES
+  expires_at (timestamp with time zone) nullable=NO
+  created_at (timestamp with time zone) nullable=YES
+
+=== auth_sessions ===
+  id (uuid) nullable=NO
+  user_id (uuid) nullable=NO
+  school_id (uuid) nullable=YES
+  device_id (uuid) nullable=YES
+  session_token (text) nullable=NO
+  refresh_token (text) nullable=YES
+  role (character varying) nullable=YES
+  portal_type (character varying) nullable=YES
+  ip_address (inet) nullable=YES
+  is_active (boolean) nullable=YES
+  expires_at (timestamp with time zone) nullable=NO
+  created_at (timestamp with time zone) nullable=YES
+  last_active_at (timestamp with time zone) nullable=YES
+
+=== login_attempts ===
+  id (bigint) nullable=NO
+  identifier (character varying) nullable=NO
+  ip_address (inet) nullable=YES
+  success (boolean) nullable=NO
+  created_at (timestamp with time zone) nullable=YES
+
+=== role_permissions ===
+  role_id (integer) nullable=NO
+  permission_id (uuid) nullable=NO
+
+=== Roles data ===
+  {"id":1,"name":"super_admin","description":"Super Administrator","scope":"SCHOOL","created_at":"2026-01-31T16:07:31.324Z"}
+  {"id":2,"name":"school_admin","description":"School Administrator","scope":"SCHOOL","created_at":"2026-01-31T16:07:31.330Z"}
+  {"id":3,"name":"teacher","description":"Teacher","scope":"SCHOOL","created_at":"2026-01-31T16:07:31.333Z"}
+  {"id":4,"name":"staff","description":"Staff Member","scope":"SCHOOL","created_at":"2026-01-31T16:07:31.336Z"}
+  {"id":5,"name":"student","description":"Student","scope":"SCHOOL","created_at":"2026-01-31T16:07:31.339Z"}
+  {"id":6,"name":"driver","description":"Bus Driver","scope":"SCHOOL","created_at":"2026-01-31T16:07:31.341Z"}
+
+=== Users with roles ===
+  id=e569ea4f-dd7b-4be4-9d54-3cf5312e04ab email=vishal.vish16@gmail.com school_id=null role=super_admin scope=SCHOOL active=true
+  id=99c3fd64-230c-4803-ae0a-c390401509b7 email=vishal@gmail.com school_id=3c3fa9ad-0843-4714-a41e-f2f0eea898a1 role=teacher scope=SCHOOL active=true
+  id=eb94be68-1cd8-421a-b560-4075abf2c93c email=vishal1@gmail.com school_id=3c3fa9ad-0843-4714-a41e-f2f0eea898a1 role=staff scope=SCHOOL active=true
+  id=147ecb7d-1e70-4727-ab3d-aababe68f409 email=superadmin@schoolerp.com school_id=null role=super_admin scope=SCHOOL active=true
+  id=8bb5d0ca-89ad-4d1f-b2a4-02955e12a0af email=admin@greenvalley.edu school_id=9140adf5-f274-4d0d-8316-89044ccc6218 role=school_admin scope=SCHOOL active=true
+
+=== Enums ===
+  certificates_type_enum: BONAFIDE
+  certificates_type_enum: TRANSFER
+  certificates_type_enum: CHARACTER
+  certificates_type_enum: LEAVING
+  certificates_type_enum: CONDUCT
+  enquiries_status_enum: NEW
+  enquiries_status_enum: FOLLOWUP
+  enquiries_status_enum: CONVERTED
+  enquiries_status_enum: REJECTED
+  id_cards_entity_type_enum: STUDENT
+  id_cards_entity_type_enum: STAFF
+  leave_requests_leave_type_enum: SICK
+  leave_requests_leave_type_enum: CASUAL
+  leave_requests_leave_type_enum: EARNED
+  leave_requests_leave_type_enum: MATERNITY
+  leave_requests_leave_type_enum: PATERNITY
+  leave_requests_leave_type_enum: UNPAID
+  leave_requests_status_enum: PENDING
+  leave_requests_status_enum: APPROVED
+  leave_requests_status_enum: REJECTED
+  leave_requests_status_enum: CANCELLED
+  notices_target_enum: STUDENTS
+  notices_target_enum: PARENTS
+  notices_target_enum: STAFF
+  notices_target_enum: ALL
+  notification_logs_channel_enum: SMS
+  notification_logs_channel_enum: WHATSAPP
+  notification_logs_channel_enum: PUSH
+  notification_logs_channel_enum: EMAIL
+  notification_logs_status_enum: PENDING
+  notification_logs_status_enum: SENT
+  notification_logs_status_enum: FAILED
+  notification_logs_status_enum: DELIVERED
+  notification_providers_provider_type_enum: SMS
+  notification_providers_provider_type_enum: WHATSAPP
+  notification_providers_provider_type_enum: PUSH
+  notification_providers_provider_type_enum: EMAIL
+  rfid_events_event_type_enum: PICKUP
+  rfid_events_event_type_enum: DROP
+  roles_scope_enum: GLOBAL
+  roles_scope_enum: SCHOOL
+  schools_status_enum: ACTIVE
+  schools_status_enum: SUSPENDED
+  schools_status_enum: INACTIVE
+  schools_subscription_plan_enum: BASIC
+  schools_subscription_plan_enum: STANDARD
+  schools_subscription_plan_enum: PREMIUM
+  staff_attendance_status_enum: PRESENT
+  staff_attendance_status_enum: ABSENT
+  staff_attendance_status_enum: LEAVE
+  staff_attendance_status_enum: HALF_DAY
+  staff_attendance_status_enum: LATE
+  staff_role_enum: TEACHER
+  staff_role_enum: CLERK
+  staff_role_enum: ACCOUNTANT
+  staff_role_enum: LIBRARIAN
+  staff_role_enum: LAB_ASSISTANT
+  staff_role_enum: PEON
+  staff_role_enum: SECURITY
+  student_attendance_source_enum: RFID
+  student_attendance_source_enum: MANUAL
+  student_attendance_source_enum: BIOMETRIC
+  student_attendance_status_enum: PRESENT
+  student_attendance_status_enum: ABSENT
+  student_attendance_status_enum: LATE
+  student_attendance_status_enum: HALF_DAY
+  students_gender_enum: MALE
+  students_gender_enum: FEMALE
+  students_gender_enum: OTHER
+  students_status_enum: ACTIVE
+  students_status_enum: INACTIVE
+  students_status_enum: PASSED_OUT
+  students_status_enum: TRANSFERRED
+  system_alerts_alert_type_enum: GPS_OFFLINE
+  system_alerts_alert_type_enum: RFID_FAIL
+  system_alerts_alert_type_enum: LOW_ATTENDANCE
+  system_alerts_alert_type_enum: PAYMENT_FAILED
+  system_alerts_alert_type_enum: SYSTEM_ERROR
+  system_alerts_severity_enum: LOW
+  system_alerts_severity_enum: MEDIUM
+  system_alerts_severity_enum: HIGH
+  system_alerts_severity_enum: CRITICAL
+  transport_settings_rfid_type_enum: UHF
+  transport_settings_rfid_type_enum: HF

@@ -6,8 +6,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../design_system/design_system.dart';
 import '../../data/models/plan_model.dart';
 import '../../provider/plan_provider.dart';
+import '../../../../design_system/tokens/app_colors.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
 class PlanDialog extends ConsumerStatefulWidget {
   final PlanModel? plan;
@@ -88,24 +91,12 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
 
     if (success) {
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
+      AppSnackbar.success(context,
             widget.plan != null
                 ? 'Plan updated successfully'
-                : 'Plan created successfully',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
+                : 'Plan created successfully');
     } else {
-      // Error message is already in provider.error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.error ?? 'Failed to save plan'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppSnackbar.error(context, provider.error ?? 'Failed to save plan');
     }
   }
 
@@ -117,7 +108,7 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
       title: Text(
         widget.plan != null ? 'Edit Subscription Plan' : 'Create New Plan',
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.brXl2),
       content: SizedBox(
         width: 500,
         child: SingleChildScrollView(
@@ -132,7 +123,7 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
                   hint: 'e.g. Professional, Enterprise',
                   icon: Icons.badge_outlined,
                 ),
-                const SizedBox(height: 16),
+                AppSpacing.vGapLg,
                 Row(
                   children: [
                     Expanded(
@@ -143,7 +134,7 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
                         isNumber: true,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    AppSpacing.hGapLg,
                     Expanded(
                       child: _buildTextField(
                         controller: _teachersController,
@@ -154,16 +145,16 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                AppSpacing.vGapLg,
                 _buildTextField(
                   controller: _branchesController,
                   label: 'Max Branches',
                   icon: Icons.account_tree_outlined,
                   isNumber: true,
                 ),
-                const SizedBox(height: 24),
+                AppSpacing.vGapXl,
                 const Divider(),
-                const SizedBox(height: 16),
+                AppSpacing.vGapLg,
                 Row(
                   children: [
                     Expanded(
@@ -174,7 +165,7 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
                         isNumber: true,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    AppSpacing.hGapLg,
                     Expanded(
                       child: _buildTextField(
                         controller: _yearlyController,
@@ -185,7 +176,7 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                AppSpacing.vGapLg,
                 SwitchListTile(
                   title: const Text('Is Active'),
                   subtitle: const Text(
@@ -193,7 +184,7 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
                   ),
                   value: _isActive,
                   onChanged: (val) => setState(() => _isActive = val),
-                  activeColor: Colors.indigo,
+                  activeThumbColor: Colors.indigo,
                   contentPadding: EdgeInsets.zero,
                 ),
               ],
@@ -201,7 +192,7 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
           ),
         ),
       ),
-      actionsPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      actionsPadding: EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.lg),
       actions: [
         TextButton(
           onPressed: isLoading ? null : () => Navigator.pop(context),
@@ -212,9 +203,9 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.indigo,
             foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacing.xl2, vertical: AppSpacing.lg),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: AppRadius.brLg,
             ),
           ),
           child: isLoading
@@ -247,9 +238,9 @@ class _PlanDialogState extends ConsumerState<PlanDialog> {
         labelText: label,
         hintText: hint,
         prefixIcon: Icon(icon, size: 20),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(borderRadius: AppRadius.brLg),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: AppColors.neutral50,
       ),
       validator: (val) {
         if (val == null || val.trim().isEmpty) return 'Field is required';

@@ -1,0 +1,12 @@
+{
+  "success": true,
+  "message": "Login successful",
+  "data": {
+    "requires_otp": true,
+    "otp_session_id": "b0e3ee75-6e71-422a-856c-8f9909e73788",
+    "expires_in": 120,
+    "masked_phone": null,
+    "portal_type": "super_admin",
+    "dev_otp": "944581"
+  }
+}

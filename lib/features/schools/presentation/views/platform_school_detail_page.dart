@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../widgets/common/searchable_dropdown_form_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_strings.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,8 @@ import '../../domain/models/subscription_models.dart';
 import '../../../../shared/widgets/reusable_data_table.dart';
 import 'assign_plan_dialog.dart';
 import 'subscription_history_modal.dart';
+import '../../../../design_system/tokens/app_colors.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
 class PlatformSchoolDetailPage extends ConsumerWidget {
   final String schoolId;
@@ -22,8 +25,8 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: isDark
-          ? const Color(0xFF121212)
-          : const Color(0xFFF8F9FA),
+          ? AppColors.darkSurface
+          : AppColors.lightBackground,
       appBar: AppBar(
         title: const Text(AppStrings.schoolDetails),
         actions: [
@@ -42,25 +45,25 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(child: Text(AppStrings.errorWithMessage(err.toString()))),
         data: (school) => SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: AppSpacing.paddingXl,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(context, school),
-              const SizedBox(height: 32),
+              AppSpacing.vGapXl2,
 
               _buildSectionHeader(
                 AppStrings.subscriptionInformation,
                 Icons.card_membership,
               ),
-              const SizedBox(height: 16),
+              AppSpacing.vGapLg,
 
               _SubscriptionCard(school: school),
-              const SizedBox(height: 32),
+              AppSpacing.vGapXl2,
 
               if (school.subscriptionHistory.isNotEmpty) ...[
                 _buildSectionHeader(AppStrings.subscriptionHistory, Icons.history),
-                const SizedBox(height: 16),
+                AppSpacing.vGapLg,
                 _SubscriptionHistoryTable(history: school.subscriptionHistory),
               ],
             ],
@@ -78,12 +81,12 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
           height: 24,
           decoration: BoxDecoration(
             color: Colors.indigo,
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: AppRadius.brXs,
           ),
         ),
-        const SizedBox(width: 12),
+        AppSpacing.hGapMd,
         Icon(icon, size: 20, color: Colors.indigo),
-        const SizedBox(width: 8),
+        AppSpacing.hGapSm,
         Text(
           title,
           style: const TextStyle(
@@ -100,11 +103,11 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        borderRadius: AppRadius.brXl,
+        side: BorderSide(color: AppColors.neutral400.withOpacity(0.2)),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: AppSpacing.paddingXl,
         child: Wrap(
           spacing: 24,
           runSpacing: 24,
@@ -137,9 +140,9 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
                 ),
                 Text(
                   AppStrings.schoolCodeLabel(school.schoolCode),
-                  style: TextStyle(color: Colors.grey.shade600),
+                  style: TextStyle(color: AppColors.neutral600),
                 ),
-                const SizedBox(height: 12),
+                AppSpacing.vGapMd,
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -152,9 +155,9 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
                         Icon(
                           Icons.location_on,
                           size: 16,
-                          color: Colors.grey.shade600,
+                          color: AppColors.neutral600,
                         ),
-                        const SizedBox(width: 4),
+                        AppSpacing.hGapXs,
                         Text(
                           '${school.city ?? AppStrings.notAvailable}, ${school.state ?? AppStrings.notAvailable}',
                         ),
@@ -183,11 +186,11 @@ class _SubscriptionCard extends ConsumerWidget {
 
     return Card(
       elevation: 4,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shadowColor: AppColors.neutral200,
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.brXl3),
       child: Container(
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: AppRadius.brXl3,
           gradient: LinearGradient(
             colors: [
               theme.colorScheme.surface,
@@ -237,7 +240,7 @@ class _SubscriptionCard extends ConsumerWidget {
                 _buildRemainingColumn(sub?.daysRemaining ?? 0),
               ],
             ),
-            const SizedBox(height: 32),
+            AppSpacing.vGapXl2,
             Wrap(
               spacing: 12,
               runSpacing: 12,
@@ -261,8 +264,8 @@ class _SubscriptionCard extends ConsumerWidget {
                       ? Icons.play_arrow
                       : Icons.pause,
                   color: sub?.status == 'SUSPENDED'
-                      ? Colors.green
-                      : Colors.orange,
+                      ? AppColors.success500
+                      : AppColors.warning500,
                   onPressed: sub != null
                       ? () => _toggleStatus(context, ref, sub.subscriptionId)
                       : null,
@@ -291,8 +294,8 @@ class _SubscriptionCard extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 12, color: AppColors.neutral400)),
+        AppSpacing.vGapXs,
         Text(
           value,
           style: TextStyle(
@@ -306,21 +309,21 @@ class _SubscriptionCard extends ConsumerWidget {
 
   Widget _buildRemainingColumn(int days) {
     final color = days < 7
-        ? Colors.red
-        : (days < 30 ? Colors.orange : Colors.green);
+        ? AppColors.error500
+        : (days < 30 ? AppColors.warning500 : AppColors.success500);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Days Remaining',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+          style: TextStyle(fontSize: 12, color: AppColors.neutral400),
         ),
-        const SizedBox(height: 4),
+        AppSpacing.vGapXs,
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
           decoration: BoxDecoration(
             color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.brMd,
           ),
           child: Text(
             '$days Days',
@@ -336,9 +339,14 @@ class _SubscriptionCard extends ConsumerWidget {
   }
 
   void _showChangePlanDialog(BuildContext context, WidgetRef ref) {
+    final sub = school.activeSubscription;
     showDialog(
       context: context,
-      builder: (context) => AssignPlanDialog(schoolId: school.id),
+      builder: (context) => AssignPlanDialog(
+        schoolId: school.id,
+        currentPlanId: sub?.planId != null ? int.tryParse(sub!.planId) : school.planId,
+        currentPlanName: sub?.planName ?? school.planName,
+      ),
     );
   }
 
@@ -352,14 +360,10 @@ class _SubscriptionCard extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Enter number of months to extend:'),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<int>(
+            AppSpacing.vGapLg,
+            SearchableDropdownFormField<int>.valueItems(
               value: months,
-              items: List.generate(12, (i) => i + 1)
-                  .map(
-                    (e) => DropdownMenuItem(value: e, child: Text('$e Months')),
-                  )
-                  .toList(),
+              valueItems: List.generate(12, (i) => MapEntry(i + 1, '${i + 1} Months')),
               onChanged: (v) => months = v ?? 1,
             ),
           ],
@@ -415,8 +419,8 @@ class _SubActionButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: color ?? theme.colorScheme.primary,
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          padding: EdgeInsets.symmetric(horizontal: 20, vertical: AppSpacing.lg),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.brLg),
         ),
       ),
     );
@@ -433,8 +437,8 @@ class _SubscriptionHistoryTable extends StatelessWidget {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        borderRadius: AppRadius.brXl,
+        side: BorderSide(color: AppColors.neutral400.withOpacity(0.2)),
       ),
       child: ListView.separated(
         shrinkWrap: true,
@@ -456,7 +460,7 @@ class _SubscriptionHistoryTable extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 StatusBadge(status: h.status),
-                const SizedBox(height: 4),
+                AppSpacing.vGapXs,
                 Text(h.billingCycle, style: const TextStyle(fontSize: 10)),
               ],
             ),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_strings.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class ReusableDataTable extends StatelessWidget {
   final List<String> columns;
@@ -40,7 +42,7 @@ class ReusableDataTable extends StatelessWidget {
           padding: EdgeInsets.all(32.0),
           child: Text(
             AppStrings.noRecordsFound,
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            style: TextStyle(color: AppColors.neutral400, fontSize: 16),
           ),
         ),
       );
@@ -59,7 +61,7 @@ class ReusableDataTable extends StatelessWidget {
               sortColumnIndex: sortColumnIndex,
               sortAscending: sortAscending,
               headingRowColor: WidgetStateProperty.resolveWith(
-                (states) => Colors.grey.shade100,
+                (states) => AppColors.neutral100,
               ),
               columns: List.generate(columns.length, (i) {
                 final isSortable = sortableColumns != null &&
@@ -81,7 +83,7 @@ class ReusableDataTable extends StatelessWidget {
                                 : Icons.arrow_drop_down)
                             : Icons.unfold_more,
                         size: 18,
-                        color: isSorted ? Colors.blue : Colors.grey,
+                        color: isSorted ? AppColors.secondary500 : AppColors.neutral400,
                       ),
                   ],
                 );
@@ -119,23 +121,23 @@ class StatusBadge extends StatelessWidget {
 
     switch (status.toUpperCase()) {
       case 'ACTIVE':
-        bgColor = Colors.green.shade100;
-        textColor = Colors.green.shade800;
+        bgColor = AppColors.success100;
+        textColor = AppColors.success700;
         break;
       case 'SUSPENDED':
-        bgColor = Colors.red.shade100;
-        textColor = Colors.red.shade800;
+        bgColor = AppColors.error100;
+        textColor = AppColors.error700;
         break;
       default:
-        bgColor = Colors.grey.shade200;
-        textColor = Colors.grey.shade800;
+        bgColor = AppColors.neutral200;
+        textColor = AppColors.neutral800;
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.brLg,
       ),
       child: Text(
         status.toUpperCase(),

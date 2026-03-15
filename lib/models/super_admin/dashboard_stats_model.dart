@@ -4,7 +4,6 @@
 // =============================================================================
 
 import 'school_model.dart';
-import 'plan_model.dart';
 
 class SuperAdminPlanDistributionModel {
   final String planId;

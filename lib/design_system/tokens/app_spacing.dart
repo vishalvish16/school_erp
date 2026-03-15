@@ -4,6 +4,7 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
 /// Spacing scale — based on 4px grid.
 abstract final class AppSpacing {
@@ -138,17 +139,143 @@ abstract final class AppElevation {
 abstract final class AppBreakpoints {
   AppBreakpoints._();
 
-  static const double mobile  = 480;
-  static const double tablet  = 768;
-  static const double laptop  = 1024;
-  static const double desktop = 1280;
+  static const double mobile     = 480;
+  static const double tablet     = 768;
+  static const double laptop     = 1024;
+  static const double desktop    = 1280;
   static const double widescreen = 1536;
 
   // Sidebar widths
   static const double sidebarExpanded  = 260;
   static const double sidebarCollapsed = 72;
 
-  // Content max width
-  static const double contentMaxWidth  = 1200;
-  static const double formMaxWidth     = 600;
+  // Content max widths — use these for ConstrainedBox / Container maxWidth
+  static const double contentMaxWidth = 1200;
+  static const double formMaxWidth    = 600;
+  static const double dialogMaxWidth  = 560;
+  static const double dialogMinWidth  = 400;
+  static const double cardMinWidth    = 280;
+}
+
+// =============================================================================
+// ICON SIZES — use AppIconSize everywhere instead of Icon(x, size: 24)
+// =============================================================================
+
+/// Icon size tokens — covers all icon usages across the system.
+/// Never use raw numbers like `Icon(Icons.add, size: 24)`.
+abstract final class AppIconSize {
+  AppIconSize._();
+
+  static const double xs  = 12.0;  // badge icon, tiny indicator
+  static const double sm  = 16.0;  // inline icon in text, table row icon
+  static const double md  = 20.0;  // button icon, form icon
+  static const double lg  = 24.0;  // standard action icon (default)
+  static const double xl  = 32.0;  // section header icon, card icon
+  static const double xl2 = 40.0;  // avatar icon, large action
+  static const double xl3 = 48.0;  // empty state icon
+  static const double xl4 = 64.0;  // splash / error state icon
+}
+
+// =============================================================================
+// BORDER WIDTH — use AppBorderWidth instead of raw 1.0, 1.5, 2.0
+// =============================================================================
+
+/// Border width tokens.
+/// Never write `Border.all(width: 1)` or `side: BorderSide(width: 2)` inline.
+abstract final class AppBorderWidth {
+  AppBorderWidth._();
+
+  static const double hairline = 0.5;  // very subtle separator
+  static const double thin     = 1.0;  // default border
+  static const double medium   = 1.5;  // focused / active border
+  static const double thick    = 2.0;  // emphasis border, selected state
+}
+
+// =============================================================================
+// OPACITY — use AppOpacity instead of raw .withValues(alpha: 0.5)
+// =============================================================================
+
+/// Opacity tokens — covers disabled states, overlays, hover states.
+/// Use as: `color.withValues(alpha: AppOpacity.disabled)`
+abstract final class AppOpacity {
+  AppOpacity._();
+
+  static const double hover    = 0.06;  // hover overlay on surfaces
+  static const double pressed  = 0.10;  // pressed overlay on surfaces
+  static const double focus    = 0.12;  // focused ring / overlay
+  static const double divider  = 0.12;  // subtle divider alpha
+  static const double disabled = 0.38;  // disabled text / icon
+  static const double medium   = 0.50;  // medium visibility
+  static const double high     = 0.70;  // high visibility secondary
+  static const double shadow   = 0.08;  // standard box shadow alpha
+  static const double overlay  = 0.40;  // modal overlay / scrim
+  static const double scrim    = 0.60;  // full-screen scrim
+}
+
+// =============================================================================
+// ANIMATION DURATION — use AppDuration instead of Duration(milliseconds: 200)
+// =============================================================================
+
+/// Animation duration tokens — keeps all transitions consistent.
+/// Never write `Duration(milliseconds: 300)` or `Duration(seconds: 3)` inline.
+abstract final class AppDuration {
+  AppDuration._();
+
+  static const Duration instant  = Duration(milliseconds: 50);    // micro-interaction
+  static const Duration fast     = Duration(milliseconds: 150);   // button press
+  static const Duration normal   = Duration(milliseconds: 250);   // standard transition
+  static const Duration moderate = Duration(milliseconds: 350);   // dialog open/close
+  static const Duration slow     = Duration(milliseconds: 500);   // page transition
+  static const Duration xslow    = Duration(milliseconds: 800);   // splash / intro
+  static const Duration toast    = Duration(seconds: 3);          // snackbar/toast display
+  static const Duration tooltip  = Duration(milliseconds: 1500);  // tooltip auto-dismiss
+}
+
+// =============================================================================
+// DIVIDER — pre-built Divider widgets using design system values
+// =============================================================================
+
+/// Pre-built dividers — use these instead of `Divider(color: ..., height: ...)`
+abstract final class AppDivider {
+  AppDivider._();
+
+  /// Horizontal divider — standard 1px, subtle neutral color
+  static Widget get horizontal => const _AppHDivider();
+
+  /// Thin horizontal hairline divider
+  static Widget get hairline => const _AppHDivider(hairline: true);
+
+  /// Vertical divider (use inside Row)
+  static Widget get vertical => const _AppVDivider();
+}
+
+class _AppHDivider extends StatelessWidget {
+  const _AppHDivider({this.hairline = false});
+  final bool hairline;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Divider(
+      height: AppBorderWidth.thin,
+      thickness: hairline ? AppBorderWidth.hairline : AppBorderWidth.thin,
+      color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+          .withValues(alpha: AppOpacity.medium),
+    );
+  }
+}
+
+class _AppVDivider extends StatelessWidget {
+  const _AppVDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return VerticalDivider(
+      width: AppBorderWidth.thin,
+      thickness: AppBorderWidth.thin,
+      color: (isDark ? AppColors.darkBorder : AppColors.lightBorder)
+          .withValues(alpha: AppOpacity.medium),
+    );
+  }
 }

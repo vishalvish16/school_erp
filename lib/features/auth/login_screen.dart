@@ -5,12 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../design_system/design_system.dart';
 import '../../core/services/biometric_service.dart';
 import '../../core/constants/app_strings.dart';
 import '../../utils/subdomain_resolver.dart';
 import 'auth_guard_provider.dart';
 import 'login_provider.dart';
 import 'login_state.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 /// Super Admin / Platform Command Center login (admin.vidyron.in)
 class LoginScreen extends ConsumerStatefulWidget {
@@ -75,28 +78,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final loginState = ref.watch(loginProvider);
 
     ref.listen<LoginState>(loginProvider, (previous, next) {
-      if (next.requires2fa && previous?.requires2fa != true && next.tempToken != null && next.tempToken!.isNotEmpty) {
+      if (next.requires2fa &&
+          previous?.requires2fa != true &&
+          next.tempToken != null &&
+          next.tempToken!.isNotEmpty) {
         final token = Uri.encodeComponent(next.tempToken!);
         final portal = next.portalType;
-        final q = 'temp_token=$token${portal != null ? '&portal_type=$portal' : ''}';
+        final q =
+            'temp_token=$token${portal != null ? '&portal_type=$portal' : ''}';
         context.push('/verify-2fa?$q');
-      } else if (next.requiresOtp && previous?.requiresOtp != true && next.otpSessionId != null && next.otpSessionId!.isNotEmpty) {
+      } else if (next.requiresOtp &&
+          previous?.requiresOtp != true &&
+          next.otpSessionId != null &&
+          next.otpSessionId!.isNotEmpty) {
         final sessionId = next.otpSessionId!;
         final masked = next.maskedPhone ?? '';
+        final maskedEmail = next.maskedEmail ?? '';
+        final otpSentTo = next.otpSentTo ?? '';
         final portal = next.portalType;
-        final q = 'otp_session_id=$sessionId&masked_phone=${Uri.encodeComponent(masked)}${portal != null ? '&portal_type=$portal' : ''}';
+        final devOtp = next.devOtp;
+        final q =
+            'otp_session_id=$sessionId&masked_phone=${Uri.encodeComponent(masked)}&masked_email=${Uri.encodeComponent(maskedEmail)}&otp_sent_to=${Uri.encodeComponent(otpSentTo)}${portal != null ? '&portal_type=$portal' : ''}${devOtp != null ? '&dev_otp=$devOtp' : ''}';
         context.push('/device-verification?$q');
       } else if (next.isSuccess && previous?.isSuccess != true) {
-        final portal = next.portalType ?? ref.read(authGuardProvider).portalType;
+        final portal =
+            next.portalType ?? ref.read(authGuardProvider).portalType;
         final isSuperAdmin = portal == 'super_admin';
         context.go(isSuperAdmin ? '/super-admin/dashboard' : '/dashboard');
       } else if (next.isFailure && previous?.isFailure != true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage ?? AppStrings.loginFailed),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
+        AppSnackbar.error(context, next.errorMessage ?? AppStrings.loginFailed);
       }
     });
 
@@ -208,28 +218,40 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         vertical: AuthSizes.headerPaddingV,
         horizontal: AuthSizes.headerPaddingH,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Image.asset(
-            AuthAssets.logo,
-            height: isMobile
-                ? AuthSizes.logoHeightMobile
-                : AuthSizes.logoHeightWeb,
-            fit: BoxFit.contain,
-            isAntiAlias: true,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.school_rounded,
-              size: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
-              color: AuthColors.primary,
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Image.asset(
+                AuthAssets.logo,
+                height: isMobile
+                    ? AuthSizes.logoHeightMobile
+                    : AuthSizes.logoHeightWeb,
+                fit: BoxFit.contain,
+                isAntiAlias: true,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.school_rounded,
+                  size: isMobile
+                      ? AuthSizes.logoHeightMobile
+                      : AuthSizes.logoHeightWeb,
+                  color: AuthColors.primary,
+                ),
+              ),
+              if (isMobile) ...[
+                SizedBox(height: AuthSizes.taglineGap),
+                _buildMobileTagline(),
+              ],
+            ],
           ),
-          if (isMobile) ...[
-            SizedBox(height: AuthSizes.taglineGap),
-            _buildMobileTagline(),
-          ],
+          Positioned(
+            top: 0,
+            right: 0,
+            child: const ThemeToggleButton(),
+          ),
         ],
       ),
     );
@@ -482,11 +504,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const Center(
                 child: Column(
                   children: [
-                    Text(
-                      AuthStrings.login,
-                      style: AuthTextStyles.loginTitle,
-                    ),
-                    SizedBox(height: 4),
+                    Text(AuthStrings.login, style: AuthTextStyles.loginTitle),
+                    AppSpacing.vGapXs,
                     Text(
                       'Platform Command Center',
                       style: AuthTextStyles.tagline,
@@ -496,21 +515,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               if (_subdomainValid == false)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: AuthSizes.formSpacingSmall),
+                  padding: const EdgeInsets.only(
+                    bottom: AuthSizes.formSpacingSmall,
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: AppSpacing.paddingMd,
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(8),
+                      color: AppColors.warning500.withValues(alpha: 0.15),
+                      borderRadius: AppRadius.brMd,
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.warning_amber, color: Colors.orange, size: 20),
-                        SizedBox(width: 8),
+                        Icon(
+                          Icons.warning_amber,
+                          color: AppColors.warning500,
+                          size: 20,
+                        ),
+                        AppSpacing.hGapSm,
                         Expanded(
                           child: Text(
-                            'Platform login is at admin.vidyron.in',
-                            style: AuthTextStyles.tagline.copyWith(fontSize: 13),
+                            AppStrings.platformLoginBanner,
+                            style: AuthTextStyles.tagline.copyWith(
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -658,10 +685,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         MediaQuery.platformBrightnessOf(context) ==
                             Brightness.dark;
                     final fgColor = isDark
-                        ? const Color(0xFFF8FAFC)
+                        ? AppColors.neutral50
                         : AuthColors.textPrimary;
                     final borderColor = isDark
-                        ? const Color(0xFF64748B)
+                        ? AppColors.neutral500
                         : AuthColors.border;
                     final type =
                         state.primaryBiometricType ?? BiometricTypeUI.both;
@@ -722,7 +749,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final isDark =
         Theme.of(context).brightness == Brightness.dark ||
         MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    return isDark ? const Color(0xFF64748B) : AuthColors.border;
+    return isDark ? AppColors.neutral500 : AuthColors.border;
   }
 
   Widget _buildStyledField({
@@ -736,12 +763,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     // Use platform brightness for mobile - ensures correct colors in dark mode
-    final isDark = theme.brightness == Brightness.dark ||
+    final isDark =
+        theme.brightness == Brightness.dark ||
         MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-    final inputTextColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
-    final hintColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
-    final iconColor = isDark ? const Color(0xFF94A3B8) : colorScheme.onSurfaceVariant;
-    final fieldBgColor = isDark ? colorScheme.surface : colorScheme.surfaceContainerHighest;
+    final inputTextColor = isDark
+        ? AppColors.neutral50
+        : AppColors.neutral800;
+    final hintColor = isDark
+        ? AppColors.neutral400
+        : colorScheme.onSurfaceVariant;
+    final iconColor = isDark
+        ? AppColors.neutral400
+        : colorScheme.onSurfaceVariant;
+    final fieldBgColor = isDark
+        ? colorScheme.surface
+        : colorScheme.surfaceContainerHighest;
 
     return Container(
       decoration: BoxDecoration(

@@ -54,7 +54,12 @@ class SchoolErpAdminApp extends ConsumerWidget {
       routerConfig: router,
 
       builder: (context, child) {
-        return InactivityWrapper(child: child ?? const SizedBox());
+        return AnimatedTheme(
+          data: Theme.of(context),
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
+          child: InactivityWrapper(child: child ?? const SizedBox()),
+        );
       },
     );
   }

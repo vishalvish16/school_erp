@@ -7,8 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/network/dio_client.dart';
 import '../../models/school_identity.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class SchoolSetupPhoneWidget extends ConsumerStatefulWidget {
   const SchoolSetupPhoneWidget({
@@ -164,17 +167,17 @@ class _SchoolSetupPhoneWidgetState extends ConsumerState<SchoolSetupPhoneWidget>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'Enter your mobile number',
+          AppStrings.enterMobileNumber,
           style: AuthTextStyles.tagline.copyWith(
             color: AuthColors.textPrimary,
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 12),
+        AppSpacing.vGapMd,
         Row(
           children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.lg),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(AuthSizes.formFieldRadius),
@@ -183,20 +186,20 @@ class _SchoolSetupPhoneWidgetState extends ConsumerState<SchoolSetupPhoneWidget>
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('🇮🇳', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 8),
-                  Text('+91', style: AuthTextStyles.inputText),
+                  const Text(AppStrings.indiaFlag, style: TextStyle(fontSize: 20)),
+                  AppSpacing.hGapSm,
+                  Text(AppStrings.indiaCode, style: AuthTextStyles.inputText),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
+            AppSpacing.hGapMd,
             Expanded(
               child: TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.number,
                 maxLength: 10,
                 decoration: InputDecoration(
-                  hintText: '10-digit mobile',
+                  hintText: AppStrings.tenDigitMobile,
                   hintStyle: AuthTextStyles.inputHint,
                   counterText: '',
                   filled: true,
@@ -216,19 +219,19 @@ class _SchoolSetupPhoneWidgetState extends ConsumerState<SchoolSetupPhoneWidget>
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        AppSpacing.vGapSm,
         Text(
-          'We\'ll find your school automatically',
+          AppStrings.weFindSchoolAuto,
           style: AuthTextStyles.inputHint.copyWith(
             fontSize: 13,
             color: AuthColors.textSecondary,
           ),
         ),
         if (_error != null) ...[
-          const SizedBox(height: 12),
-          Text(_error!, style: AuthTextStyles.tagline.copyWith(color: Colors.red, fontSize: 13)),
+          AppSpacing.vGapMd,
+          Text(_error!, style: AuthTextStyles.tagline.copyWith(color: AppColors.error500, fontSize: 13)),
         ],
-        const SizedBox(height: 24),
+        AppSpacing.vGapXl,
         SizedBox(
           height: AuthSizes.buttonHeight,
           child: ElevatedButton(
@@ -247,7 +250,7 @@ class _SchoolSetupPhoneWidgetState extends ConsumerState<SchoolSetupPhoneWidget>
                     height: 24,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Continue'),
+                : const Text(AppStrings.continueButton),
           ),
         ),
       ],

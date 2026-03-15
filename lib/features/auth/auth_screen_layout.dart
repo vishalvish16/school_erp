@@ -7,7 +7,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_auth_constants.dart';
-import '../../core/constants/app_strings.dart';
+import '../../design_system/design_system.dart';
 
 /// Wraps auth content with header, left branding panel (web), footer (web), background
 class AuthScreenLayout extends StatelessWidget {
@@ -57,14 +57,17 @@ class AuthScreenLayout extends StatelessWidget {
                 _buildHeader(isMobile: isMobile),
                 Expanded(
                   child: Center(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AuthSizes.scrollPadding,
-                        vertical: AuthSizes.scrollPadding,
+                    child: ScrollConfiguration(
+                      behavior: ScrollBehavior().copyWith(scrollbars: false),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AuthSizes.scrollPadding,
+                          vertical: AuthSizes.scrollPadding,
+                        ),
+                        child: isMobile
+                            ? _buildMobileLayout(child)
+                            : _buildWebLayout(child),
                       ),
-                      child: isMobile
-                          ? _buildMobileLayout(child)
-                          : _buildWebLayout(child),
                     ),
                   ),
                 ),
@@ -125,26 +128,36 @@ class AuthScreenLayout extends StatelessWidget {
         vertical: AuthSizes.headerPaddingV,
         horizontal: AuthSizes.headerPaddingH,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+      child: Stack(
+        clipBehavior: Clip.none,
         children: [
-          Image.asset(
-            AuthAssets.logo,
-            height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
-            fit: BoxFit.contain,
-            isAntiAlias: true,
-            filterQuality: FilterQuality.high,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.school_rounded,
-              size: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
-              color: AuthColors.primary,
-            ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Image.asset(
+                AuthAssets.logo,
+                height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                fit: BoxFit.contain,
+                isAntiAlias: true,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.school_rounded,
+                  size: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                  color: AuthColors.primary,
+                ),
+              ),
+              if (isMobile) ...[
+                SizedBox(height: AuthSizes.taglineGap),
+                _buildMobileTagline(),
+              ],
+            ],
           ),
-          if (isMobile) ...[
-            SizedBox(height: AuthSizes.taglineGap),
-            _buildMobileTagline(),
-          ],
+          Positioned(
+            top: 0,
+            right: 0,
+            child: const ThemeToggleButton(),
+          ),
         ],
       ),
     );

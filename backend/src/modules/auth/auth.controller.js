@@ -39,7 +39,10 @@ export const loginController = async (req, res, next) => {
                 otp_session_id: result.otp_session_id,
                 expires_in: result.expires_in,
                 masked_phone: result.masked_phone,
+                masked_email: result.masked_email,
+                otp_sent_to: result.otp_sent_to,
                 ...(result.portal_type && { portal_type: result.portal_type }),
+                ...(result.dev_otp && { dev_otp: result.dev_otp }),
             };
         } else {
             data = {

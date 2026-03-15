@@ -28,12 +28,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_auth_constants.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/services/local_storage_service.dart';
 import '../../models/school_identity.dart';
 import 'auth_screen_layout.dart';
 import 'school_setup_search_widget.dart';
 import 'school_setup_phone_widget.dart' show SchoolSetupPhoneWidget, PhoneResolveResult;
 import 'school_found_bottom_sheet.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 /// Role selection: staff (search), parent, student (phone)
 enum _SetupRole { staff, parent, student }
@@ -62,7 +64,7 @@ class _SchoolSetupScreenState extends State<SchoolSetupScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                'Welcome to Vidyron',
+                AppStrings.welcomeToVidyron,
                 style: AuthTextStyles.loginTitle.copyWith(
                   fontSize: isMobile ? 24 : 28,
                   color: AuthColors.textPrimary,
@@ -76,9 +78,9 @@ class _SchoolSetupScreenState extends State<SchoolSetupScreen> {
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 8),
+              AppSpacing.vGapSm,
               Text(
-                'Let\'s find your school first',
+                AppStrings.findSchoolFirst,
                 style: AuthTextStyles.screenSubtitle.copyWith(
                   fontSize: isMobile ? 13 : 14,
                   color: AuthColors.textSecondary,
@@ -108,7 +110,7 @@ class _SchoolSetupScreenState extends State<SchoolSetupScreen> {
         Padding(
           padding: EdgeInsets.only(left: isMobile ? 4 : 0, bottom: isMobile ? 12 : 16),
           child: Text(
-            'Who are you?',
+            AppStrings.whoAreYou,
             style: AuthTextStyles.tagline.copyWith(
               fontSize: isMobile ? 14 : 14,
               fontWeight: FontWeight.w600,
@@ -119,11 +121,11 @@ class _SchoolSetupScreenState extends State<SchoolSetupScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildRoleCard(_SetupRole.staff, '🏫', 'School Staff', 'Teacher, Admin, Driver, Clerk', isMobile),
+            _buildRoleCard(_SetupRole.staff, '🏫', AppStrings.schoolStaff, AppStrings.schoolStaffSubtitle, isMobile),
             SizedBox(height: isMobile ? 10 : 12),
-            _buildRoleCard(_SetupRole.parent, '👨‍👩‍👧', 'Parent', 'Track your child\'s safety', isMobile),
+            _buildRoleCard(_SetupRole.parent, '👨‍👩‍👧', AppStrings.parent, AppStrings.parentSubtitle, isMobile),
             SizedBox(height: isMobile ? 10 : 12),
-            _buildRoleCard(_SetupRole.student, '👨‍🎓', 'Student', 'Access your school portal', isMobile),
+            _buildRoleCard(_SetupRole.student, '👨‍🎓', AppStrings.student, AppStrings.studentSubtitle, isMobile),
           ],
         ),
       ],
@@ -166,7 +168,7 @@ class _SchoolSetupScreenState extends State<SchoolSetupScreen> {
                 height: isMobile ? 48 : 44,
                 decoration: BoxDecoration(
                   color: AuthColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: AppRadius.brLg,
                 ),
                 alignment: Alignment.center,
                 child: Text(emoji, style: TextStyle(fontSize: isMobile ? 26 : 24)),
@@ -273,7 +275,7 @@ class _SchoolSetupScreenState extends State<SchoolSetupScreen> {
     return Column(
       children: [
         Text(
-          'Are you a Group Admin or Super Admin?',
+          AppStrings.groupAdminOrSuperAdmin,
           style: AuthTextStyles.tagline.copyWith(
             fontSize: isMobile ? 12 : 13,
             color: AuthColors.textSecondary,
@@ -284,9 +286,9 @@ class _SchoolSetupScreenState extends State<SchoolSetupScreen> {
         TextButton(
           onPressed: () => context.go('/login'),
           style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 24, vertical: AppSpacing.sm),
           ),
-          child: const Text('Sign in here →'),
+          child: const Text(AppStrings.signInHere),
         ),
       ],
     );

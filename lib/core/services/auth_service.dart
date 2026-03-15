@@ -82,6 +82,24 @@ class AuthService {
     throw Exception(res.data['message'] ?? '2FA verification failed');
   }
 
+  /// Resend device OTP — returns new otp_session_id, expires_in, masked_phone, masked_email
+  Future<Map<String, dynamic>> resendDeviceOtp({
+    required String otpSessionId,
+  }) async {
+    final fingerprint = await DeviceFingerprint.generate();
+    final res = await _dio.post(
+      '/api/platform/auth/resend-device-otp',
+      data: {
+        'otp_session_id': otpSessionId,
+        'device_fingerprint': fingerprint,
+      },
+    );
+    if (res.statusCode == 200 && res.data['success'] == true) {
+      return Map<String, dynamic>.from(res.data['data'] ?? {});
+    }
+    throw Exception(res.data['message'] ?? 'Failed to resend code');
+  }
+
   /// Verify device OTP
   Future<Map<String, dynamic>> verifyDeviceOtp({
     required String otpSessionId,

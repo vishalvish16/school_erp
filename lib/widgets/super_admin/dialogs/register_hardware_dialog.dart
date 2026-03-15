@@ -4,6 +4,8 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../../design_system/design_system.dart';
+import '../../../design_system/tokens/app_spacing.dart';
 
 class RegisterHardwareDialog extends StatefulWidget {
   const RegisterHardwareDialog({
@@ -34,9 +36,7 @@ class _RegisterHardwareDialogState extends State<RegisterHardwareDialog> {
 
   Future<void> _submit() async {
     if (_deviceIdController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Device ID is required')),
-      );
+      AppSnackbar.warning(context, 'Device ID is required');
       return;
     }
     setState(() => _submitting = true);
@@ -49,15 +49,11 @@ class _RegisterHardwareDialogState extends State<RegisterHardwareDialog> {
       });
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Device registered')),
-        );
+        AppSnackbar.success(context, 'Device registered');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -67,7 +63,7 @@ class _RegisterHardwareDialogState extends State<RegisterHardwareDialog> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: AppSpacing.paddingXl,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -78,12 +74,12 @@ class _RegisterHardwareDialogState extends State<RegisterHardwareDialog> {
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           TextField(
             controller: _deviceIdController,
             decoration: const InputDecoration(labelText: 'Device ID *'),
           ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           TextField(
             controller: _deviceTypeController,
             decoration: const InputDecoration(
@@ -91,12 +87,12 @@ class _RegisterHardwareDialogState extends State<RegisterHardwareDialog> {
               hintText: 'rfid, gps, tablet, etc.',
             ),
           ),
-          const SizedBox(height: 12),
+          AppSpacing.vGapMd,
           TextField(
             controller: _locationController,
             decoration: const InputDecoration(labelText: 'Location'),
           ),
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -104,7 +100,7 @@ class _RegisterHardwareDialogState extends State<RegisterHardwareDialog> {
                 onPressed: _submitting ? null : () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hGapSm,
               FilledButton(
                 onPressed: _submitting ? null : _submit,
                 child: _submitting

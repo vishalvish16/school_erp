@@ -3,8 +3,8 @@ import { successResponse } from '../../utils/response.js';
 
 export const createSchool = async (req, res, next) => {
     try {
-        const adminUser = req.user || { id: 0 }; // Fallback context
-        const school = await schoolService.createSchool(req.body, adminUser);
+        const adminUser = req.user || {};
+        const school = await schoolService.createSchool(req.body, adminUser, { req });
         return successResponse(res, 201, 'School created successfully', school);
     } catch (error) {
         next(error);
@@ -32,9 +32,9 @@ export const getSchoolById = async (req, res, next) => {
 
 export const updateSchool = async (req, res, next) => {
     try {
-        const adminUser = req.user || { id: 0 };
+        const adminUser = req.user || {};
         const { id } = req.params;
-        const school = await schoolService.updateSchool(id, req.body, adminUser);
+        const school = await schoolService.updateSchool(id, req.body, adminUser, { req });
         return successResponse(res, 200, 'School updated successfully', school);
     } catch (error) {
         next(error);
@@ -43,9 +43,9 @@ export const updateSchool = async (req, res, next) => {
 
 export const deleteSchool = async (req, res, next) => {
     try {
-        const adminUser = req.user || { id: 0 };
+        const adminUser = req.user || {};
         const { id } = req.params;
-        await schoolService.deleteSchool(id, adminUser);
+        await schoolService.deleteSchool(id, adminUser, { req });
         return successResponse(res, 200, 'School suspended successfully');
     } catch (error) {
         next(error);
@@ -54,9 +54,9 @@ export const deleteSchool = async (req, res, next) => {
 
 export const assignPlan = async (req, res, next) => {
     try {
-        const adminUser = req.user || { id: 0 };
+        const adminUser = req.user || {};
         const { id } = req.params;
-        const subscription = await schoolService.assignPlan(id, req.body, adminUser);
+        const subscription = await schoolService.assignPlan(id, req.body, adminUser, { req });
         return successResponse(res, 201, 'Plan assigned successfully', subscription);
     } catch (error) {
         next(error);

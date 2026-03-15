@@ -1,0 +1,106 @@
+---
+description: UI and domain patterns for list/table screens — pagination required, use super_admin_schools_screen as reference
+globs:
+  - lib/**/*_screen.dart
+  - lib/**/*screen*.dart
+  - backend/**/*.controller.js
+  - backend/**/*.repository.js
+alwaysApply: false
+---
+
+# List Screen UI & Domain Patterns
+
+When building or modifying list/table screens in this ERP, follow the patterns established in `lib/features/super_admin/presentation/screens/super_admin_schools_screen.dart`. Apply these consistently across the whole app.
+
+## Layout Structure
+
+Use **ListScreenLayout** (`lib/shared/widgets/list_screen_layout.dart`) when possible for consistent structure. Or build manually:
+
+1. **RefreshIndicator** as root (pull-to-refresh)
+2. **LayoutBuilder** > **Column** with:
+   - Fixed header (title + actions)
+   - Search + filters in a **Card** (centered)
+   - **Expanded** table/list area (centered)
+
+## Header Section
+
+- Padding: `isNarrow ? 16 : 24` (breakpoint 600px)
+- **Wrap** with `spacing: 12`, `runSpacing: 12`, `alignment: WrapAlignment.spaceBetween`
+- Title: `Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)`
+- Actions: `TextButton.icon` for secondary (e.g. Export), `FilledButton.icon` for primary (e.g. Add)
+
+## Search + Filters
+
+- Wrap in **Center** > **Padding** > **Card** > **Padding(12)** > **Wrap**
+- Use **SearchableDropdownFormField** (not raw DropdownButton) for filters
+- Search TextField: `width: 220`, `prefixIcon: Icon(Icons.search, size: 20)`, `suffixIcon` clear button when text present
+- Filter dropdowns: `width: 140`, `border: OutlineInputBorder()`, `isDense: true`, `contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8)`
+- Include "Clear filters" **TextButton.icon** with `Icons.filter_alt_off`
+
+## Pagination (Required for All Listing Tables)
+
+Every list/table screen **must** implement pagination. Do not load unbounded data.
+
+### Backend
+- Accept `page` and `limit` query params. Return `pagination` object: `{ page, limit, total, total_pages }`.
+- Cap `limit` at 100: `const parsedLimit = Math.min(parseInt(limit, 10) || 20, 100);`
+
+### Frontend — Pagination Row (inside table Card)
+- The pagination row lives **inside the same Card** as the table (in the Card's `Column`), separated by a top border — **NOT** as a separate Card.
+- Structure: `Card` > `Column` > [ `Expanded(ListTableView)`, `_buildPaginationRow()` ]
+- Row layout: `Container(border: Border(top: BorderSide(grey.shade300)))` > `Padding(h:16, v:10)` > `Row(crossAxisAlignment: center)`
+- **Left side**:
+  - `"Showing X to Y of Z entries"` (bodySmall, onSurfaceVariant)
+  - `SizedBox(width: 24)`
+  - `"Show"` + bordered dropdown + `"entries"` — dropdown wrapped in `Container(height:28, padding:h8, border: Border.all(grey.shade400), borderRadius:4)` with `DropdownButtonHideUnderline` > `DropdownButton(isDense:true, icon: arrow_drop_down size 18)`
+  - Page size options: `[10, 15, 25, 50]`
+- **Right side** (via `Spacer`): Page buttons: `First | Previous | 1 2 3 ... | Next | Last`
+  - Active page: `Material(color: cs.primary)`, text `cs.onPrimary`, fontWeight bold
+  - Inactive enabled: transparent bg, normal text color
+  - Disabled: `cs.onSurface.withValues(alpha: 0.35)`
+  - Each button: `Padding(h:2)` > `Material(borderRadius:6)` > `InkWell(borderRadius:6)` > `Container(minWidth:32, minHeight:32, padding:h8, alignment:center)` > `Text(fontSize:13)`
+  - Show max 5 page number buttons, centered around current page
+- **Mobile**: pagination row in a separate `Card` below the mobile card list (same `_buildPaginationRow()` widget)
+
+## Table (Desktop/Wide)
+
+- Use **ListTableView** inside **Card** > **Column** > **Expanded** inside **ConstrainedBox**
+- Center the table with **Center** widget
+- Show **ShimmerListLoadingWidget** (not CircularProgressIndicator) for initial loading
+- Use `showSrNo: false` (no serial number column)
+
+## Mobile Cards
+
+- **Card** > **InkWell** > **Padding(16)** > **Column**
+- Row: CircleAvatar, Expanded(title + subtitle), Chip for status
+- Actions in **Wrap** with IconButtons or FilledButton.tonal
+
+## Empty State
+
+- **Card** or centered Column with:
+  - Icon (entity-appropriate, size 64, `colorScheme.outline`)
+  - Title text (e.g. "No schools found" or "No results for 'query'")
+  - **TextButton** "Clear filters" when filters applied
+
+## Error State
+
+- **Card** with Icon(Icons.error_outline), error text, **FilledButton** "Retry"
+
+## Dialogs
+
+- Use **showAdaptiveModal** from `super_admin_dialogs.dart` (Dialog on web, BottomSheet on mobile)
+- Use **kDialogMaxWidthLarge** (900) for large forms (Add School, School Detail)
+
+## Domain Terminology
+
+- Schools (not "tenants" in UI)
+- Status: Active, Trial, Suspended, Expiring
+- Location: Country → State → City (use LocationData for dropdowns)
+- Plans (subscription plans)
+- Subdomain format: `{subdomain}.vidyron.in`
+
+## Spacing & Breakpoints
+
+- `isNarrow`: `MediaQuery.size.width < 600`
+- `isWide`: `kIsWeb || MediaQuery.size.width >= 768`
+- Padding: 16 (narrow) / 24 (wide)

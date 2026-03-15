@@ -30,6 +30,11 @@ class SuperAdminAuditLogModel {
     this.newData,
   });
 
+  static Map<String, dynamic>? _parseJsonMap(dynamic value) {
+    if (value is Map) return Map<String, dynamic>.from(value);
+    return null;
+  }
+
   factory SuperAdminAuditLogModel.fromJson(Map<String, dynamic> json) {
     return SuperAdminAuditLogModel(
       id: json['id']?.toString() ?? '',
@@ -41,12 +46,8 @@ class SuperAdminAuditLogModel {
       description: json['description'],
       status: json['status'] ?? json['event_status'],
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-      oldData: json['old_data'] ?? json['oldData'] is Map
-          ? Map<String, dynamic>.from(json['old_data'] ?? json['oldData'] ?? {})
-          : null,
-      newData: json['new_data'] ?? json['newData'] is Map
-          ? Map<String, dynamic>.from(json['new_data'] ?? json['newData'] ?? {})
-          : null,
+      oldData: _parseJsonMap(json['old_data'] ?? json['oldData']),
+      newData: _parseJsonMap(json['new_data'] ?? json['newData']),
     );
   }
 

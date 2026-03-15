@@ -6,7 +6,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/super_admin_service.dart';
+import '../../../../widgets/common/shimmer_loading_widget.dart';
+import '../../../../design_system/design_system.dart';
+import '../../../../design_system/tokens/app_spacing.dart';
 
 class SuperAdminNotificationsScreen extends ConsumerStatefulWidget {
   const SuperAdminNotificationsScreen({super.key});
@@ -113,15 +117,11 @@ class _SuperAdminNotificationsScreenState
         setState(() {
           _notifications = _notifications.map((n) => {...n, 'is_read': true}).toList();
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('All notifications marked as read')),
-        );
+        AppSnackbar.success(context, AppStrings.allNotificationsRead);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, 'Failed: ${e.toString()}');
       }
     }
   }
@@ -139,7 +139,6 @@ class _SuperAdminNotificationsScreenState
         break;
       case 'school_overdue':
         if (schoolId != null) {
-          // Could show ResolveOverdueDialog - for now go to billing
           context.go('/super-admin/billing');
         } else {
           context.go('/super-admin/billing');
@@ -151,7 +150,6 @@ class _SuperAdminNotificationsScreenState
       case 'school_created':
         if (schoolId != null) {
           context.go('/super-admin/schools');
-          // Could show SchoolDetailDialog - for now go to schools
         } else {
           context.go('/super-admin/schools');
         }
@@ -167,69 +165,78 @@ class _SuperAdminNotificationsScreenState
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final padding = isNarrow ? 16.0 : 24.0;
 
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _load,
-        child: CustomScrollView(
-          slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Notifications',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.all(padding),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    AppStrings.notifications,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  if (!_loading && _notifications.isNotEmpty)
+                    TextButton.icon(
+                      onPressed: _markAllRead,
+                      icon: const Icon(Icons.done_all, size: 18),
+                      label: const Text(AppStrings.markAllRead),
                     ),
-                    if (!_loading && _notifications.isNotEmpty)
-                      TextButton.icon(
-                        onPressed: _markAllRead,
-                        icon: const Icon(Icons.done_all, size: 18),
-                        label: const Text('Mark all read'),
-                      ),
-                  ],
-                ),
+                ],
               ),
             ),
             if (_loading)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+              Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: padding),
+                  child: const ShimmerListLoadingWidget(itemCount: 8),
+                ),
               )
             else if (_error != null)
-              SliverFillRemaining(
+              Expanded(
                 child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, size: 48, color: scheme.error),
-                        const SizedBox(height: 16),
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 16),
-                        FilledButton(
-                          onPressed: _load,
-                          child: const Text('Retry'),
-                        ),
-                      ],
+                  child: Card(
+                    margin: EdgeInsets.all(padding),
+                    child: Padding(
+                      padding: AppSpacing.paddingXl,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.error_outline, size: 48, color: scheme.error),
+                          AppSpacing.vGapLg,
+                          Text(_error!, textAlign: TextAlign.center),
+                          AppSpacing.vGapLg,
+                          FilledButton(
+                            onPressed: _load,
+                            child: const Text(AppStrings.retry),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               )
             else if (_notifications.isEmpty)
-              SliverFillRemaining(
+              Expanded(
                 child: Center(
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.check_circle_outline, size: 64, color: scheme.outline),
-                      const SizedBox(height: 16),
+                      Icon(Icons.notifications_none, size: 64, color: scheme.outline),
+                      AppSpacing.vGapLg,
                       Text(
-                        'No notifications',
+                        AppStrings.noNotifications,
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                     ],
@@ -237,51 +244,53 @@ class _SuperAdminNotificationsScreenState
                 ),
               )
             else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      if (index == _notifications.length) {
-                        if (_hasMore && !_loadingMore) {
-                          _loadMore();
-                          return const Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
-                          );
-                        }
-                        return const SizedBox.shrink();
+              Expanded(
+                child: ListView.builder(
+                  padding: EdgeInsets.symmetric(horizontal: padding),
+                  itemCount: _notifications.length + (_hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == _notifications.length) {
+                      if (_hasMore && !_loadingMore) {
+                        _loadMore();
+                        return const Padding(
+                          padding: AppSpacing.paddingLg,
+                          child: Center(child: CircularProgressIndicator()),
+                        );
                       }
-                      final n = _notifications[index];
-                      final isRead = n['is_read'] == true;
-                      final title = n['title'] ?? n['message'] ?? 'Notification';
-                      final message = n['message'] ?? n['body'] ?? '';
-                      final createdAt = n['created_at'] ?? n['timestamp'] ?? '';
+                      return const SizedBox.shrink();
+                    }
+                    final n = _notifications[index];
+                    final isRead = n['is_read'] == true;
+                    final title = n['title'] ?? n['message'] ?? 'Notification';
+                    final message = n['message'] ?? n['body'] ?? '';
+                    final createdAt = n['created_at'] ?? n['timestamp'] ?? '';
 
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        color: isRead ? null : scheme.primaryContainer.withValues(alpha: 0.3),
-                        child: ListTile(
-                          leading: CircleAvatar(
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      color: isRead ? null : scheme.primaryContainer.withValues(alpha: 0.3),
+                      child: ListTile(
+                        leading: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: CircleAvatar(
                             child: Icon(
                               _iconForType(n['notification_type'] ?? n['type'] ?? ''),
                               size: 20,
                             ),
                           ),
-                          title: Text(title),
-                          subtitle: message.isNotEmpty ? Text(message) : null,
-                          trailing: Text(
-                            createdAt.toString().length > 10
-                                ? createdAt.toString().substring(0, 10)
-                                : createdAt.toString(),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          onTap: () => _handleNotificationTap(n),
                         ),
-                      );
-                    },
-                    childCount: _notifications.length + (_hasMore ? 1 : 0),
-                  ),
+                        title: Text(title),
+                        subtitle: message.isNotEmpty ? Text(message) : null,
+                        trailing: Text(
+                          createdAt.toString().length > 10
+                              ? createdAt.toString().substring(0, 10)
+                              : createdAt.toString(),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                        onTap: () => _handleNotificationTap(n),
+                      ),
+                    );
+                  },
                 ),
               ),
           ],

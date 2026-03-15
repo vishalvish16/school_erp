@@ -4,7 +4,9 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../../design_system/design_system.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
+import '../../../design_system/tokens/app_spacing.dart';
 
 class AddSchoolToGroupDialog extends StatefulWidget {
   const AddSchoolToGroupDialog({
@@ -30,9 +32,7 @@ class _AddSchoolToGroupDialogState extends State<AddSchoolToGroupDialog> {
 
   Future<void> _submit() async {
     if (_selectedSchoolId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a school')),
-      );
+      AppSnackbar.warning(context, 'Please select a school');
       return;
     }
     setState(() => _submitting = true);
@@ -40,15 +40,11 @@ class _AddSchoolToGroupDialogState extends State<AddSchoolToGroupDialog> {
       await widget.onAdd(_selectedSchoolId!);
       if (mounted) {
         Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('School added to group')),
-        );
+        AppSnackbar.success(context, 'School added to group');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
-        );
+        AppSnackbar.error(context, e.toString());
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -58,7 +54,7 @@ class _AddSchoolToGroupDialogState extends State<AddSchoolToGroupDialog> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: AppSpacing.paddingXl,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -69,7 +65,7 @@ class _AddSchoolToGroupDialogState extends State<AddSchoolToGroupDialog> {
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           if (widget.availableSchools.isEmpty)
             const Text('No standalone schools available to add.')
           else
@@ -80,7 +76,7 @@ class _AddSchoolToGroupDialogState extends State<AddSchoolToGroupDialog> {
                   groupValue: _selectedSchoolId,
                   onChanged: (v) => setState(() => _selectedSchoolId = v),
                 )),
-          const SizedBox(height: 24),
+          AppSpacing.vGapXl,
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -88,7 +84,7 @@ class _AddSchoolToGroupDialogState extends State<AddSchoolToGroupDialog> {
                 onPressed: _submitting ? null : () => Navigator.of(context).pop(),
                 child: const Text('Cancel'),
               ),
-              const SizedBox(width: 8),
+              AppSpacing.hGapSm,
               FilledButton(
                 onPressed: _submitting || widget.availableSchools.isEmpty ? null : _submit,
                 child: _submitting

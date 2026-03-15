@@ -16,18 +16,14 @@ const ISSUER = 'VIDYRON Super Admin';
 /** Setup 2FA — generate secret and otpauth URI (does not enable yet) */
 export const setup2fa = async (userId) => {
     const user = await prisma.user.findUnique({
-        where: { id: BigInt(userId) },
+        where: { id: String(userId) },
         select: { id: true, email: true, mfaEnabled: true },
     });
     if (!user) throw new AppError('User not found', 404);
     if (user.mfaEnabled) throw new AppError('2FA is already enabled', 400);
 
     const secret = generateSecret();
-    const uri = generateURI({
-        issuer: ISSUER,
-        label: user.email,
-        secret,
-    });
+    const uri = generateURI({ issuer: ISSUER, label: user.email, secret });
 
     // Store secret temporarily (not enabled) — we'll overwrite on enable after verification
     await prisma.user.update({
@@ -46,14 +42,14 @@ export const setup2fa = async (userId) => {
 /** Enable 2FA — verify TOTP code then set mfaEnabled */
 export const enable2fa = async (userId, totpCode) => {
     const user = await prisma.user.findUnique({
-        where: { id: BigInt(userId) },
+        where: { id: String(userId) },
         select: { id: true, mfaSecret: true, mfaEnabled: true },
     });
     if (!user) throw new AppError('User not found', 404);
     if (user.mfaEnabled) throw new AppError('2FA is already enabled', 400);
     if (!user.mfaSecret) throw new AppError('Run setup first', 400);
 
-    const isValid = await verify({ secret: user.mfaSecret, token: totpCode });
+    const isValid = verify({ secret: user.mfaSecret, token: totpCode });
     if (!isValid) throw new AppError('Invalid verification code', 400);
 
     await prisma.user.update({
@@ -67,7 +63,7 @@ export const enable2fa = async (userId, totpCode) => {
 /** Disable 2FA — require password confirmation */
 export const disable2fa = async (userId, password) => {
     const user = await prisma.user.findUnique({
-        where: { id: BigInt(userId) },
+        where: { id: String(userId) },
         select: { id: true, passwordHash: true, mfaEnabled: true },
     });
     if (!user) throw new AppError('User not found', 404);
@@ -87,7 +83,7 @@ export const disable2fa = async (userId, password) => {
 /** Get 2FA status for current user */
 export const get2faStatus = async (userId) => {
     const user = await prisma.user.findUnique({
-        where: { id: BigInt(userId) },
+        where: { id: String(userId) },
         select: { mfaEnabled: true },
     });
     if (!user) throw new AppError('User not found', 404);
@@ -99,17 +95,17 @@ export const verify2faAndCompleteLogin = async (input) => {
     const { temp_token, totp_code, device_fingerprint } = input;
 
     const decoded = jwtUtils.verifyTempToken(temp_token);
-    const userId = decoded.userId ? BigInt(decoded.userId) : null;
+    const userId = decoded.userId;
     if (!userId) throw new AppError('Invalid or expired verification session', 400);
 
     const user = await prisma.user.findUnique({
-        where: { id: userId },
+        where: { id: String(userId) },
         include: { role: true },
     });
     if (!user) throw new AppError('User not found', 404);
     if (!user.mfaEnabled || !user.mfaSecret) throw new AppError('2FA not configured', 400);
 
-    const isValid = await verify({ secret: user.mfaSecret, token: totp_code });
+    const isValid = verify({ secret: user.mfaSecret, token: totp_code });
     if (!isValid) throw new AppError('Invalid verification code', 400);
 
     // TOTP valid — now check device (same logic as smart-login after password)
@@ -120,23 +116,23 @@ export const verify2faAndCompleteLogin = async (input) => {
         if (device && device.is_trusted && device.trusted_until && new Date(device.trusted_until) > new Date()) {
             requiresOtp = false;
         }
-    } catch (_) {}
+    } catch (_) { }
 
-    const isPlatformAdmin = !user.schoolId && (user.role?.roleType === 'PLATFORM');
+    const isPlatformAdmin = !user.schoolId && (user.role?.scope === 'GLOBAL' || user.role?.name === 'super_admin');
     const isPlatformUser = !user.schoolId;
     const effectivePortal = (isPlatformAdmin || isPlatformUser) ? 'super_admin' : 'school_admin';
 
     if (!requiresOtp) {
         const accessToken = jwtUtils.generateAccessToken({
-            userId: user.id.toString(),
+            userId: String(user.id),
             email: user.email,
-            role: user.role?.roleType || 'SCHOOL',
-            school_id: user.schoolId ? user.schoolId.toString() : null,
+            role: user.role?.name || 'school_admin',
+            school_id: user.schoolId ? String(user.schoolId) : null,
             portal_type: effectivePortal,
         });
         const refreshToken = jwtUtils.generateRefreshToken({
-            userId: user.id.toString(),
-            school_id: user.schoolId ? user.schoolId.toString() : null,
+            userId: String(user.id),
+            school_id: user.schoolId ? String(user.schoolId) : null,
         });
         return {
             success: true,
@@ -145,12 +141,12 @@ export const verify2faAndCompleteLogin = async (input) => {
             refresh_token: refreshToken,
             portal_type: effectivePortal,
             user: {
-                user_id: user.id.toString(),
+                user_id: String(user.id),
                 first_name: user.firstName,
                 last_name: user.lastName,
                 email: user.email,
-                role: user.role?.roleType,
-                school_id: user.schoolId ? user.schoolId.toString() : null,
+                role: user.role?.name,
+                school_id: user.schoolId ? String(user.schoolId) : null,
             },
         };
     }

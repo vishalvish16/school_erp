@@ -32,7 +32,10 @@ export const resetPasswordSchema = z.object({
 
 export const resolveSubdomainSchema = z.object({
     body: z.object({
-        subdomain: z.string().min(1, 'Subdomain is required')
+        subdomain: z.string().optional(),
+        slug: z.string().optional()
+    }).refine(data => (data.subdomain && data.subdomain.trim()) || (data.slug && data.slug.trim()), {
+        message: 'Subdomain or slug is required'
     })
 });
 
@@ -44,6 +47,13 @@ export const verifyDeviceOtpSchema = z.object({
         device_fingerprint: z.string().optional(),
         device_meta: z.record(z.any()).optional(),
         portal_type: z.string().optional()
+    })
+});
+
+export const resendDeviceOtpSchema = z.object({
+    body: z.object({
+        otp_session_id: z.string().min(1, 'OTP session is required'),
+        device_fingerprint: z.string().optional()
     })
 });
 
@@ -71,8 +81,31 @@ export const groupAdminLoginSchema = z.object({
 export const resolveUserByPhoneSchema = z.object({
     body: z.object({
         phone: z.string().min(10, 'Phone number required'),
-        user_type: z.enum(['parent', 'student']).optional().default('parent')
+        user_type: z.enum(['parent', 'student']).optional().default('parent'),
+        school_id: z.string().uuid().optional().nullable()
     })
+});
+
+export const verifyParentOtpSchema = z.object({
+    body: z.object({
+        otp_session_id: z.string().uuid('Invalid OTP session'),
+        otp: z.string().length(6, 'OTP must be 6 digits'),
+        phone: z.string().min(10, 'Phone required'),
+        school_id: z.string().uuid('School ID required')
+    })
+});
+
+export const groupAdminForgotPasswordSchema = z.object({
+    body: z.object({
+        email: z.string().email('Valid email required'),
+    }),
+});
+
+export const groupAdminResetPasswordSchema = z.object({
+    body: z.object({
+        token: z.string().min(1, 'Token is required'),
+        new_password: z.string().min(6, 'Password must be at least 6 characters'),
+    }),
 });
 
 export const qrLoginSchema = z.object({

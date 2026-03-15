@@ -3,6 +3,8 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+
+import '../../core/constants/app_strings.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
 import 'app_text_styles.dart';
@@ -125,7 +127,7 @@ abstract final class AppInputStyles {
   // ── Search field decoration ──────────────────────────────────────────────────
   static InputDecoration search(BuildContext context, {String? hint}) {
     return InputDecoration(
-      hintText: hint ?? 'Search…',
+      hintText: hint ?? AppStrings.searchHint,
       prefixIcon: const Icon(Icons.search_rounded, size: 20),
       border: OutlineInputBorder(
         borderRadius: AppRadius.brFull,

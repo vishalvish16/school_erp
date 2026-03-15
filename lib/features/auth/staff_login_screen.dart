@@ -10,11 +10,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_auth_constants.dart';
 import '../../core/services/local_storage_service.dart';
+import '../../design_system/design_system.dart';
 import '../../core/constants/app_strings.dart';
 import '../../models/school_identity.dart';
 import '../../utils/subdomain_resolver.dart';
 import '../../widgets/school_identity_banner.dart';
 import 'auth_screen_layout.dart';
+import 'school_staff_login_provider.dart';
+import 'school_setup_search_widget.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class StaffLoginScreen extends ConsumerStatefulWidget {
   const StaffLoginScreen({super.key});
@@ -32,6 +37,7 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen>
   int _selectedTab = 0; // 0=Password, 1=OTP, 2=QR
   SchoolIdentity? _identity;
   bool _isLoading = false;
+  String? _errorMessage;
 
   late TabController _tabController;
 
@@ -60,59 +66,115 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen>
     } else {
       final storage = LocalStorageService();
       final savedSchool = await storage.getSavedSchool();
-      if (savedSchool == null && mounted) {
-        context.go('/school-setup');
-        return;
-      }
       if (mounted && savedSchool != null) setState(() => _identity = savedSchool);
     }
   }
 
   Future<void> _onChangeSchool() async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Change School?'),
-        content: const Text(
-          'This will remove your saved school. '
-          'You will need to search for your school again.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Yes, Change'),
-          ),
-        ],
-      ),
+    final ok = await AppDialogs.confirm(
+      context,
+      title: AppStrings.changeSchoolQuestion,
+      message: AppStrings.changeSchoolMessage,
+      confirmLabel: AppStrings.yesChange,
     );
-    if (ok != true || !mounted) return;
-    final storage = LocalStorageService();
-    await storage.clearSchool();
-    await storage.clearSession();
-    if (mounted) context.go('/school-setup');
+    if (!ok || !mounted) return;
+    setState(() {
+      _identity = null;
+      _errorMessage = null;
+    });
+    if (!kIsWeb) {
+      final storage = LocalStorageService();
+      await storage.clearSchool();
+      await storage.clearSession();
+    }
   }
 
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-    // TODO: Call staff login API
-    await Future.delayed(const Duration(seconds: 1));
-    if (mounted) setState(() => _isLoading = false);
+    if (_identity == null) {
+      setState(() => _errorMessage = AppStrings.selectSchoolAbove);
+      return;
+    }
+    ref.read(schoolStaffLoginProvider.notifier).login(
+          _emailController.text.trim(),
+          _passwordController.text,
+          schoolId: _identity!.id,
+          portalType: 'staff',
+          schoolIdentity: _identity,
+        );
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<SchoolStaffLoginState>(schoolStaffLoginProvider, (prev, next) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = next.isLoading;
+        _errorMessage = next.errorMessage;
+      });
+      if (next.requiresOtp &&
+          prev?.requiresOtp != true &&
+          next.otpSessionId != null &&
+          next.otpSessionId!.isNotEmpty) {
+        final q =
+            'otp_session_id=${next.otpSessionId!}&masked_phone=${Uri.encodeComponent(next.maskedPhone ?? '')}&masked_email=${Uri.encodeComponent(next.maskedEmail ?? '')}&otp_sent_to=${Uri.encodeComponent(next.otpSentTo ?? '')}&portal_type=staff${next.devOtp != null ? '&dev_otp=${next.devOtp}' : ''}';
+        context.push('/device-verification?$q');
+      }
+      if (next.requires2fa &&
+          prev?.requires2fa != true &&
+          next.tempToken != null &&
+          next.tempToken!.isNotEmpty) {
+        final q = 'temp_token=${Uri.encodeComponent(next.tempToken!)}&portal_type=staff';
+        context.push('/verify-2fa?$q');
+      }
+      if (next.isSuccess && prev?.isSuccess != true) {
+        context.go('/staff/dashboard');
+      }
+    });
+
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (_identity != null)
+        if (_identity == null)
           Padding(
             padding: const EdgeInsets.only(bottom: 24),
+            child: SchoolSetupSearchWidget(
+              onSchoolSelected: (school) {
+                setState(() {
+                  _identity = school;
+                  _errorMessage = null;
+                });
+              },
+              layout: SchoolSearchLayout.popup,
+              middleContent: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: AppColors.error700),
+                      ),
+                    ),
+                  _buildLoginCard(),
+                ],
+              ),
+            ),
+          )
+        else ...[
+          if (_errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(
+                _errorMessage!,
+                style: TextStyle(color: AppColors.error700),
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16),
             child: SchoolIdentityBanner(
               identity: _identity!,
               showStats: true,
@@ -120,7 +182,8 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen>
               onChangeTap: _onChangeSchool,
             ),
           ),
-        _buildLoginCard(),
+          _buildLoginCard(),
+        ],
       ],
     );
 
@@ -155,22 +218,22 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen>
                   onTap: (i) => setState(() => _selectedTab = i),
                   labelColor: AuthColors.primary,
                   tabs: const [
-                    Tab(text: 'Password'),
-                    Tab(text: 'OTP'),
-                    Tab(text: 'QR Scan'),
+                    Tab(text: AppStrings.passwordTab),
+                    Tab(text: AppStrings.otpTab),
+                    Tab(text: AppStrings.qrScanTab),
                   ],
                 ),
-                const SizedBox(height: 24),
+                AppSpacing.vGapXl,
                 if (_selectedTab == 0) ...[
                   TextFormField(
                     controller: _emailController,
                     decoration: const InputDecoration(
-                      labelText: 'Email / Mobile',
+                      labelText: AppStrings.emailMobileRequired,
                       border: OutlineInputBorder(),
                     ),
-                    validator: (v) => v == null || v.isEmpty ? AppStrings.enterEmailError : null,
+                    validator: (v) => v == null || v.trim().isEmpty ? AppStrings.enterEmailOrMobileError : null,
                   ),
-                  const SizedBox(height: 16),
+                  AppSpacing.vGapLg,
                   TextFormField(
                     controller: _passwordController,
                     obscureText: !_isPasswordVisible,
@@ -184,7 +247,7 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen>
                     ),
                     validator: (v) => v == null || v.isEmpty ? AppStrings.enterPasswordError : null,
                   ),
-                  const SizedBox(height: 8),
+                  AppSpacing.vGapSm,
                   Align(
                     alignment: Alignment.centerRight,
                     child: TextButton(
@@ -193,45 +256,45 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen>
                     ),
                   ),
                   Text(
-                    'Your role is auto-detected from your credentials',
+                    AppStrings.autoDetectedRole,
                     style: AuthTextStyles.tagline.copyWith(fontSize: 12),
                   ),
                 ] else if (_selectedTab == 1) ...[
                   const TextField(
                     decoration: InputDecoration(
-                      labelText: 'Mobile number',
+                      labelText: AppStrings.mobileNumber,
                       border: OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.phone,
                   ),
-                  const SizedBox(height: 8),
+                  AppSpacing.vGapSm,
                   Text(
-                    'Role auto-detected from this number',
+                    AppStrings.autoDetectedFromNumber,
                     style: AuthTextStyles.tagline.copyWith(fontSize: 12),
                   ),
-                  const SizedBox(height: 16),
-                  FilledButton(onPressed: () {}, child: const Text('Send OTP')),
+                  AppSpacing.vGapLg,
+                  FilledButton(onPressed: () {}, child: const Text(AppStrings.sendOtp)),
                 ] else ...[
                   Container(
                     height: 200,
                     decoration: BoxDecoration(
                       color: AuthColors.overlayLight(0.3),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.brLg,
                     ),
                     child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.qr_code_scanner, size: 64, color: AuthColors.primary),
-                          const SizedBox(height: 12),
+                          AppSpacing.vGapMd,
                           Text(
-                            'Scan the QR on your Vidyron ID card',
+                            AppStrings.scanQrOnIdCard,
                             style: AuthTextStyles.tagline,
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 4),
+                          AppSpacing.vGapXs,
                           Text(
-                            'Drivers: QR auto-assigns your vehicle',
+                            AppStrings.driversQrAutoAssigns,
                             style: AuthTextStyles.tagline.copyWith(fontSize: 11),
                           ),
                         ],
@@ -239,12 +302,12 @@ class _StaffLoginScreenState extends ConsumerState<StaffLoginScreen>
                     ),
                   ),
                 ],
-                const SizedBox(height: 24),
+                AppSpacing.vGapXl,
                 FilledButton(
                   onPressed: _isLoading ? null : _handleLogin,
                   style: FilledButton.styleFrom(
                     backgroundColor: AuthColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: AppSpacing.paddingVLg,
                   ),
                   child: Text(AuthStrings.login, style: AuthTextStyles.buttonPrimary),
                 ),

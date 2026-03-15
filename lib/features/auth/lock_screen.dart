@@ -2,10 +2,13 @@ import 'dart:ui';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/constants/app_strings.dart';
 import '../../core/services/biometric_service.dart';
 import 'auth_guard_provider.dart';
 import 'auto_lock_provider.dart';
 import 'login_provider.dart';
+import '../../design_system/tokens/app_colors.dart';
+import '../../design_system/tokens/app_spacing.dart';
 
 class LockScreen extends ConsumerStatefulWidget {
   const LockScreen({super.key});
@@ -45,7 +48,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _errorMessage = 'Invalid security key. Please try again.';
+          _errorMessage = AppStrings.invalidSecurityKey;
           _isLoading = false;
         });
       }
@@ -61,7 +64,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _errorMessage = 'Biometric authentication failed.');
+        setState(() => _errorMessage = AppStrings.biometricFailed);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -82,44 +85,44 @@ class _LockScreenState extends ConsumerState<LockScreen> {
           Center(
             child: SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: AppSpacing.paddingHXl,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Profile/Lock Icon
                     Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: AppSpacing.paddingXl,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF6366F1).withOpacity(0.1),
+                        color: AppColors.primary500.withOpacity(0.1),
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: const Color(0xFF6366F1).withOpacity(0.3),
+                          color: AppColors.primary500.withOpacity(0.3),
                           width: 2,
                         ),
                       ),
                       child: const Icon(
                         Icons.lock_outline_rounded,
                         size: 64,
-                        color: Color(0xFF1E293B),
+                        color: AppColors.neutral800,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    AppSpacing.vGapXl,
                     const Text(
-                      'Session Locked',
+                      AppStrings.sessionLocked,
                       style: TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,
-                        color: Color(0xFF1E293B),
+                        color: AppColors.neutral800,
                         letterSpacing: -1,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    AppSpacing.vGapSm,
                     const Text(
-                      'Vidyron One Security active. Enter key.',
+                      AppStrings.vidyronSecurityActive,
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 15,
-                        color: Color(0xFF475569),
+                        color: AppColors.neutral600,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -131,11 +134,11 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                       padding: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: AppRadius.brXl3,
                         border: Border.all(color: Colors.white, width: 2),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF6366F1).withOpacity(0.1),
+                            color: AppColors.primary500.withOpacity(0.1),
                             blurRadius: 30,
                             spreadRadius: 5,
                           ),
@@ -146,30 +149,30 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                         children: [
                           // User Identifier
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.lg,
+                              vertical: AppSpacing.md,
                             ),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppRadius.brLg,
                               border: Border.all(color: Colors.white),
                             ),
                             child: Row(
                               children: [
                                 const Icon(
                                   Icons.person_outline_rounded,
-                                  color: Color(0xFF6366F1),
+                                  color: AppColors.primary500,
                                   size: 20,
                                 ),
-                                const SizedBox(width: 12),
+                                AppSpacing.hGapMd,
                                 Expanded(
                                   child: Text(
                                     ref.watch(authGuardProvider).userEmail ??
-                                        'Super Admin',
+                                        AppStrings.roleSuperAdmin,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF1E293B),
+                                      color: AppColors.neutral800,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -177,18 +180,18 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                               ],
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          AppSpacing.vGapLg,
 
                           // Password Input (Matches LoginScreen style)
                           Builder(
                             builder: (context) {
                               final isDark = Theme.of(context).brightness == Brightness.dark ||
                                   MediaQuery.platformBrightnessOf(context) == Brightness.dark;
-                              final textColor = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF1E293B);
+                              final textColor = isDark ? AppColors.neutral50 : AppColors.neutral800;
                               return Container(
                                 decoration: BoxDecoration(
                                   color: Colors.white.withOpacity(0.5),
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: AppRadius.brLg,
                                   border: Border.all(color: Colors.white),
                                 ),
                                 child: TextField(
@@ -199,20 +202,20 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                     color: textColor,
                                   ),
                                   decoration: InputDecoration(
-                                    hintText: 'Security Key',
+                                    hintText: AppStrings.securityKey,
                                     hintStyle: const TextStyle(
-                                      color: Color(0xFF94A3B8),
+                                      color: AppColors.neutral400,
                                     ),
                                     prefixIcon: const Icon(
                                       Icons.key_rounded,
-                                      color: Color(0xFF6366F1),
+                                      color: AppColors.primary500,
                                     ),
                                     suffixIcon: IconButton(
                                       icon: Icon(
                                         _isObscured
                                             ? Icons.visibility_off_outlined
                                             : Icons.visibility_outlined,
-                                        color: const Color(0xFF94A3B8),
+                                        color: AppColors.neutral400,
                                         size: 20,
                                       ),
                                       onPressed: () => setState(
@@ -220,9 +223,9 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                       ),
                                     ),
                                     border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: AppSpacing.lg,
+                                      vertical: AppSpacing.lg,
                                     ),
                                   ),
                                 ),
@@ -230,25 +233,25 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                             },
                           ),
                           if (_errorMessage != null) ...[
-                            const SizedBox(height: 12),
+                            AppSpacing.vGapMd,
                             Text(
                               _errorMessage!,
                               style: const TextStyle(
-                                color: Colors.redAccent,
+                                color: AppColors.error500,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                           ],
-                          const SizedBox(height: 32),
+                          AppSpacing.vGapXl2,
 
                           // Gradient Button (Matches LoginScreen)
                           Container(
                             height: 54,
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: AppRadius.brLg,
                               gradient: const LinearGradient(
-                                colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
+                                colors: [AppColors.primary500, AppColors.secondary500],
                                 begin: Alignment.centerLeft,
                                 end: Alignment.centerRight,
                               ),
@@ -268,7 +271,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                 backgroundColor: Colors.transparent,
                                 shadowColor: Colors.transparent,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: AppRadius.brLg,
                                 ),
                               ),
                               child: _isLoading
@@ -283,7 +286,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                       ),
                                     )
                                   : const Text(
-                                      'Unlock Session',
+                                      AppStrings.unlockSession,
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -305,27 +308,27 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                   ? Icons.face_rounded
                                   : Icons.fingerprint_rounded;
                               final label = type == BiometricTypeUI.face
-                                  ? 'Unlock with Face'
+                                  ? AppStrings.unlockWithFace
                                   : type == BiometricTypeUI.fingerprint
-                                      ? 'Unlock with Fingerprint'
-                                      : 'Unlock with Face or Fingerprint';
+                                      ? AppStrings.unlockWithFingerprint
+                                      : AppStrings.unlockWithFaceOrFingerprint;
                               return Padding(
                                 padding: const EdgeInsets.only(top: 20),
                                 child: OutlinedButton.icon(
                                   onPressed: _isLoading
                                       ? null
                                       : _handleBiometricUnlock,
-                                  icon: Icon(icon, color: const Color(0xFF6366F1)),
+                                  icon: Icon(icon, color: AppColors.primary500),
                                   label: Text(
                                     label,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF1E293B),
+                                      color: AppColors.neutral800,
                                     ),
                                   ),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
+                                padding: EdgeInsets.symmetric(
+                                  vertical: AppSpacing.lg,
                                 ),
                                 side: BorderSide(
                                   color: const Color(
@@ -333,7 +336,7 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                                   ).withOpacity(0.2),
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: AppRadius.brLg,
                                 ),
                                 backgroundColor: Colors.white.withOpacity(0.5),
                               ),
@@ -345,16 +348,16 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 32),
+                    AppSpacing.vGapXl2,
                     TextButton(
                       onPressed: () {
                         ref.read(loginProvider.notifier).logout();
                         ref.read(autoLockProvider.notifier).unlock();
                       },
                       child: Text(
-                        'Switch Account / Logout',
+                        AppStrings.switchAccountLogout,
                         style: TextStyle(
-                          color: const Color(0xFF64748B).withOpacity(0.8),
+                          color: AppColors.neutral500.withOpacity(0.8),
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),

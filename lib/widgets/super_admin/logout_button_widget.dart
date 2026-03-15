@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../design_system/design_system.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/auth_service.dart';
 import '../../features/auth/auth_guard_provider.dart';
@@ -75,32 +76,20 @@ class SuperAdminLogoutButton extends ConsumerWidget {
   }
 
   Future<void> _showLogoutConfirmation(BuildContext context, WidgetRef ref) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Sign Out?'),
-        content: const Text(
-          'You will be logged out of the Super Admin portal.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
+    final confirmed = await AppDialogs.confirm(
+      context,
+      title: 'Sign Out?',
+      message: 'You will be logged out of the Super Admin portal.',
+      confirmLabel: 'Sign Out',
     );
 
-    if (confirmed != true || !context.mounted) return;
+    if (!confirmed || !context.mounted) return;
 
-    await _performLogout(context, ref);
+    await performLogout(context, ref);
   }
 
-  Future<void> _performLogout(BuildContext context, WidgetRef ref) async {
+  /// Static method to perform logout. Use from profile screen or elsewhere.
+  static Future<void> performLogout(BuildContext context, WidgetRef ref) async {
     try {
       await ref.read(authServiceProvider).logout();
     } catch (_) {
@@ -114,7 +103,7 @@ class SuperAdminLogoutButton extends ConsumerWidget {
     context.go('/login');
   }
 
-  Future<void> _clearAllSessionData() async {
+  static Future<void> _clearAllSessionData() async {
     final prefs = await SharedPreferences.getInstance();
     const keys = [
       'access_token',

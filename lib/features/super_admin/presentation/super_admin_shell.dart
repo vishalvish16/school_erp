@@ -3,13 +3,16 @@
 // PURPOSE: Super Admin layout — web sidebar + TopBar + mobile bottom nav + Drawer
 // =============================================================================
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../design_system/design_system.dart';
 import '../../../features/auth/auth_guard_provider.dart';
 import '../../../widgets/super_admin/logout_button_widget.dart';
+import '../../../widgets/super_admin/notifications_bell_button.dart';
+import '../../../design_system/tokens/app_colors.dart';
+import '../../../design_system/tokens/app_spacing.dart';
 
 /// Tab indices for Super Admin navigation
 enum SuperAdminTab {
@@ -36,31 +39,42 @@ class SuperAdminShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWeb = kIsWeb;
+    // Use screen width for layout: mobile (drawer) on narrow, web (sidebar) on wide.
+    // This ensures mobile layout on web when viewport is narrow (e.g. responsive testing).
     final isWide = MediaQuery.of(context).size.width >= 768;
 
-    if (isWeb || isWide) {
+    if (isWide) {
       return _SuperAdminWebLayout(child: child);
     }
     return _SuperAdminMobileLayout(child: child);
   }
 }
 
-class _SuperAdminWebLayout extends ConsumerWidget {
+class _SuperAdminWebLayout extends ConsumerStatefulWidget {
   const _SuperAdminWebLayout({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SuperAdminWebLayout> createState() => _SuperAdminWebLayoutState();
+}
+
+class _SuperAdminWebLayoutState extends ConsumerState<_SuperAdminWebLayout> {
+  bool _isSidebarCollapsed = false;
+
+  @override
+  Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final loc = GoRouterState.of(context).matchedLocation;
     return Scaffold(
       body: Row(
         children: [
           // Sidebar
-          Container(
-            width: 214,
+          RepaintBoundary(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              curve: Curves.easeOut,
+              width: _isSidebarCollapsed ? 72 : 214,
             decoration: BoxDecoration(
               color: scheme.surface,
               border: Border(right: BorderSide(color: scheme.outlineVariant)),
@@ -71,166 +85,238 @@ class _SuperAdminWebLayout extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(_isSidebarCollapsed ? 12 : 20),
                     child: Row(
                       children: [
-                        AppLogoWidget(size: 32, showText: true),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: scheme.primaryContainer,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'SUPER ADMIN',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: scheme.onPrimaryContainer,
+                        AppLogoWidget(size: 32, showText: !_isSidebarCollapsed),
+                        if (!_isSidebarCollapsed) ...[
+                          AppSpacing.hGapSm,
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: scheme.primaryContainer,
+                              borderRadius: AppRadius.brSm,
+                            ),
+                            child: Text(
+                              AppStrings.superAdmin,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: scheme.onPrimaryContainer,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
                   const Divider(height: 1),
                   Expanded(
                     child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      padding: EdgeInsets.symmetric(
+                        vertical: AppSpacing.lg,
+                        horizontal: _isSidebarCollapsed ? 8 : 12,
+                      ),
                       children: [
                         _NavItem(
                           icon: SuperAdminTab.dashboard.icon,
                           activeIcon: SuperAdminTab.dashboard.activeIcon,
-                          label: 'Dashboard',
+                          label: AppStrings.dashboard,
                           isActive: GoRouterState.of(context).matchedLocation.contains('/dashboard'),
                           onTap: () => context.go('/super-admin/dashboard'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: SuperAdminTab.schools.icon,
                           activeIcon: SuperAdminTab.schools.activeIcon,
-                          label: 'Schools',
+                          label: AppStrings.schools,
                           isActive: GoRouterState.of(context).matchedLocation.contains('/schools'),
                           onTap: () => context.go('/super-admin/schools'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: Icons.group_outlined,
                           activeIcon: Icons.group,
-                          label: 'Groups',
+                          label: AppStrings.groups,
                           isActive: GoRouterState.of(context).matchedLocation.contains('/groups'),
                           onTap: () => context.go('/super-admin/groups'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: SuperAdminTab.plans.icon,
                           activeIcon: SuperAdminTab.plans.activeIcon,
-                          label: 'Plans',
+                          label: AppStrings.plans,
                           isActive: GoRouterState.of(context).matchedLocation.contains('/plans'),
                           onTap: () => context.go('/super-admin/plans'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: SuperAdminTab.billing.icon,
                           activeIcon: SuperAdminTab.billing.activeIcon,
-                          label: 'Billing',
+                          label: AppStrings.billing,
                           isActive: GoRouterState.of(context).matchedLocation.contains('/billing'),
                           onTap: () => context.go('/super-admin/billing'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
-                        const SizedBox(height: 16),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'MANAGEMENT',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
+                        if (!_isSidebarCollapsed) ...[
+                          AppSpacing.vGapLg,
+                          const Padding(
+                            padding: AppSpacing.paddingHMd,
+                            child: Text(
+                              'MANAGEMENT',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.neutral400,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
+                          AppSpacing.vGapSm,
+                        ],
                         _NavItem(
                           icon: Icons.flag_outlined,
                           activeIcon: Icons.flag,
-                          label: 'Feature Flags',
+                          label: AppStrings.featureFlags,
                           isActive: loc.contains('/features'),
                           onTap: () => context.go('/super-admin/features'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: Icons.devices_outlined,
                           activeIcon: Icons.devices,
-                          label: 'Hardware',
+                          label: AppStrings.hardware,
                           isActive: loc.contains('/hardware'),
                           onTap: () => context.go('/super-admin/hardware'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: Icons.admin_panel_settings_outlined,
                           activeIcon: Icons.admin_panel_settings,
-                          label: 'Admin Users',
+                          label: AppStrings.adminUsers,
                           isActive: loc.contains('/admins'),
                           onTap: () => context.go('/super-admin/admins'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: Icons.notifications_outlined,
                           activeIcon: Icons.notifications,
-                          label: 'Notifications',
+                          label: AppStrings.notifications,
                           isActive: loc.contains('/notifications'),
                           onTap: () => context.go('/super-admin/notifications'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
-                        const SizedBox(height: 16),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'SYSTEM',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
+                        if (!_isSidebarCollapsed) ...[
+                          AppSpacing.vGapLg,
+                          const Padding(
+                            padding: AppSpacing.paddingHMd,
+                            child: Text(
+                              'SYSTEM',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.neutral400,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
+                          AppSpacing.vGapSm,
+                        ],
                         _NavItem(
                           icon: Icons.history_edu_outlined,
                           activeIcon: Icons.history_edu,
-                          label: 'Audit Logs',
+                          label: AppStrings.auditLogs,
                           isActive: loc.contains('/audit-logs'),
                           onTap: () => context.go('/super-admin/audit-logs'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: Icons.security_outlined,
                           activeIcon: Icons.security,
-                          label: 'Security',
+                          label: AppStrings.security,
                           isActive: loc.contains('/security'),
                           onTap: () => context.go('/super-admin/security'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: Icons.health_and_safety_outlined,
                           activeIcon: Icons.health_and_safety,
-                          label: 'Infra Status',
+                          label: AppStrings.infraStatus,
                           isActive: loc.contains('/infra'),
                           onTap: () => context.go('/super-admin/infra'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                         _NavItem(
                           icon: Icons.settings_outlined,
                           activeIcon: Icons.settings,
-                          label: 'Settings',
-                          isActive: false,
-                          onTap: () => context.go('/settings'),
+                          label: AppStrings.settings,
+                          isActive: loc.contains('/settings'),
+                          onTap: () => context.go('/super-admin/settings'),
+                          isCollapsed: _isSidebarCollapsed,
+                        ),
+                        _NavItem(
+                          icon: Icons.lock_reset_outlined,
+                          activeIcon: Icons.lock_reset,
+                          label: AppStrings.changePassword,
+                          isActive: loc.contains('/change-password'),
+                          onTap: () => context.go('/super-admin/change-password'),
+                          isCollapsed: _isSidebarCollapsed,
+                        ),
+                        _NavItem(
+                          icon: Icons.person_outline_rounded,
+                          activeIcon: Icons.person_rounded,
+                          label: AppStrings.profile,
+                          isActive: loc.contains('/profile'),
+                          onTap: () => context.go('/super-admin/profile'),
+                          isCollapsed: _isSidebarCollapsed,
                         ),
                       ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
+                      child: Container(
+                        height: 56,
+                        padding: EdgeInsets.symmetric(horizontal: _isSidebarCollapsed ? 12 : 20),
+                        child: Row(
+                          mainAxisAlignment: _isSidebarCollapsed
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (!_isSidebarCollapsed)
+                              Text(
+                                'Collapse',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            Icon(
+                              _isSidebarCollapsed
+                                  ? Icons.arrow_forward_ios_rounded
+                                  : Icons.arrow_back_ios_new_rounded,
+                              size: 16,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          // Content + TopBar
+          ),
+          // Content + minimal top bar (no submenu, no Live)
           Expanded(
             child: Column(
               children: [
-                // TopBar
                 Container(
                   height: 56,
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: AppSpacing.paddingHXl,
                   decoration: BoxDecoration(
                     color: scheme.surface,
                     border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
@@ -238,16 +324,15 @@ class _SuperAdminWebLayout extends ConsumerWidget {
                   child: Row(
                     children: [
                       const Spacer(),
-                      IconButton(
-                        icon: const Icon(Icons.notifications_outlined),
-                        onPressed: () => context.go('/super-admin/notifications'),
-                        tooltip: 'Notifications',
-                      ),
-                      SuperAdminLogoutButton(size: 32),
+                      const NotificationsBellButton(),
+                      AppSpacing.hGapSm,
+                      const ThemeToggleButton(),
+                      AppSpacing.hGapSm,
+                      _ProfileAvatarButton(size: 32),
                     ],
                   ),
                 ),
-                Expanded(child: child),
+                Expanded(child: widget.child),
               ],
             ),
           ),
@@ -268,6 +353,7 @@ class _SuperAdminMobileLayout extends ConsumerStatefulWidget {
 
 class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout> {
   int _currentIndex = 0;
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void didChangeDependencies() {
@@ -286,7 +372,9 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
         loc.contains('/notifications') ||
         loc.contains('/audit-logs') ||
         loc.contains('/security') ||
-        loc.contains('/infra')) {
+        loc.contains('/infra') ||
+        loc.contains('/settings') ||
+        loc.contains('/profile')) {
       _currentIndex = 4; // More (drawer)
     } else {
       _currentIndex = 0; // Dashboard
@@ -307,34 +395,61 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
     final authState = ref.watch(authGuardProvider);
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
-        title: Row(
-          children: [
-            AppLogoWidget(size: 28, showText: true),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(4),
-              ),
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          tooltip: 'Open menu',
+        ),
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = MediaQuery.of(context).size.width < 360;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppLogoWidget(size: compact ? 24 : 28, showText: true),
+                if (!compact) ...[
+                  AppSpacing.hGapSm,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      borderRadius: AppRadius.brXs,
+                    ),
+                    child: Text(
+                      AppStrings.superAdmin,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: scheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+        actions: [
+          const ThemeToggleButton(),
+          const NotificationsBellButton(),
+          IconButton(
+            onPressed: () => context.go('/super-admin/profile'),
+            icon: CircleAvatar(
+              radius: 14,
+              backgroundColor: scheme.primaryContainer,
               child: Text(
-                'SUPER ADMIN',
+                _getInitials(ref.watch(authGuardProvider).userEmail ?? 'SA'),
                 style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
                   color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
               ),
             ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.go('/super-admin/notifications'),
+            tooltip: AppStrings.profile,
           ),
-          SuperAdminLogoutButton(size: 32),
         ],
       ),
       drawer: Drawer(
@@ -360,7 +475,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    AppSpacing.vGapMd,
                     Text(
                       authState.userEmail ?? 'Super Admin',
                       style: TextStyle(
@@ -369,15 +484,15 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
                         fontSize: 16,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    AppSpacing.vGapXs,
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
                       decoration: BoxDecoration(
                         color: scheme.primary,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: AppRadius.brXs,
                       ),
                       child: Text(
-                        'SUPER ADMIN',
+                        AppStrings.superAdmin,
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -391,7 +506,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.dashboard_outlined),
-              title: const Text('Dashboard'),
+              title: const Text(AppStrings.dashboard),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/dashboard');
@@ -399,7 +514,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.school_outlined),
-              title: const Text('Schools'),
+              title: const Text(AppStrings.schools),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/schools');
@@ -407,7 +522,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.group_outlined),
-              title: const Text('Groups'),
+              title: const Text(AppStrings.groups),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/groups');
@@ -415,7 +530,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.layers_outlined),
-              title: const Text('Plans'),
+              title: const Text(AppStrings.plans),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/plans');
@@ -423,7 +538,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.payments_outlined),
-              title: const Text('Billing'),
+              title: const Text(AppStrings.billing),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/billing');
@@ -432,7 +547,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             const Divider(),
             ListTile(
               leading: const Icon(Icons.flag_outlined),
-              title: const Text('Feature Flags'),
+              title: const Text(AppStrings.featureFlags),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/features');
@@ -440,7 +555,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.devices_outlined),
-              title: const Text('Hardware'),
+              title: const Text(AppStrings.hardware),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/hardware');
@@ -448,7 +563,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.admin_panel_settings_outlined),
-              title: const Text('Admin Users'),
+              title: const Text(AppStrings.adminUsers),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/admins');
@@ -456,7 +571,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.notifications_outlined),
-              title: const Text('Notifications'),
+              title: const Text(AppStrings.notifications),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/notifications');
@@ -464,7 +579,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.history_edu_outlined),
-              title: const Text('Audit Logs'),
+              title: const Text(AppStrings.auditLogs),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/audit-logs');
@@ -472,7 +587,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.security_outlined),
-              title: const Text('Security'),
+              title: const Text(AppStrings.security),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/security');
@@ -480,7 +595,7 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.health_and_safety_outlined),
-              title: const Text('Infra Status'),
+              title: const Text(AppStrings.infraStatus),
               onTap: () {
                 Navigator.pop(context);
                 context.go('/super-admin/infra');
@@ -488,10 +603,26 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
             ),
             ListTile(
               leading: const Icon(Icons.settings_outlined),
-              title: const Text('Settings'),
+              title: const Text(AppStrings.settings),
               onTap: () {
                 Navigator.pop(context);
-                context.go('/settings');
+                context.go('/super-admin/settings');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.lock_reset_outlined),
+              title: const Text(AppStrings.changePassword),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/super-admin/change-password');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.person_outline_rounded),
+              title: const Text(AppStrings.profile),
+              onTap: () {
+                Navigator.pop(context);
+                context.go('/super-admin/profile');
               },
             ),
             const Divider(),
@@ -518,20 +649,65 @@ class _SuperAdminMobileLayoutState extends ConsumerState<_SuperAdminMobileLayout
               context.go('/super-admin/billing');
               break;
             case 4:
-              Scaffold.of(context).openDrawer();
+              _scaffoldKey.currentState?.openDrawer();
               break;
           }
         },
         type: BottomNavigationBarType.fixed,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: 'Dashboard'),
-          BottomNavigationBarItem(icon: Icon(Icons.school_outlined), label: 'Schools'),
-          BottomNavigationBarItem(icon: Icon(Icons.layers_outlined), label: 'Plans'),
-          BottomNavigationBarItem(icon: Icon(Icons.payments_outlined), label: 'Billing'),
-          BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: 'More'),
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: AppStrings.dashboard),
+          BottomNavigationBarItem(icon: Icon(Icons.school_outlined), label: AppStrings.schools),
+          BottomNavigationBarItem(icon: Icon(Icons.layers_outlined), label: AppStrings.plans),
+          BottomNavigationBarItem(icon: Icon(Icons.payments_outlined), label: AppStrings.billing),
+          BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: AppStrings.more),
         ],
       ),
     );
+  }
+}
+
+class _ProfileAvatarButton extends ConsumerWidget {
+  const _ProfileAvatarButton({this.size = 32});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final authState = ref.watch(authGuardProvider);
+    final initials = _getInitials(authState.userEmail ?? 'SA');
+
+    return Tooltip(
+      message: AppStrings.profile,
+      child: InkWell(
+        onTap: () => context.go('/super-admin/profile'),
+        borderRadius: AppRadius.brXl2,
+        child: Padding(
+          padding: AppSpacing.paddingXs,
+          child: CircleAvatar(
+            radius: size / 2,
+            backgroundColor: scheme.primaryContainer,
+            child: Text(
+              initials,
+              style: TextStyle(
+                color: scheme.onPrimaryContainer,
+                fontWeight: FontWeight.w600,
+                fontSize: size * 0.4,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getInitials(String email) {
+    if (email.isEmpty) return 'SA';
+    final parts = email.split('@').first.split(RegExp(r'[.\s]'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return email.length >= 2 ? email.substring(0, 2).toUpperCase() : 'SA';
   }
 }
 
@@ -542,6 +718,7 @@ class _NavItem extends StatelessWidget {
     required this.label,
     required this.isActive,
     required this.onTap,
+    this.isCollapsed = false,
   });
 
   final IconData icon;
@@ -549,21 +726,22 @@ class _NavItem extends StatelessWidget {
   final String label;
   final bool isActive;
   final VoidCallback onTap;
+  final bool isCollapsed;
 
-  static const Color _activeColor = Color(0xFF00D2FF); // cyan
+  static const Color _activeColor = AppColors.info500; // cyan
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final activeColor = scheme.primary;
-    return Material(
+    final content = Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: AppRadius.brMd,
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: AppRadius.brMd,
             color: isActive ? activeColor.withValues(alpha: 0.10) : null,
             border: isActive
                 ? const Border(
@@ -572,30 +750,40 @@ class _NavItem extends StatelessWidget {
                 : null,
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: isCollapsed ? 8 : 12,
+              vertical: 10,
+            ),
             child: Row(
               children: [
                 Icon(
                   isActive ? activeIcon : icon,
-                  size: 22,
+                  size: isCollapsed ? 20 : 22,
                   color: isActive ? activeColor : scheme.onSurfaceVariant,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                      color: isActive ? activeColor : scheme.onSurface,
+                if (!isCollapsed) ...[
+                  AppSpacing.hGapMd,
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                        color: isActive ? activeColor : scheme.onSurface,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
         ),
       ),
     );
+    if (isCollapsed) {
+      return Tooltip(message: label, child: content);
+    }
+    return content;
   }
 }
