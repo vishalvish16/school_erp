@@ -12,8 +12,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/super_admin_service.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../shared/widgets/metric_stat_card.dart';
 
 class SuperAdminSecurityScreen extends ConsumerStatefulWidget {
   const SuperAdminSecurityScreen({super.key});
@@ -238,30 +237,57 @@ class _SuperAdminSecurityScreenState extends ConsumerState<SuperAdminSecurityScr
 
   Widget _buildSecurityStats() {
     final failedCount = _events.where((e) => e.status == 'failed' || e.status == 'blocked').length;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 600;
-        final cards = [
-          _SecurityStatCard(icon: Icons.check_circle, value: '0', label: AppStrings.activeThreats, color: AppColors.success500),
-          _SecurityStatCard(icon: Icons.warning, value: '$failedCount', label: AppStrings.failedLogins24h, color: AppColors.warning500),
-          _SecurityStatCard(icon: Icons.devices, value: '${_devices.length}', label: AppStrings.trustedDevices, color: AppColors.secondary500),
-          _SecurityStatCard(icon: Icons.security, value: _mfaEnabled ? 'ON' : 'OFF', label: AppStrings.twoFaStatus, color: _mfaEnabled ? AppColors.success500 : AppColors.neutral400),
-        ];
-        if (isWide) {
-          return Row(
-            children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.only(right: 12), child: c))).toList(),
+    final useRow = MediaQuery.sizeOf(context).width >= 600;
+    final items = <(IconData, String, String, Color)>[
+      (Icons.check_circle, '0', AppStrings.activeThreats, AppColors.success500),
+      (Icons.warning, '$failedCount', AppStrings.failedLogins24h, AppColors.warning500),
+      (Icons.devices, '${_devices.length}', AppStrings.trustedDevices, AppColors.secondary500),
+      (
+        Icons.security,
+        _mfaEnabled ? 'ON' : 'OFF',
+        AppStrings.twoFaStatus,
+        _mfaEnabled ? AppColors.success500 : AppColors.neutral400,
+      ),
+    ];
+    if (useRow) {
+      return Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(
+              child: MetricStatCard(
+                icon: items[i].$1,
+                value: items[i].$2,
+                label: items[i].$3,
+                color: items[i].$4,
+                compact: false,
+              ),
+            ),
+            if (i < items.length - 1) const SizedBox(width: 12),
+          ],
+        ],
+      );
+    }
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: items.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, i) {
+          final e = items[i];
+          return SizedBox(
+            width: 148,
+            child: MetricStatCard(
+              icon: e.$1,
+              value: e.$2,
+              label: e.$3,
+              color: e.$4,
+              compact: true,
+            ),
           );
-        }
-        return GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.4,
-          children: cards,
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -616,34 +642,3 @@ class _SuperAdminSecurityScreenState extends ConsumerState<SuperAdminSecurityScr
   }
 }
 
-class _SecurityStatCard extends StatelessWidget {
-  const _SecurityStatCard({required this.icon, required this.value, required this.label, required this.color});
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: AppSpacing.paddingLg,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: AppSpacing.paddingSm,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: AppRadius.brMd),
-              child: Icon(icon, size: 24, color: color),
-            ),
-            AppSpacing.vGapMd,
-            Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            AppSpacing.vGapXs,
-            Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-}

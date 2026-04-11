@@ -7,13 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/parent/child_summary_model.dart';
 import '../../data/parent_children_provider.dart';
-
-const Color _accent = AppColors.success500;
 
 class ParentChildrenListScreen extends ConsumerWidget {
   const ParentChildrenListScreen({super.key});
@@ -21,121 +17,236 @@ class ParentChildrenListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncChildren = ref.watch(parentChildrenProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
-    final padding = isWide ? 24.0 : 16.0;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(parentChildrenProvider),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.all(padding),
-        child: asyncChildren.when(
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(64),
-              child: CircularProgressIndicator(),
+        padding: isWide ? AppSpacing.pagePadding : AppSpacing.paddingLg,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+                maxWidth: AppBreakpoints.contentMaxWidth),
+            child: asyncChildren.when(
+              loading: () => const Padding(
+                padding: AppSpacing.paddingXl,
+                child: AppLoaderScreen(),
+              ),
+              error: (err, _) => _ErrorCard(
+                error: err.toString().replaceAll('Exception: ', ''),
+                onRetry: () => ref.invalidate(parentChildrenProvider),
+              ),
+              data: (children) {
+                if (children.isEmpty) {
+                  return const _EmptyState();
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppStrings.myChildren,
+                      style: AppTextStyles.h4(
+                          color: Theme.of(context).colorScheme.onSurface),
+                    ),
+                    AppSpacing.vGapXs,
+                    Text(
+                      AppStrings.myChildrenSubtitle,
+                      style: AppTextStyles.bodySm(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSurfaceVariant),
+                    ),
+                    AppSpacing.vGapXl,
+                    isWide
+                        ? _buildTable(context, children)
+                        : _buildCardList(context, children),
+                  ],
+                );
+              },
             ),
           ),
-          error: (err, _) => _ErrorCard(
-            error: err.toString().replaceAll('Exception: ', ''),
-            onRetry: () => ref.invalidate(parentChildrenProvider),
-          ),
-          data: (children) {
-            if (children.isEmpty) {
-              return _EmptyState();
-            }
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  AppStrings.myChildren,
-                  style: Theme.of(context)
-                      .textTheme
-                      .headlineSmall
-                      ?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                AppSpacing.vGapXs,
-                Text(
-                  AppStrings.myChildrenSubtitle,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurfaceVariant,
-                      ),
-                ),
-                AppSpacing.vGapXl,
-                isWide
-                    ? _buildTable(context, children)
-                    : _buildCardList(context, children),
-              ],
-            );
-          },
         ),
       ),
     );
   }
 
-  Widget _buildTable(BuildContext context, List<ChildSummaryModel> children) {
+  Widget _buildTable(
+      BuildContext context, List<ChildSummaryModel> children) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columns: const [
-            DataColumn(label: Text(AppStrings.dash)),
-            DataColumn(label: Text(AppStrings.parentColName)),
-            DataColumn(label: Text(AppStrings.parentColClass)),
-            DataColumn(label: Text(AppStrings.parentColAdmNo)),
-            DataColumn(label: Text(AppStrings.view)),
-          ],
-          rows: children
-              .map(
-                (c) => DataRow(
-                  cells: [
-                    DataCell(
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: _accent.withValues(alpha: 0.15),
-                        backgroundImage:
-                            c.photoUrl != null ? NetworkImage(c.photoUrl!) : null,
-                        child: c.photoUrl == null
-                            ? Text(
-                                c.fullName.isNotEmpty
-                                    ? c.fullName.substring(0, 1).toUpperCase()
-                                    : '?',
-                                style: const TextStyle(
-                                    color: _accent,
-                                    fontWeight: FontWeight.w600),
-                              )
-                            : null,
+      shape: AppRadius.cardShape,
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.md,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.primary500.withValues(alpha: AppOpacity.shadow),
+              border: Border(
+                bottom: BorderSide(color: scheme.outlineVariant),
+              ),
+            ),
+            child: Row(
+              children: [
+                SizedBox(width: AppSpacing.xl4), // avatar col
+                AppSpacing.hGapLg,
+                Expanded(
+                  child: Text(
+                    AppStrings.parentColName,
+                    style: AppTextStyles.tableHeader(
+                        color: scheme.onSurfaceVariant),
+                  ),
+                ),
+                SizedBox(
+                  width: 150,
+                  child: Text(
+                    AppStrings.parentColClass,
+                    style: AppTextStyles.tableHeader(
+                        color: scheme.onSurfaceVariant),
+                  ),
+                ),
+                SizedBox(
+                  width: 220,
+                  child: Text(
+                    AppStrings.parentColAdmNo,
+                    style: AppTextStyles.tableHeader(
+                        color: scheme.onSurfaceVariant),
+                  ),
+                ),
+                SizedBox(
+                  width: AppSpacing.xl5,
+                  child: Center(
+                    child: Text(
+                      AppStrings.parentColAction,
+                      style: AppTextStyles.tableHeader(
+                          color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Data rows
+          ...children.asMap().entries.map((entry) {
+            final i = entry.key;
+            final c = entry.value;
+            final isEven = i % 2 == 0;
+            return InkWell(
+              onTap: () => context.go('/parent/children/${c.id}'),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm + 2,
+                ),
+                decoration: BoxDecoration(
+                  color: isEven
+                      ? Colors.transparent
+                      : scheme.surfaceContainerLowest,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: scheme.outlineVariant
+                          .withValues(alpha: AppOpacity.medium),
+                    ),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: AppSpacing.lg + 2,
+                      backgroundColor:
+                          AppColors.primary500.withValues(alpha: AppOpacity.focus),
+                      backgroundImage: c.photoUrl != null
+                          ? NetworkImage(c.photoUrl!)
+                          : null,
+                      child: c.photoUrl == null
+                          ? Text(
+                              c.fullName.isNotEmpty
+                                  ? c.fullName[0].toUpperCase()
+                                  : '?',
+                              style: AppTextStyles.caption(color: AppColors.primary500),
+                            )
+                          : null,
+                    ),
+                    AppSpacing.hGapMd,
+                    Expanded(
+                      child: Text(
+                        c.fullName,
+                        style: AppTextStyles.bodyMd(
+                            color: scheme.onSurface),
                       ),
                     ),
-                    DataCell(Text(c.fullName)),
-                    DataCell(Text(c.classSection)),
-                    DataCell(Text(c.admissionNo)),
-                    DataCell(
-                      TextButton(
-                        onPressed: () => context.go('/parent/children/${c.id}'),
-                        child: const Text(AppStrings.view),
+                    SizedBox(
+                      width: 150,
+                      child: Text(
+                        c.classSection,
+                        style: AppTextStyles.bodySm(
+                            color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                    SizedBox(
+                      width: 220,
+                      child: Text(
+                        c.admissionNo,
+                        style: AppTextStyles.code(
+                            color: scheme.onSurfaceVariant),
+                      ),
+                    ),
+                    SizedBox(
+                      width: AppSpacing.xl5,
+                      child: Center(
+                        child: IconButton(
+                          onPressed: () =>
+                              context.go('/parent/children/${c.id}'),
+                          icon: Icon(
+                            Icons.open_in_new,
+                            size: AppIconSize.sm,
+                            color: AppColors.primary500,
+                          ),
+                          tooltip: AppStrings.viewChildTooltip(c.fullName),
+                          padding: EdgeInsets.zero,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              )
-              .toList(),
-        ),
+              ),
+            );
+          }),
+          // Footer
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
+            ),
+            child: Text(
+              AppStrings.childrenLinkedFooter(children.length),
+              style: AppTextStyles.bodySm(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildCardList(BuildContext context, List<ChildSummaryModel> children) {
+  Widget _buildCardList(
+      BuildContext context, List<ChildSummaryModel> children) {
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: children.length,
-      separatorBuilder: (_, __) => AppSpacing.vGapMd,
+      separatorBuilder: (_, i) => AppSpacing.vGapMd,
       itemBuilder: (_, i) {
         final c = children[i];
         return Card(
+          shape: AppRadius.cardShape,
           child: InkWell(
             onTap: () => context.go('/parent/children/${c.id}'),
             borderRadius: AppRadius.brLg,
@@ -144,19 +255,17 @@ class ParentChildrenListScreen extends ConsumerWidget {
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 24,
-                    backgroundColor: _accent.withValues(alpha: 0.15),
+                    radius: AppSpacing.xl,
+                    backgroundColor:
+                        AppColors.primary500.withValues(alpha: AppOpacity.focus),
                     backgroundImage:
                         c.photoUrl != null ? NetworkImage(c.photoUrl!) : null,
                     child: c.photoUrl == null
                         ? Text(
                             c.fullName.isNotEmpty
-                                ? c.fullName.substring(0, 1).toUpperCase()
+                                ? c.fullName[0].toUpperCase()
                                 : '?',
-                            style: const TextStyle(
-                                color: _accent,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 18),
+                            style: AppTextStyles.h5(color: AppColors.primary500),
                           )
                         : null,
                   ),
@@ -167,21 +276,29 @@ class ParentChildrenListScreen extends ConsumerWidget {
                       children: [
                         Text(
                           c.fullName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600, fontSize: 16),
+                          style: AppTextStyles.h6(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface),
                         ),
                         Text(
                           c.classSection,
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: AppTextStyles.bodySm(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                         ),
                         Text(
                           c.admissionNo,
-                          style: Theme.of(context).textTheme.bodySmall,
+                          style: AppTextStyles.bodySm(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right),
+                  Icon(Icons.chevron_right, size: AppIconSize.lg),
                 ],
               ),
             ),
@@ -193,27 +310,30 @@ class ParentChildrenListScreen extends ConsumerWidget {
 }
 
 class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             Icons.family_restroom_outlined,
-            size: 64,
-            color: Theme.of(context).colorScheme.outline,
+            size: AppIconSize.xl4,
+            color: scheme.outline,
           ),
           AppSpacing.vGapLg,
           Text(
             AppStrings.noChildrenLinked,
-            style: Theme.of(context).textTheme.titleMedium,
+            style: AppTextStyles.h5(color: scheme.onSurface),
             textAlign: TextAlign.center,
           ),
           AppSpacing.vGapSm,
           Text(
             AppStrings.noChildrenLinkedHint,
-            style: Theme.of(context).textTheme.bodySmall,
+            style: AppTextStyles.bodySm(color: scheme.onSurfaceVariant),
             textAlign: TextAlign.center,
           ),
         ],
@@ -230,18 +350,26 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Card(
+      shape: AppRadius.cardShape,
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: AppSpacing.dialogPadding,
         child: Column(
           children: [
             Icon(Icons.error_outline,
-                size: 48, color: Theme.of(context).colorScheme.error),
+                size: AppIconSize.xl3, color: scheme.error),
             AppSpacing.vGapLg,
-            Text(error, textAlign: TextAlign.center),
+            Text(
+              error,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.body(color: scheme.onSurface),
+            ),
             AppSpacing.vGapLg,
-            FilledButton(
-                onPressed: onRetry, child: const Text(AppStrings.retry)),
+            FilledButton.icon(
+                icon: Icon(Icons.refresh, size: AppIconSize.md),
+                label: const Text(AppStrings.retry),
+                onPressed: onRetry),
           ],
         ),
       ),

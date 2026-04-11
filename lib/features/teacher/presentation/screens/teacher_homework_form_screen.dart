@@ -126,7 +126,7 @@ class _TeacherHomeworkFormScreenState
 
     if (widget.isEditing && !_loaded) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: AppLoaderScreen(),
       );
     }
 
@@ -170,7 +170,7 @@ class _TeacherHomeworkFormScreenState
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             DropdownButtonFormField<String>(
-                              value: _selectedSectionId,
+                              initialValue: _selectedSectionId,
                               decoration: const InputDecoration(
                                 labelText: 'Class - Section *',
                                 border: OutlineInputBorder(),
@@ -197,7 +197,7 @@ class _TeacherHomeworkFormScreenState
                             AppSpacing.vGapLg,
                             if (_selectedSectionId != null)
                               DropdownButtonFormField<String>(
-                                value: _selectedSubject,
+                                initialValue: _selectedSubject,
                                 decoration: const InputDecoration(
                                   labelText: 'Subject *',
                                   border: OutlineInputBorder(),

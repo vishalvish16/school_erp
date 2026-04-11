@@ -4,10 +4,9 @@
  * Loads Driver by userId with school, vehicle, vehicle.route (stops).
  * Attaches req.driverId and req.driver.
  */
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/response.js';
 
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 export const requireDriver = async (req, res, next) => {
   try {

@@ -82,26 +82,43 @@ abstract final class AppColors {
   static const Color neutral900 = Color(0xFF0F172A);
   static const Color neutral950 = Color(0xFF020617);
 
+  // ── Brand Navy (Vidyron palette — matches logo + login screen) ──────────────
+  static const Color brandNavy950  = Color(0xFF07111F); // deepest bg
+  static const Color brandNavy900  = Color(0xFF0A1628); // sidebar / topbar
+  static const Color brandNavy800  = Color(0xFF0D1B34); // card surface
+  static const Color brandNavy700  = Color(0xFF122040); // card hover / variant
+  static const Color brandNavy600  = Color(0xFF1A3052); // border / divider
+  static const Color brandNavy500  = Color(0xFF1E3A8A); // secondary accent
+  static const Color brandBlue     = Color(0xFF2563EB); // brand CTA (login btn)
+  static const Color brandBlueMid  = Color(0xFF3B82F6); // mid blue
+  static const Color brandBlueLight= Color(0xFF60A5FA); // highlight
+
+  // ── Glass overlay constants ──────────────────────────────────────────────────
+  static const Color glassWhite05 = Color(0x0DFFFFFF); //  5% white
+  static const Color glassWhite10 = Color(0x1AFFFFFF); // 10% white
+  static const Color glassWhite18 = Color(0x2EFFFFFF); // 18% white — border rim
+  static const Color glassWhite30 = Color(0x4DFFFFFF); // 30% white — focus rim
+
   // ── Surface tokens ──────────────────────────────────────────────────────────
-  // Light theme
-  static const Color lightBackground   = Color(0xFFF8FAFC); // neutral-50
+  // Light theme — soft brand blue page background (white cards pop, easy on eyes)
+  static const Color lightBackground   = Color(0xFFDDE8F5); // soft blue-white page bg
   static const Color lightSurface      = Color(0xFFFFFFFF);
-  static const Color lightSurfaceVar   = Color(0xFFF1F5F9); // neutral-100
-  static const Color lightBorder       = Color(0xFFE2E8F0); // neutral-200
-  static const Color lightBorderFocus  = Color(0xFF4F46E5); // primary-600
+  static const Color lightSurfaceVar   = Color(0xFFDBEAFE); // blue-100 tint
+  static const Color lightBorder       = Color(0xFFC7D8F5); // blue-tinted border
+  static const Color lightBorderFocus  = Color(0xFF2563EB); // brand blue focus
   static const Color lightText         = Color(0xFF0F172A); // neutral-900
-  static const Color lightTextSub      = Color(0xFF475569); // neutral-600
+  static const Color lightTextSub      = Color(0xFF1E3A6E); // navy sub-text
   static const Color lightTextHint     = Color(0xFF94A3B8); // neutral-400
 
-  // Dark theme
-  static const Color darkBackground    = Color(0xFF0A0E1A); // deeper than neutral-950
-  static const Color darkSurface       = Color(0xFF111827); // gray-900
-  static const Color darkSurfaceVar    = Color(0xFF1C2537); // gray-800 variant
-  static const Color darkBorder        = Color(0xFF1E293B); // neutral-800
-  static const Color darkBorderFocus   = Color(0xFF818CF8); // primary-400
-  static const Color darkText          = Color(0xFFF8FAFC); // neutral-50
-  static const Color darkTextSub       = Color(0xFF94A3B8); // neutral-400
-  static const Color darkTextHint      = Color(0xFF475569); // neutral-600
+  // Dark theme — Vidyron brand navy glass
+  static const Color darkBackground    = Color(0xFF07111F); // deep brand navy
+  static const Color darkSurface       = Color(0xFF0D1B34); // navy card surface
+  static const Color darkSurfaceVar    = Color(0xFF122040); // elevated navy
+  static const Color darkBorder        = Color(0xFF1A3052); // navy border
+  static const Color darkBorderFocus   = Color(0xFF2563EB); // brand blue focus
+  static const Color darkText          = Color(0xFFF0F6FF); // blue-white text
+  static const Color darkTextSub       = Color(0xFFAEC6E8); // light navy text
+  static const Color darkTextHint      = Color(0xFF4A6A8A); // muted navy hint
 
   // ── Overlay & scrim ─────────────────────────────────────────────────────────
   static const Color overlayLight = Color(0x1A000000); // 10% black
@@ -115,26 +132,34 @@ abstract final class AppColors {
     colors: [primary500, primary700],
   );
 
+  // Vidyron brand sidebar gradient — deep navy matching logo palette
   static const LinearGradient sidebarGradientDark = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFF111827), Color(0xFF0A0E1A)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0F2044), Color(0xFF07111F)],
+  );
+
+  // Brand page background gradient for dark mode
+  static const LinearGradient navyPageGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF0A1628), Color(0xFF07111F)],
   );
 
   static const LinearGradient sidebarGradientLight = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
-    colors: [Color(0xFFFFFFFF), Color(0xFFF1F5F9)],
+    colors: [Color(0xFFFFFFFF), Color(0xFFDBEAFE)],
   );
 
   // ── ColorScheme factories ────────────────────────────────────────────────────
 
   static ColorScheme get lightScheme => ColorScheme(
     brightness: Brightness.light,
-    primary: primary600,
+    primary: brandBlue,             // brand CTA blue (matches login button)
     onPrimary: Colors.white,
-    primaryContainer: primary100,
-    onPrimaryContainer: primary900,
+    primaryContainer: lightSurfaceVar,
+    onPrimaryContainer: brandNavy500,
     secondary: secondary600,
     onSecondary: Colors.white,
     secondaryContainer: secondary100,
@@ -152,23 +177,23 @@ abstract final class AppColors {
     surfaceContainerHighest: lightSurfaceVar,
     onSurfaceVariant: lightTextSub,
     outline: lightBorder,
-    outlineVariant: neutral200,
+    outlineVariant: const Color(0xFFCDD9F0),
     shadow: neutral900,
     scrim: scrim,
-    inverseSurface: neutral900,
-    onInverseSurface: neutral50,
-    inversePrimary: primary300,
+    inverseSurface: brandNavy800,
+    onInverseSurface: darkText,
+    inversePrimary: brandBlueLight,
   );
 
   static ColorScheme get darkScheme => ColorScheme(
     brightness: Brightness.dark,
-    primary: primary400,
-    onPrimary: primary950,
-    primaryContainer: primary800,
-    onPrimaryContainer: primary100,
-    secondary: secondary400,
-    onSecondary: secondary900,
-    secondaryContainer: secondary800,
+    primary: brandBlueLight,         // #60A5FA — visible on dark navy
+    onPrimary: Colors.white,
+    primaryContainer: brandNavy500,  // #1E3A8A
+    onPrimaryContainer: const Color(0xFFBFDBFE),
+    secondary: secondary300,
+    onSecondary: brandNavy800,
+    secondaryContainer: brandNavy600,
     onSecondaryContainer: secondary100,
     tertiary: success300,
     onTertiary: success700,
@@ -178,16 +203,16 @@ abstract final class AppColors {
     onError: error700,
     errorContainer: error700,
     onErrorContainer: error50,
-    surface: darkSurface,
-    onSurface: darkText,
-    surfaceContainerHighest: darkSurfaceVar,
-    onSurfaceVariant: darkTextSub,
-    outline: darkBorder,
-    outlineVariant: neutral700,
+    surface: darkSurface,            // #0D1B34 — navy card
+    onSurface: darkText,             // #F0F6FF — blue-white text
+    surfaceContainerHighest: darkSurfaceVar, // #122040
+    onSurfaceVariant: darkTextSub,   // #AEC6E8
+    outline: glassWhite18,           // rgba(255,255,255,0.18) — glass border
+    outlineVariant: glassWhite10,    // rgba(255,255,255,0.10) — subtle divider
     shadow: Colors.black,
     scrim: scrim,
     inverseSurface: neutral100,
     onInverseSurface: neutral900,
-    inversePrimary: primary600,
+    inversePrimary: brandBlue,
   );
 }

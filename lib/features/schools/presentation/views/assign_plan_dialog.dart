@@ -5,8 +5,6 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../subscription/provider/plan_provider.dart';
 import '../viewmodels/school_detail_viewmodel.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class AssignPlanDialog extends ConsumerStatefulWidget {
   final String schoolId;

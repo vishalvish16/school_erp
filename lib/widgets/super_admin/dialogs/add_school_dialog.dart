@@ -5,7 +5,6 @@
 
 import 'dart:async';
 import 'dart:math';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../design_system/design_system.dart';
@@ -249,10 +248,11 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isWeb = kIsWeb || MediaQuery.of(context).size.width >= 768;
+    final isWideLayout =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     return ConstrainedBox(
       constraints: BoxConstraints(
-        maxWidth: isWeb ? 560 : double.infinity,
+        maxWidth: isWideLayout ? 560 : double.infinity,
         maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
       child: Padding(
@@ -311,16 +311,17 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
             ),
             AppSpacing.vGapXl,
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (_step > 0)
-                  TextButton(
+                if (_step > 0) ...[
+                  AppOutlineButton(
                     onPressed: _submitting ? null : () => setState(() => _step--),
                     child: const Text('Back'),
-                  )
-                else
+                  ),
+                  AppSpacing.hGapMd,
+                ] else
                   const SizedBox.shrink(),
-                FilledButton(
+                AppPrimaryButton(
                   onPressed: _submitting
                       ? null
                       : () {
@@ -357,13 +358,8 @@ class _AddSchoolDialogState extends ConsumerState<AddSchoolDialog> {
                             _submit();
                           }
                         },
-                  child: _submitting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(_step < 4 ? 'Next' : 'Create School'),
+                  isLoading: _submitting,
+                  child: Text(_step < 4 ? 'Next' : 'Create School'),
                 ),
               ],
             ),

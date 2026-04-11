@@ -5,8 +5,6 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/teacher/class_diary_model.dart';
 import '../providers/teacher_diary_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -82,7 +80,7 @@ class _TeacherDiaryScreenState extends ConsumerState<TeacherDiaryScreen> {
 
               Expanded(
                 child: state.isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? AppLoaderScreen()
                     : state.entries.isEmpty
                         ? Center(
                             child: Column(

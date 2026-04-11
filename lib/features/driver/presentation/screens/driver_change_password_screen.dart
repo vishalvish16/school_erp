@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_auth_constants.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/driver_service.dart';
@@ -141,6 +142,15 @@ class _DriverChangePasswordScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.go('/driver/profile'),
+                    ),
+                    AppSpacing.hGapSm,
+                  ],
+                ),
                 Text(
                   AppStrings.driverChangePasswordTitle,
                   style: AppTextStyles.h4(color: scheme.onSurface),

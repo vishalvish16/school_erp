@@ -3,17 +3,19 @@
 // PURPOSE: Super Admin audit logs — tabs, search, date range, infinite scroll
 // =============================================================================
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/super_admin_service.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
-const List<String> _auditTypes = [
+import '../../../../design_system/design_system.dart';
+
+
+const List<String> _kAuditTypes = [
   'super-admin',
   'schools',
   'plans',
@@ -106,56 +108,160 @@ class _SuperAdminAuditLogsScreenState extends ConsumerState<SuperAdminAuditLogsS
   }
 
   void _showLogDetail(SuperAdminAuditLogModel log) {
+    // Try to parse description as JSON map for cleaner display
+    Map<String, dynamic>? parsedDesc;
+    if (log.description != null) {
+      try {
+        final decoded = jsonDecode(log.description!);
+        if (decoded is Map) {
+          parsedDesc = Map<String, dynamic>.from(decoded);
+        }
+      } catch (_) {}
+    }
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(log.action),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _detailRow(AppStrings.actor, log.actorName ?? '—'),
-              _detailRow(AppStrings.ip, log.actorIp ?? '—'),
-              _detailRow(AppStrings.entity, log.entityName ?? '—'),
-              _detailRow(AppStrings.auditType, log.entityType ?? '—'),
-              if (log.description != null) _detailRow(AppStrings.auditDescription, log.description!),
-              _detailRow(AppStrings.status, log.status ?? '—'),
-              _detailRow(AppStrings.date, DateFormat.yMMMd().add_Hm().format(log.createdAt)),
-              if (log.oldData != null && log.oldData!.isNotEmpty) ...[
-                AppSpacing.vGapMd,
-                const Text(AppStrings.oldData, style: TextStyle(fontWeight: FontWeight.bold)),
-                AppSpacing.vGapXs,
-                Text(log.oldData.toString(), style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _detailRow(AppStrings.actor,      log.actorName ?? '—'),
+                _detailRow(AppStrings.ip,          log.actorIp ?? '—'),
+                _detailRow(AppStrings.entity,      log.entityName ?? '—'),
+                _detailRow(AppStrings.auditType,   log.entityType ?? '—'),
+                _detailRow(AppStrings.status,      log.status ?? '—'),
+                _detailRow(AppStrings.date,
+                    DateFormat.yMMMd().add_Hm().format(log.createdAt)),
+                // Description: if it's a JSON map show as key-value, else plain text
+                if (parsedDesc != null) ...[
+                  AppSpacing.vGapMd,
+                  _sectionLabel(AppStrings.auditDescription),
+                  AppSpacing.vGapXs,
+                  _dataTable(parsedDesc),
+                ] else if (log.description != null) ...[
+                  _detailRow(AppStrings.auditDescription, log.description!),
+                ],
+                if (log.oldData != null && log.oldData!.isNotEmpty) ...[
+                  AppSpacing.vGapMd,
+                  _sectionLabel(AppStrings.oldData),
+                  AppSpacing.vGapXs,
+                  _dataTable(log.oldData!),
+                ],
+                if (log.newData != null && log.newData!.isNotEmpty) ...[
+                  AppSpacing.vGapMd,
+                  _sectionLabel(AppStrings.newData),
+                  AppSpacing.vGapXs,
+                  _dataTable(log.newData!),
+                ],
               ],
-              if (log.newData != null && log.newData!.isNotEmpty) ...[
-                AppSpacing.vGapMd,
-                const Text(AppStrings.newData, style: TextStyle(fontWeight: FontWeight.bold)),
-                AppSpacing.vGapXs,
-                Text(log.newData.toString(), style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-              ],
-            ],
+            ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text(AppStrings.close)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text(AppStrings.close)),
         ],
       ),
     );
   }
 
   Widget _detailRow(String label, String value) {
+    final scheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 90, child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w600))),
+          SizedBox(
+            width: 100,
+            child: Text('$label:',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurfaceVariant)),
+          ),
           Expanded(child: Text(value)),
         ],
       ),
     );
   }
+
+  Widget _sectionLabel(String label) {
+    return Text(label,
+        style: AppTextStyles.bodyMd(color: Theme.of(context).colorScheme.onSurface)
+            .copyWith(fontWeight: FontWeight.w700));
+  }
+
+  /// Renders a Map as a clean key → value table (handles nested maps/lists too).
+  Widget _dataTable(Map<String, dynamic> data) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+        borderRadius: AppRadius.brMd,
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: data.entries.map((e) {
+          final key   = e.key.replaceAll('_', ' ');
+          final value = _formatValue(e.value);
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: scheme.outlineVariant.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 130,
+                  child: Text(
+                    _capitalise(key),
+                    style: AppTextStyles.bodySm(color: scheme.onSurfaceVariant)
+                        .copyWith(fontWeight: FontWeight.w600),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    value,
+                    style: AppTextStyles.bodySm(color: scheme.onSurface),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  String _formatValue(dynamic v) {
+    if (v == null) return '—';
+    if (v is Map) {
+      // Render nested map as "key: value, key: value"
+      return v.entries
+          .map((e) => '${_capitalise(e.key.toString().replaceAll('_', ' '))}: ${_formatValue(e.value)}')
+          .join('\n');
+    }
+    if (v is List) {
+      if (v.isEmpty) return '—';
+      return v.map((item) => _formatValue(item)).join(', ');
+    }
+    return v.toString();
+  }
+
+  String _capitalise(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   @override
   Widget build(BuildContext context) {
@@ -187,40 +293,12 @@ class _SuperAdminAuditLogsScreenState extends ConsumerState<SuperAdminAuditLogsS
             ),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: padding),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _auditTypes.map((t) {
-                    final selected = _selectedType == t;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: FilterChip(
-                        label: Text(t),
-                        selected: selected,
-                        onSelected: (v) {
-                          setState(() {
-                            _selectedType = t;
-                            _load();
-                          });
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            AppSpacing.vGapLg,
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: padding),
-              child: _buildSearchAndDateControls(isNarrow),
+              child: _buildFilterRow(),
             ),
             AppSpacing.vGapLg,
             if (_loading)
               Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: padding),
-                  child: const ShimmerListLoadingWidget(itemCount: 8),
-                ),
+                child: AppLoaderScreen(),
               )
             else if (_error != null)
               Expanded(
@@ -266,7 +344,7 @@ class _SuperAdminAuditLogsScreenState extends ConsumerState<SuperAdminAuditLogsS
                       if (!_loadingMore) _loadMore();
                       return const Padding(
                         padding: AppSpacing.paddingLg,
-                        child: Center(child: CircularProgressIndicator()),
+                        child: Center(child: SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2))),
                       );
                     }
                     final log = _logs[index];
@@ -311,79 +389,124 @@ class _SuperAdminAuditLogsScreenState extends ConsumerState<SuperAdminAuditLogsS
     );
   }
 
-  Widget _buildSearchAndDateControls(bool isNarrow) {
-    final searchField = TextField(
-      controller: _searchController,
-      decoration: const InputDecoration(
-        hintText: AppStrings.search,
-        prefixIcon: Icon(Icons.search),
-        border: OutlineInputBorder(),
-        isDense: true,
-      ),
-      onSubmitted: (_) => _load(),
-    );
-    final dateControls = [
-      TextButton.icon(
-        icon: const Icon(Icons.date_range, size: 18),
-        label: Text(_dateFrom == null ? AppStrings.from : DateFormat.yMMMd().format(_dateFrom!)),
-        onPressed: () async {
-          final d = await showDatePicker(
-            context: context,
-            initialDate: _dateFrom ?? DateTime.now(),
-            firstDate: DateTime(2020),
-            lastDate: DateTime.now(),
-          );
-          if (d != null && mounted) {
-            setState(() { _dateFrom = d; _load(); });
-          }
-        },
-      ),
-      TextButton.icon(
-        icon: const Icon(Icons.date_range, size: 18),
-        label: Text(_dateTo == null ? AppStrings.to : DateFormat.yMMMd().format(_dateTo!)),
-        onPressed: () async {
-          final d = await showDatePicker(
-            context: context,
-            initialDate: _dateTo ?? DateTime.now(),
-            firstDate: _dateFrom ?? DateTime(2020),
-            lastDate: DateTime.now(),
-          );
-          if (d != null && mounted) {
-            setState(() { _dateTo = d; _load(); });
-          }
-        },
-      ),
-      if (_dateFrom != null || _dateTo != null)
-        IconButton(
-          icon: const Icon(Icons.clear),
-          onPressed: () {
-            setState(() { _dateFrom = null; _dateTo = null; _load(); });
-          },
-          tooltip: AppStrings.clearDates,
-        ),
-      FilledButton(onPressed: () => _load(), child: const Text(AppStrings.apply)),
-    ];
+  Widget _buildFilterRow() {
+    final scheme = Theme.of(context).colorScheme;
+    final hasDateFilter = _dateFrom != null || _dateTo != null;
 
-    if (isNarrow) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          searchField,
-          AppSpacing.vGapMd,
-          Wrap(spacing: 8, runSpacing: 8, children: dateControls),
-        ],
-      );
+    // Date range label
+    String dateLabel = 'Date Range';
+    if (_dateFrom != null && _dateTo != null) {
+      dateLabel = '${DateFormat('d MMM').format(_dateFrom!)} – ${DateFormat('d MMM yy').format(_dateTo!)}';
+    } else if (_dateFrom != null) {
+      dateLabel = 'From ${DateFormat('d MMM yy').format(_dateFrom!)}';
+    } else if (_dateTo != null) {
+      dateLabel = 'Until ${DateFormat('d MMM yy').format(_dateTo!)}';
     }
+
+    final inputBorder = OutlineInputBorder(
+      borderRadius: AppRadius.brMd,
+      borderSide: BorderSide(color: scheme.outlineVariant),
+    );
+
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: searchField),
-        AppSpacing.hGapSm,
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: dateControls,
+        // ── Type dropdown ────────────────────────────────────────────────
+        SizedBox(
+          width: 150,
+          child: DropdownButtonFormField<String>(
+            value: _selectedType,
+            isDense: true,
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: inputBorder,
+              enabledBorder: inputBorder,
+              focusedBorder: OutlineInputBorder(borderRadius: AppRadius.brMd, borderSide: BorderSide(color: scheme.primary, width: 1.5)),
+            ),
+            items: _kAuditTypes
+                .map((t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13))))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) setState(() { _selectedType = v; _load(); });
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // ── Search ───────────────────────────────────────────────────────
+        Expanded(
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search logs…',
+              prefixIcon: const Icon(Icons.search, size: 18),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: inputBorder,
+              enabledBorder: inputBorder,
+              focusedBorder: OutlineInputBorder(borderRadius: AppRadius.brMd, borderSide: BorderSide(color: scheme.primary, width: 1.5)),
+            ),
+            onSubmitted: (_) => _load(),
+          ),
+        ),
+        const SizedBox(width: 8),
+
+        // ── Date range picker ────────────────────────────────────────────
+        OutlinedButton.icon(
+          icon: Icon(Icons.calendar_month_rounded, size: 16, color: hasDateFilter ? scheme.primary : scheme.onSurfaceVariant),
+          label: Text(
+            dateLabel,
+            style: TextStyle(fontSize: 13, color: hasDateFilter ? scheme.primary : scheme.onSurfaceVariant),
+          ),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            side: BorderSide(color: hasDateFilter ? scheme.primary : scheme.outlineVariant),
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.brMd),
+          ),
+          onPressed: () async {
+            final range = await showDateRangePicker(
+              context: context,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now(),
+              initialDateRange: (_dateFrom != null && _dateTo != null)
+                  ? DateTimeRange(start: _dateFrom!, end: _dateTo!)
+                  : null,
+              builder: (context, child) => Dialog(
+                insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.brXl),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420, maxHeight: 560),
+                  child: ClipRRect(borderRadius: AppRadius.brXl, child: child),
+                ),
+              ),
+            );
+            if (range != null && mounted) {
+              setState(() { _dateFrom = range.start; _dateTo = range.end; });
+              _load();
+            }
+          },
+        ),
+
+        // ── Clear dates ──────────────────────────────────────────────────
+        if (hasDateFilter) ...[
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.close, size: 16),
+            tooltip: 'Clear dates',
+            style: IconButton.styleFrom(
+              padding: const EdgeInsets.all(6),
+              minimumSize: const Size(32, 32),
+            ),
+            onPressed: () => setState(() { _dateFrom = null; _dateTo = null; _load(); }),
+          ),
+        ],
+        const SizedBox(width: 8),
+
+        // ── Apply ────────────────────────────────────────────────────────
+        FilledButton(
+          onPressed: _load,
+          style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10)),
+          child: const Text('Apply'),
         ),
       ],
     );

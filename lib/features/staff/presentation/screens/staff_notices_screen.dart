@@ -8,10 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../models/staff/staff_notice_model.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../providers/staff_notices_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
+
 import '../../../../core/constants/app_strings.dart';
 
 class StaffNoticesScreen extends ConsumerStatefulWidget {
@@ -69,10 +69,7 @@ class _StaffNoticesScreenState extends ConsumerState<StaffNoticesScreen> {
               AppSpacing.vGapLg,
               if (state.isLoading)
                 Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: padding),
-                    child: const ShimmerListLoadingWidget(itemCount: 8),
-                  ),
+                  child: AppLoaderScreen(),
                 )
               else if (state.errorMessage != null)
                 Expanded(

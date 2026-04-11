@@ -30,7 +30,7 @@ If you see `EADDRINUSE: address already in use` → something is already on port
 ```bash
 # From project root
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome --web-port=50000
 ```
 
 ## 3. Login

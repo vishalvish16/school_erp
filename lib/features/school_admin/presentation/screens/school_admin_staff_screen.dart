@@ -4,22 +4,22 @@
 
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/school_admin/staff_model.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
+import '../../../../widgets/common/hover_popup_menu.dart';
 import '../../../../widgets/common/searchable_dropdown_form_field.dart';
+import '../../../../shared/widgets/list_pagination_bar.dart';
 import '../../../../shared/widgets/list_table_view.dart';
+import '../../../../shared/widgets/list_screen_mobile_toolbar.dart';
+import '../../../../shared/widgets/mobile_infinite_scroll.dart';
 import '../providers/school_admin_staff_provider.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
-
-const Color _accent = AppColors.success500;
+import '../../../../shared/widgets/app_toast.dart';
 
 const List<String> _designations = [
   'TEACHER',
@@ -44,7 +44,6 @@ class _SchoolAdminStaffScreenState
     extends ConsumerState<SchoolAdminStaffScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounceTimer;
-  int _pageSize = 15;
   static const _pageSizeOptions = [10, 15, 25, 50];
 
   @override
@@ -83,253 +82,325 @@ class _SchoolAdminStaffScreenState
   }
 
   void _onPageSizeChanged(int? value) {
-    if (value == null || value == _pageSize) return;
-    setState(() => _pageSize = value);
-    ref.read(schoolAdminStaffProvider.notifier).goToPage(1);
+    if (value == null) return;
+    ref.read(schoolAdminStaffProvider.notifier).setPageSize(value);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(schoolAdminStaffProvider);
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.read(schoolAdminStaffProvider.notifier).loadStaff(refresh: true);
       },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  isNarrow ? 16 : 24,
-                  isNarrow ? 16 : 24,
-                  isNarrow ? 16 : 24,
-                  16,
-                ),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      'Teachers & Staff',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () => _showAddDialog(context),
-                      icon: const Icon(Icons.add, size: 18),
-                      label: Text(AppStrings.addStaff),
-                      style: FilledButton.styleFrom(backgroundColor: _accent),
-                    ),
-                  ],
-                ),
-              ),
-
-              Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isNarrow ? 16 : 24,
-                  ),
-                  child: Card(
-                    child: Padding(
-                      padding: AppSpacing.paddingMd,
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 220,
-                            child: TextField(
-                              controller: _searchCtrl,
-                              decoration: InputDecoration(
-                                hintText: AppStrings.searchByNameEmpNo,
-                                prefixIcon:
-                                    const Icon(Icons.search, size: 20),
-                                suffixIcon: _searchCtrl.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: const Icon(Icons.clear,
-                                            size: 18),
-                                        onPressed: () {
-                                          _searchCtrl.clear();
-                                        },
-                                      )
-                                    : null,
-                                border: const OutlineInputBorder(),
-                                isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.md,
-                                  vertical: 10,
-                                ),
-                              ),
-                              onSubmitted: (_) {
-                                ref
-                                    .read(schoolAdminStaffProvider.notifier)
-                                    .setSearch(_searchCtrl.text);
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 140,
-                            child: SearchableDropdownFormField<String?>
-                                .valueItems(
-                              value: state.designationFilter,
-                              valueItems: [
-                                const MapEntry(null, 'All Roles'),
-                                for (final d in _designations)
-                                  MapEntry<String?, String>(d, d),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: AppStrings.designation,
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.md,
-                                  vertical: AppSpacing.sm,
-                                ),
-                                isDense: true,
-                              ),
-                              onChanged: (v) {
-                                ref
-                                    .read(schoolAdminStaffProvider.notifier)
-                                    .setDesignationFilter(v);
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 140,
-                            child: SearchableDropdownFormField<String?>
-                                .valueItems(
-                              value: state.isActiveFilter == null
-                                  ? null
-                                  : state.isActiveFilter == true
-                                      ? 'active'
-                                      : 'inactive',
-                              valueItems: const [
-                                MapEntry(null, 'All'),
-                                MapEntry('active', 'Active'),
-                                MapEntry('inactive', 'Inactive'),
-                              ],
-                              decoration: InputDecoration(
-                                labelText: AppStrings.status,
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: AppSpacing.md,
-                                  vertical: AppSpacing.sm,
-                                ),
-                                isDense: true,
-                              ),
-                              onChanged: (v) {
-                                final bool? filter;
-                                if (v == 'active') {
-                                  filter = true;
-                                } else if (v == 'inactive') {
-                                  filter = false;
-                                } else {
-                                  filter = null;
-                                }
-                                ref
-                                    .read(schoolAdminStaffProvider.notifier)
-                                    .setActiveFilter(filter);
-                              },
-                            ),
-                          ),
-                          TextButton.icon(
-                            icon: const Icon(Icons.filter_alt_off, size: 18),
-                            label: Text(AppStrings.clearFilters),
-                            onPressed: _clearFilters,
-                          ),
-                        ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isWide) ...[
+            // ── Wide header ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppStrings.schoolStaff,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
+                      Text(
+                        'Manage teachers and staff profiles',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.download_outlined, size: AppIconSize.md),
+                        label: Text(AppStrings.export),
+                      ),
+                      AppSpacing.hGapSm,
+                      FilledButton.icon(
+                        onPressed: () => _showAddDialog(context),
+                        icon: const Icon(Icons.add, size: AppIconSize.md),
+                        label: Text(AppStrings.addStaff),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // ── Wide filter card — full width (no Center) ─────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Card(
+                child: Padding(
+                  padding: AppSpacing.paddingMd,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            hintText: AppStrings.searchByNameEmpNo,
+                            prefixIcon: const Icon(Icons.search, size: AppIconSize.md),
+                            suffixIcon: _searchCtrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: _searchCtrl.clear,
+                                  )
+                                : null,
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md, vertical: 10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 140,
+                        child: SearchableDropdownFormField<String?>.valueItems(
+                          value: state.designationFilter,
+                          valueItems: [
+                            const MapEntry(null, 'All Roles'),
+                            for (final d in _designations)
+                              MapEntry<String?, String>(d, d),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: AppStrings.designation,
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                            isDense: true,
+                          ),
+                          onChanged: (v) => ref
+                              .read(schoolAdminStaffProvider.notifier)
+                              .setDesignationFilter(v),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 140,
+                        child: SearchableDropdownFormField<String?>.valueItems(
+                          value: state.isActiveFilter == null
+                              ? null
+                              : state.isActiveFilter == true
+                                  ? 'active'
+                                  : 'inactive',
+                          valueItems: const [
+                            MapEntry(null, 'All'),
+                            MapEntry('active', 'Active'),
+                            MapEntry('inactive', 'Inactive'),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: AppStrings.status,
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                            isDense: true,
+                          ),
+                          onChanged: (v) {
+                            final bool? filter = v == 'active'
+                                ? true
+                                : v == 'inactive'
+                                    ? false
+                                    : null;
+                            ref
+                                .read(schoolAdminStaffProvider.notifier)
+                                .setActiveFilter(filter);
+                          },
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        icon: const Icon(Icons.filter_alt_off, size: 18),
+                        label: Text(AppStrings.clearFilters),
+                        onPressed: _clearFilters,
+                      ),
+                    ],
                   ),
                 ),
               ),
-
-              AppSpacing.vGapLg,
-
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      isNarrow ? 16 : 24,
-                      0,
-                      isNarrow ? 16 : 24,
-                      isNarrow ? 16 : 24,
-                    ),
-                    child: _buildContent(state, isWide),
+            ),
+            AppSpacing.vGapLg,
+          ] else ...[
+            // ── Narrow header ──────────────────────────────────────────────
+            ListScreenMobileHeader(
+              title: AppStrings.schoolStaff,
+              primaryLabel: AppStrings.addStaff,
+              onPrimary: () => _showAddDialog(context),
+              onExport: () {},
+            ),
+            // ── Narrow filter strip ────────────────────────────────────────
+            ListScreenMobileFilterStrip(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListScreenMobilePillSearchField(
+                    controller: _searchCtrl,
+                    hintText: AppStrings.searchByNameEmpNo,
+                    onChanged: (v) {
+                      _debounceTimer?.cancel();
+                      _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+                        if (mounted) {
+                          ref.read(schoolAdminStaffProvider.notifier).setSearch(v);
+                        }
+                      });
+                    },
+                    onClear: () {
+                      _searchCtrl.clear();
+                      ref.read(schoolAdminStaffProvider.notifier).setSearch('');
+                    },
                   ),
-                ),
+                  AppSpacing.vGapMd,
+                  ListScreenMobileFilterRow(
+                    children: [
+                      SearchableDropdownFormField<String?>.valueItems(
+                        value: state.designationFilter,
+                        valueItems: [
+                          const MapEntry(null, 'All Roles'),
+                          for (final d in _designations)
+                            MapEntry<String?, String>(d, d),
+                        ],
+                        decoration: listScreenMobileFilterFieldDecoration(context),
+                        onChanged: (v) => ref
+                            .read(schoolAdminStaffProvider.notifier)
+                            .setDesignationFilter(v),
+                      ),
+                      SearchableDropdownFormField<String?>.valueItems(
+                        value: state.isActiveFilter == null
+                            ? null
+                            : state.isActiveFilter == true
+                                ? 'active'
+                                : 'inactive',
+                        valueItems: const [
+                          MapEntry(null, 'All'),
+                          MapEntry('active', 'Active'),
+                          MapEntry('inactive', 'Inactive'),
+                        ],
+                        decoration: listScreenMobileFilterFieldDecoration(context),
+                        onChanged: (v) {
+                          final bool? filter = v == 'active'
+                              ? true
+                              : v == 'inactive'
+                                  ? false
+                                  : null;
+                          ref
+                              .read(schoolAdminStaffProvider.notifier)
+                              .setActiveFilter(filter);
+                        },
+                      ),
+                      ListScreenMobileMoreFiltersButton(
+                        onPressed: _clearFilters,
+                        showActiveDot: _searchCtrl.text.isNotEmpty ||
+                            state.designationFilter != null ||
+                            state.isActiveFilter != null,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ],
+
+          // ── Content ──────────────────────────────────────────────────────
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                isWide ? 24 : 16,
+                0,
+                isWide ? 24 : 16,
+                isWide ? 24 : 16,
+              ),
+              child: _buildContent(state, isWide),
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildContent(StaffState state, bool isWide) {
     if (state.isLoading && state.staff.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      );
+      return AppLoaderScreen();
     }
 
     if (state.errorMessage != null && state.staff.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: AppSpacing.paddingXl,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline,
-                  size: 48, color: Theme.of(context).colorScheme.error),
-              AppSpacing.vGapLg,
-              Text(state.errorMessage!, textAlign: TextAlign.center),
-              AppSpacing.vGapLg,
-              FilledButton(
-                onPressed: () =>
-                    ref.read(schoolAdminStaffProvider.notifier).loadStaff(),
-                child: Text(AppStrings.retry),
-              ),
-            ],
-          ),
+      final scheme = Theme.of(context).colorScheme;
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: AppIconSize.xl4, color: scheme.error),
+            AppSpacing.vGapLg,
+            Text(AppStrings.genericError,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    )),
+            AppSpacing.vGapSm,
+            Text(state.errorMessage!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                textAlign: TextAlign.center),
+            AppSpacing.vGapXl,
+            FilledButton.icon(
+              onPressed: () =>
+                  ref.read(schoolAdminStaffProvider.notifier).loadStaff(),
+              icon: const Icon(Icons.refresh),
+              label: Text(AppStrings.retry),
+            ),
+          ],
         ),
       );
     }
 
     if (state.staff.isEmpty) {
+      final hasFilters = _searchCtrl.text.isNotEmpty ||
+          state.designationFilter != null ||
+          state.isActiveFilter != null;
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(48),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.person_search_outlined,
-                  size: 64, color: Theme.of(context).colorScheme.outline),
-              AppSpacing.vGapLg,
-              Text(
-                _searchCtrl.text.isNotEmpty
-                    ? "No results for '${_searchCtrl.text}'"
-                    : 'No staff found',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_search_outlined,
+                size: AppIconSize.xl4,
+                color: Theme.of(context).colorScheme.outline),
+            AppSpacing.vGapLg,
+            Text(
+              'No staff found',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            if (hasFilters) ...[
               AppSpacing.vGapSm,
-              TextButton(
+              TextButton.icon(
                 onPressed: _clearFilters,
-                child: Text(AppStrings.clearFilters),
+                icon: const Icon(Icons.filter_alt_off, size: AppIconSize.md),
+                label: Text(AppStrings.clearFilters),
               ),
             ],
-          ),
+          ],
         ),
       );
     }
@@ -366,7 +437,7 @@ class _SchoolAdminStaffScreenState
                     rowBuilder: (i) => _buildDataRow(state.staff[i]),
                   ),
                 ),
-                _buildPaginationRow(state),
+                _buildPaginationRow(),
               ],
             ),
           ),
@@ -374,18 +445,18 @@ class _SchoolAdminStaffScreenState
       );
     }
 
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 8),
-            children:
-                state.staff.map((s) => _buildMobileCard(s)).toList(),
-          ),
-        ),
-        if (state.staff.isNotEmpty)
-          Card(child: _buildPaginationRow(state)),
-      ],
+    final hasMore = state.total > 0 &&
+        state.staff.length < state.total &&
+        state.currentPage < state.totalPages;
+    return MobileInfiniteScrollList(
+      itemCount: state.staff.length,
+      itemBuilder: (ctx, i) => _buildMobileCard(state.staff[i]),
+      onLoadMore: () => ref
+          .read(schoolAdminStaffProvider.notifier)
+          .loadMoreStaff(),
+      hasMore: hasMore,
+      isLoadingMore: state.isLoadingMore,
+      loadingLabel: 'Loading more staff…',
     );
   }
 
@@ -398,9 +469,9 @@ class _SchoolAdminStaffScreenState
           onTap: () => context.go('/school-admin/staff/${s.id}'),
           child: Text(
             s.fullName,
-            style: const TextStyle(
+            style: TextStyle(
               fontWeight: FontWeight.w500,
-              color: _accent,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
         ),
@@ -409,36 +480,45 @@ class _SchoolAdminStaffScreenState
       DataCell(Text(s.email,
           overflow: TextOverflow.ellipsis, maxLines: 1)),
       DataCell(_ActiveBadge(isActive: s.isActive)),
-      DataCell(PopupMenuButton<String>(
-        itemBuilder: (ctx) => [
-          PopupMenuItem(
+      DataCell(
+        HoverPopupMenu<String>(
+          icon: const Icon(Icons.more_vert, size: AppIconSize.md),
+          padding: EdgeInsets.zero,
+          onSelected: (v) {
+            if (v == 'view') context.go('/school-admin/staff/${s.id}');
+            if (v == 'edit') _showEditDialog(context, s);
+            if (v == 'delete') _confirmDelete(context, s);
+          },
+          itemBuilder: (ctx) => [
+            PopupMenuItem<String>(
               value: 'view',
               child: ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.visibility),
-                  title: Text(AppStrings.view))),
-          PopupMenuItem(
+                dense: true,
+                leading: const Icon(Icons.visibility_outlined, size: AppIconSize.md),
+                title: Text(AppStrings.view),
+              ),
+            ),
+            PopupMenuItem<String>(
               value: 'edit',
               child: ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.edit),
-                  title: Text(AppStrings.edit))),
-          PopupMenuItem(
+                dense: true,
+                leading: const Icon(Icons.edit_outlined, size: AppIconSize.md),
+                title: Text(AppStrings.edit),
+              ),
+            ),
+            PopupMenuItem<String>(
               value: 'delete',
               child: ListTile(
-                  dense: true,
-                  leading:
-                      const Icon(Icons.delete, color: AppColors.error500),
-                  title: Text(AppStrings.delete,
-                      style: const TextStyle(color: AppColors.error500)))),
-        ],
-        onSelected: (v) {
-          if (v == 'view') context.go('/school-admin/staff/${s.id}');
-          if (v == 'edit') _showEditDialog(context, s);
-          if (v == 'delete') _confirmDelete(context, s);
-        },
-        child: const Icon(Icons.more_vert, size: 18),
-      )),
+                dense: true,
+                leading: const Icon(Icons.delete_outline,
+                    size: AppIconSize.md, color: AppColors.error500),
+                title: Text(AppStrings.delete,
+                    style: const TextStyle(color: AppColors.error500)),
+              ),
+            ),
+          ],
+        ),
+      ),
     ]);
   }
 
@@ -446,6 +526,10 @@ class _SchoolAdminStaffScreenState
     final initials =
         '${s.firstName.isNotEmpty ? s.firstName[0] : ''}${s.lastName.isNotEmpty ? s.lastName[0] : ''}'
             .toUpperCase();
+    final cs = Theme.of(context).colorScheme;
+    final smallMuted = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: cs.onSurfaceVariant,
+        );
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -454,48 +538,87 @@ class _SchoolAdminStaffScreenState
         child: Padding(
           padding: AppSpacing.paddingLg,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(child: Text(initials)),
-                  AppSpacing.hGapMd,
+                  CircleAvatar(child: Text(initials.isEmpty ? '?' : initials)),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(s.fullName,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600)),
-                        Text(s.designation,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall),
+                        Text(
+                          s.fullName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          s.designation,
+                          style: smallMuted,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
-                  _ActiveBadge(isActive: s.isActive),
+                  HoverPopupMenu<String>(
+                    icon: const Icon(Icons.more_vert, size: 22),
+                    padding: EdgeInsets.zero,
+                    onSelected: (v) {
+                      if (v == 'edit') _showEditDialog(context, s);
+                      if (v == 'delete') _confirmDelete(context, s);
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.edit_outlined, size: 20),
+                          title: Text(AppStrings.edit),
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.delete_outline,
+                              size: 20, color: AppColors.error500),
+                          title: Text(
+                            AppStrings.delete,
+                            style: const TextStyle(color: AppColors.error500),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              AppSpacing.vGapMd,
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.visibility, size: 20),
-                    onPressed: () =>
-                        context.go('/school-admin/staff/${s.id}'),
+                  Expanded(
+                    child: Text(
+                      s.email,
+                      style: smallMuted,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () => _showEditDialog(context, s),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 20,
-                        color: AppColors.error500),
-                    onPressed: () => _confirmDelete(context, s),
-                  ),
+                  const SizedBox(width: 8),
+                  _ActiveBadge(isActive: s.isActive),
                 ],
               ),
             ],
@@ -505,128 +628,17 @@ class _SchoolAdminStaffScreenState
     );
   }
 
-  Widget _buildPaginationRow(StaffState state) {
-    final cs = Theme.of(context).colorScheme;
-    final start =
-        state.total == 0 ? 0 : ((state.currentPage - 1) * _pageSize) + 1;
-    final end = (state.currentPage * _pageSize).clamp(0, state.total);
-
-    Widget pageButton(String label,
-        {required int page, bool active = false}) {
-      final enabled =
-          page != state.currentPage && page >= 1 && page <= state.totalPages;
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Material(
-          color: active ? cs.primary : Colors.transparent,
-          borderRadius: AppRadius.brSm,
-          child: InkWell(
-            borderRadius: AppRadius.brSm,
-            onTap: enabled
-                ? () =>
-                    ref.read(schoolAdminStaffProvider.notifier).goToPage(page)
-                : null,
-            child: Container(
-              constraints:
-                  const BoxConstraints(minWidth: 32, minHeight: 32),
-              alignment: Alignment.center,
-              padding: AppSpacing.paddingHSm,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      active ? FontWeight.w600 : FontWeight.w400,
-                  color: active
-                      ? cs.onPrimary
-                      : enabled
-                          ? cs.onSurface
-                          : cs.onSurface.withValues(alpha: 0.35),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    List<Widget> pageNumbers() {
-      final pages = <Widget>[];
-      const maxVisible = 5;
-      int rangeStart =
-          (state.currentPage - (maxVisible ~/ 2)).clamp(1, state.totalPages);
-      int rangeEnd =
-          (rangeStart + maxVisible - 1).clamp(1, state.totalPages);
-      if (rangeEnd - rangeStart < maxVisible - 1) {
-        rangeStart =
-            (rangeEnd - maxVisible + 1).clamp(1, state.totalPages);
-      }
-      for (int i = rangeStart; i <= rangeEnd; i++) {
-        pages.add(
-            pageButton('$i', page: i, active: i == state.currentPage));
-      }
-      return pages;
-    }
-
-    final textStyle = Theme.of(context).textTheme.bodySmall!;
-    final mutedStyle = textStyle.copyWith(color: cs.onSurfaceVariant);
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.neutral300)),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text('Showing $start to $end of ${state.total} entries',
-              style: mutedStyle),
-          AppSpacing.hGapXl,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(AppStrings.show, style: mutedStyle),
-              const SizedBox(width: 6),
-              Container(
-                height: 28,
-                padding: AppSpacing.paddingHSm,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.neutral400),
-                  borderRadius: AppRadius.brXs,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _pageSize,
-                    isDense: true,
-                    icon:
-                        const Icon(Icons.arrow_drop_down, size: 18),
-                    style: textStyle.copyWith(color: cs.onSurface),
-                    items: _pageSizeOptions
-                        .map((n) => DropdownMenuItem(
-                            value: n, child: Text('$n')))
-                        .toList(),
-                    onChanged: _onPageSizeChanged,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(AppStrings.entries, style: mutedStyle),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              pageButton('First', page: 1),
-              pageButton('Previous', page: state.currentPage - 1),
-              ...pageNumbers(),
-              pageButton('Next', page: state.currentPage + 1),
-              pageButton('Last', page: state.totalPages),
-            ],
-          ),
-        ],
-      ),
+  Widget _buildPaginationRow() {
+    final state = ref.watch(schoolAdminStaffProvider);
+    return ListPaginationBar(
+      currentPage: state.currentPage,
+      totalPages: state.totalPages,
+      totalEntries: state.total,
+      pageSize: state.pageSize,
+      pageSizeOptions: _pageSizeOptions,
+      onPageSizeChanged: _onPageSizeChanged,
+      onGoToPage: (page) =>
+          ref.read(schoolAdminStaffProvider.notifier).goToPage(page),
     );
   }
 
@@ -641,7 +653,7 @@ class _SchoolAdminStaffScreenState
           if (ok && ctx.mounted) {
             Navigator.of(ctx).pop();
             if (context.mounted) {
-              AppSnackbar.success(context, AppStrings.staffMemberAdded);
+              AppToast.showSuccess(context, AppStrings.staffMemberAdded);
             }
           }
         },
@@ -662,7 +674,7 @@ class _SchoolAdminStaffScreenState
           if (ok && ctx.mounted) {
             Navigator.of(ctx).pop();
             if (context.mounted) {
-              AppSnackbar.success(context, AppStrings.staffMemberUpdated);
+              AppToast.showSuccess(context, AppStrings.staffMemberUpdated);
             }
           }
         },
@@ -681,7 +693,7 @@ class _SchoolAdminStaffScreenState
     if (!confirmed || !context.mounted) return;
     await ref.read(schoolAdminStaffProvider.notifier).deleteStaff(staff.id);
     if (context.mounted) {
-      AppSnackbar.success(context, AppStrings.staffMemberDeleted);
+      AppToast.showSuccess(context, AppStrings.staffMemberDeleted);
     }
   }
 }
@@ -903,7 +915,7 @@ class _StaffFormDialogState extends State<_StaffFormDialog> {
                 _field('Qualification', _qualCtrl, required: false),
                 AppSpacing.vGapMd,
                 DropdownButtonFormField<String>(
-                  value: _gender,
+                  initialValue: _gender,
                   decoration: const InputDecoration(
                       labelText: 'Gender *', border: OutlineInputBorder()),
                   items: ['MALE', 'FEMALE', 'OTHER']
@@ -914,7 +926,7 @@ class _StaffFormDialogState extends State<_StaffFormDialog> {
                 ),
                 AppSpacing.vGapMd,
                 DropdownButtonFormField<String>(
-                  value: _designation,
+                  initialValue: _designation,
                   decoration: const InputDecoration(
                       labelText: 'Designation *', border: OutlineInputBorder()),
                   items: _designations
@@ -971,7 +983,6 @@ class _StaffFormDialogState extends State<_StaffFormDialog> {
         ),
         FilledButton(
           onPressed: _isSaving ? null : _submit,
-          style: FilledButton.styleFrom(backgroundColor: _accent),
           child: _isSaving
               ? const SizedBox(
                   width: 16,
@@ -1065,7 +1076,7 @@ class _StaffFormDialogState extends State<_StaffFormDialog> {
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_empNoCtrl.text.trim().isNotEmpty && _empNoAvailable == false) {
-      AppSnackbar.error(context, AppStrings.empNoInUse);
+      AppToast.showError(context, AppStrings.empNoInUse);
       return;
     }
     setState(() => _isSaving = true);

@@ -14,6 +14,7 @@ import '../../models/student/student_fee_models.dart';
 import '../../models/student/student_timetable_model.dart';
 import '../../models/student/student_notice_model.dart';
 import '../../models/student/student_document_model.dart';
+import '../../models/student/live_driver_model.dart';
 
 class StudentService {
   StudentService(this._dio);
@@ -115,8 +116,14 @@ class StudentService {
       ApiConfig.studentNotices,
       queryParameters: {'page': page, 'limit': limit},
     );
-    final raw = res.data;
-    return raw is Map<String, dynamic> ? raw : {'data': {}, 'pagination': {}};
+    final payload = _extractData(res);
+    if (payload is! Map) return {'data': [], 'pagination': {}};
+    final data = payload['data'];
+    final pagination = payload['pagination'];
+    return {
+      'data': data is List ? data : [],
+      'pagination': pagination is Map ? Map<String, dynamic>.from(pagination) : <String, dynamic>{},
+    };
   }
 
   Future<StudentNoticeModel> getNoticeById(String id) async {
@@ -130,8 +137,11 @@ class StudentService {
   Future<List<StudentDocumentModel>> getDocuments() async {
     final res = await _dio.get(ApiConfig.studentDocuments);
     final data = _extractData(res);
-    final list = data is List ? data : (data is Map && data['documents'] is List ? data['documents'] : null);
-    if (list is! List) return [];
+    final list = data is List
+        ? data
+        : (data is Map
+            ? (data['documents'] as List? ?? data['data'] as List? ?? <dynamic>[])
+            : <dynamic>[]);
     return list
         .map((e) => StudentDocumentModel.fromJson(
               e is Map<String, dynamic> ? e : {},
@@ -147,6 +157,17 @@ class StudentService {
       'current_password': currentPassword,
       'new_password': newPassword,
     });
+  }
+
+  /// Fetch currently active drivers with live GPS coordinates.
+  Future<List<LiveDriverModel>> getLiveDrivers() async {
+    final res = await _dio.get(ApiConfig.studentLiveDrivers);
+    final data = res.data is Map ? (res.data['data'] ?? []) : res.data;
+    return (data as List)
+        .map((e) => LiveDriverModel.fromJson(
+              e is Map<String, dynamic> ? e : {},
+            ))
+        .toList();
   }
 }
 

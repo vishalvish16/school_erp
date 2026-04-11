@@ -25,6 +25,9 @@ import '../../models/school_admin/non_teaching_staff_model.dart';
 import '../../models/school_admin/non_teaching_qualification_model.dart';
 import '../../models/school_admin/non_teaching_document_model.dart';
 import '../../models/school_admin/non_teaching_leave_model.dart';
+import '../../models/school_admin/parent_link_model.dart';
+import '../../models/school_admin/parent_search_model.dart';
+import '../../models/school_admin/student_report_model.dart';
 
 const String _base = '/api/school';
 const String _authBase = '/api/school/auth';
@@ -92,6 +95,66 @@ class SchoolAdminService {
 
   Future<void> deleteStudent(String id) async {
     await _dio.delete('$_base/students/$id');
+  }
+
+  Future<void> createStudentLogin(String studentId, String password) async {
+    await _dio.post('$_base/students/$studentId/create-login',
+        data: {'password': password});
+  }
+
+  Future<void> resetStudentPassword(
+      String studentId, String newPassword) async {
+    await _dio.post('$_base/students/$studentId/reset-password',
+        data: {'newPassword': newPassword});
+  }
+
+  // ── Parents (Student Detail) ────────────────────────────────────────────
+
+  Future<List<ParentLinkModel>> getStudentParents(String studentId) async {
+    final res = await _dio.get('$_base/students/$studentId/parents');
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    final list =
+        data is List ? data : (data['parents'] ?? data['links'] ?? []) as List;
+    return list
+        .map((e) => ParentLinkModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<ParentLinkModel> linkParentToStudent(
+    String studentId,
+    Map<String, dynamic> body,
+  ) async {
+    final res =
+        await _dio.post('$_base/students/$studentId/parents', data: body);
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    return ParentLinkModel.fromJson(
+        data is Map<String, dynamic> ? data : {});
+  }
+
+  Future<void> updateParentLink(
+    String studentId,
+    String parentId,
+    Map<String, dynamic> body,
+  ) async {
+    await _dio
+        .patch('$_base/students/$studentId/parents/$parentId', data: body);
+  }
+
+  Future<void> unlinkParentFromStudent(
+      String studentId, String parentId) async {
+    await _dio.delete('$_base/students/$studentId/parents/$parentId');
+  }
+
+  Future<List<ParentSearchModel>> searchParents(String query) async {
+    final res = await _dio.get(
+      '$_base/parents',
+      queryParameters: {'search': query, 'limit': 20},
+    );
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    final list = data is List ? data : (data['parents'] ?? []) as List;
+    return list
+        .map((e) => ParentSearchModel.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ── Staff ─────────────────────────────────────────────────────────────────
@@ -878,7 +941,7 @@ class SchoolAdminService {
         await _dio.get('$_base/non-teaching/staff/$staffId/qualifications');
     final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
     final list = data is List ? data : [];
-    return (list as List)
+    return (list)
         .map((e) => NonTeachingQualificationModel.fromJson(
             e as Map<String, dynamic>))
         .toList();
@@ -914,7 +977,7 @@ class SchoolAdminService {
         await _dio.get('$_base/non-teaching/staff/$staffId/documents');
     final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
     final list = data is List ? data : [];
-    return (list as List)
+    return (list)
         .map((e) =>
             NonTeachingDocumentModel.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -1094,6 +1157,92 @@ class SchoolAdminService {
 
   Future<void> cancelMyLeave(String leaveId) async {
     await _dio.put('/api/staff/my/leaves/$leaveId/cancel');
+  }
+
+  // ── Student Report ──────────────────────────────────────────────────────
+
+  Future<StudentReportModel> getStudentReport(
+    String studentId, {
+    String basePath = '$_base/students',
+  }) async {
+    final res = await _dio.get('$basePath/$studentId/report');
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    return StudentReportModel.fromJson(
+      data is Map<String, dynamic> ? data : {},
+    );
+  }
+
+  Future<Map<String, dynamic>> getStudentAttendance(
+    String studentId, {
+    String? month,
+    String basePath = '$_base/students',
+  }) async {
+    final q = <String, dynamic>{};
+    if (month != null && month.isNotEmpty) q['month'] = month;
+    final res = await _dio.get(
+      '$basePath/$studentId/attendance',
+      queryParameters: q,
+    );
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  Future<Map<String, dynamic>> getStudentAttendanceAnnual(
+    String studentId, {
+    String basePath = '$_base/students',
+  }) async {
+    final res = await _dio.get('$basePath/$studentId/attendance/annual');
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  Future<Map<String, dynamic>> getStudentFeesReport(
+    String studentId, {
+    int page = 1,
+    int limit = 20,
+    String basePath = '$_base/students',
+  }) async {
+    final res = await _dio.get(
+      '$basePath/$studentId/fees',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  Future<Map<String, dynamic>> getStudentNotices(
+    String studentId, {
+    int page = 1,
+    int limit = 20,
+    String basePath = '$_base/students',
+  }) async {
+    final res = await _dio.get(
+      '$basePath/$studentId/notices',
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    return data is Map<String, dynamic> ? data : {};
+  }
+
+  Future<void> sendStudentNotice(
+    String studentId, {
+    required String subject,
+    required String message,
+    String priority = 'NORMAL',
+    bool targetStudent = true,
+    bool targetParent = false,
+    String basePath = '$_base/students',
+  }) async {
+    await _dio.post(
+      '$basePath/$studentId/notices',
+      data: {
+        'subject': subject,
+        'message': message,
+        'priority': priority,
+        'targetStudent': targetStudent,
+        'targetParent': targetParent,
+      },
+    );
   }
 }
 

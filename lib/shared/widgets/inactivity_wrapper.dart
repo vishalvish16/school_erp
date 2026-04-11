@@ -43,7 +43,7 @@ class _InactivityWrapperState extends ConsumerState<InactivityWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    final lockState = ref.watch(autoLockProvider);
+    final lockState = ref.watch(autoLockProvider.select((s) => s.isLocked));
     final isAuthenticated = ref.watch(
       authGuardProvider.select((s) => s.isAuthenticated),
     );
@@ -58,7 +58,7 @@ class _InactivityWrapperState extends ConsumerState<InactivityWrapper> {
       onPointerUp: (_) => ref.read(autoLockProvider.notifier).resetTimer(),
       behavior: HitTestBehavior.translucent,
       child: Stack(
-        children: [widget.child, if (lockState.isLocked) const LockScreen()],
+        children: [widget.child, if (lockState) const LockScreen()],
       ),
     );
   }

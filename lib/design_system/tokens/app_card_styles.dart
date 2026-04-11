@@ -11,12 +11,23 @@ import 'app_text_styles.dart';
 // ── CardTheme (used in ThemeData) ────────────────────────────────────────────
 
 CardThemeData buildCardTheme(ColorScheme scheme) {
+  final isDark = scheme.brightness == Brightness.dark;
   return CardThemeData(
-    elevation: AppElevation.sm,
-    color: scheme.surface,
-    shadowColor: scheme.shadow.withAlpha(30),
+    // Dark: navy glass panel — navy bg + white glass border rim
+    // Light: white glass card on blue-tinted bg — white + blue-tinted border
+    elevation: isDark ? 0 : 2,
+    color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+    shadowColor: isDark ? Colors.transparent : const Color(0x182563EB),
     surfaceTintColor: Colors.transparent,
-    shape: AppRadius.cardShape,
+    shape: RoundedRectangleBorder(
+      borderRadius: AppRadius.brLg,
+      side: BorderSide(
+        color: isDark
+            ? AppColors.glassWhite18   // rgba(255,255,255,0.18) — glass rim
+            : AppColors.lightBorder,   // #C7D8F5 — blue-tinted border
+        width: 1,
+      ),
+    ),
     clipBehavior: Clip.antiAlias,
     margin: EdgeInsets.zero,
   );
@@ -55,6 +66,7 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
     final effectiveRadius = borderRadius ?? AppRadius.brLg;
     final effectiveColor = color ?? scheme.surface;
 
@@ -66,20 +78,32 @@ class AppCard extends StatelessWidget {
         color: effectiveColor,
         borderRadius: effectiveRadius,
         border: border ?? Border.all(
-          color: scheme.outline.withAlpha(100),
+          color: isDark
+              ? AppColors.glassWhite18    // white 18% glass rim
+              : AppColors.lightBorder,    // blue-tinted border
           width: 1,
         ),
-        boxShadow: elevation > 0
+        boxShadow: isDark
             ? [
                 BoxShadow(
-                  color: scheme.shadow.withAlpha(
-                    (elevation * 5).clamp(0, 60).round(),
-                  ),
-                  blurRadius: elevation * 2.5,
-                  offset: Offset(0, elevation * 0.5),
+                  color: Colors.black.withAlpha(80),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
               ]
-            : null,
+            : [
+                // Light mode: crisp shadow so cards clearly lift off #DDE8F5 bg
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withAlpha(14),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+                BoxShadow(
+                  color: Colors.black.withAlpha(8),
+                  blurRadius: 1,
+                  offset: const Offset(0, 1),
+                ),
+              ],
       ),
       clipBehavior: clipBehavior,
       child: padding != null

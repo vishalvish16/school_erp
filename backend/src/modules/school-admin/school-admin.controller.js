@@ -31,6 +31,10 @@ export const getAcademicYears = handle(async (req, res) => {
 
 export const getStudents = handle(async (req, res) => {
     const schoolId = req.user.school_id;
+    if (!schoolId) {
+        logger.warn('[getStudents] Missing school_id in req.user');
+        throw new AppError('School context missing. Please log in again.', 403);
+    }
     const { page = 1, limit = 20, search, classId, sectionId, status } = req.query;
     const result = await service.getStudents({
         schoolId,
@@ -602,6 +606,78 @@ export const markNotificationRead = handle(async (req, res) => {
     const schoolId = req.user.school_id;
     const data = await service.markNotificationRead({ id: req.params.id, schoolId });
     return successResponse(res, 200, 'Notification marked as read', data);
+});
+
+// ── Parents ──────────────────────────────────────────────────────────────────
+
+export const searchParents = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const { page = 1, limit = 20, search } = req.query;
+    const result = await service.searchParents({
+        schoolId,
+        page:  parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        search,
+    });
+    return successResponse(res, 200, 'OK', result);
+});
+
+export const createParent = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const userId   = req.user.userId || req.user.id;
+    const parent = await service.createParent({ schoolId, userId, data: req.body });
+    return successResponse(res, 201, 'Parent created', parent);
+});
+
+export const getParentById = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const parent = await service.getParentById({ id: req.params.parentId, schoolId });
+    return successResponse(res, 200, 'OK', parent);
+});
+
+export const updateParent = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const userId   = req.user.userId || req.user.id;
+    const parent = await service.updateParent({ id: req.params.parentId, schoolId, userId, data: req.body });
+    return successResponse(res, 200, 'Parent updated', parent);
+});
+
+export const getStudentParents = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const data = await service.getStudentParents({ studentId: req.params.id, schoolId });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const linkParentToStudent = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const userId   = req.user.userId || req.user.id;
+    const data = await service.linkParentToStudent({ studentId: req.params.id, schoolId, userId, data: req.body });
+    return successResponse(res, 201, 'Parent linked to student', data);
+});
+
+export const updateParentLink = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const userId   = req.user.userId || req.user.id;
+    const data = await service.updateParentLink({
+        studentId: req.params.id,
+        parentId:  req.params.parentId,
+        schoolId,
+        userId,
+        data: req.body,
+    });
+    return successResponse(res, 200, 'Parent link updated', data);
+});
+
+export const unlinkParentFromStudent = handle(async (req, res) => {
+    const schoolId = req.user.school_id;
+    const userId   = req.user.userId || req.user.id;
+    await service.unlinkParentFromStudent({
+        studentId: req.params.id,
+        parentId:  req.params.parentId,
+        schoolId,
+        userId,
+    });
+    return successResponse(res, 200, 'Parent unlinked successfully');
 });
 
 // ── Profile ───────────────────────────────────────────────────────────────────

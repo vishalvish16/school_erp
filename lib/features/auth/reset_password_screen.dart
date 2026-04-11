@@ -7,8 +7,6 @@ import '../../core/constants/app_strings.dart';
 import '../../design_system/design_system.dart';
 import 'reset_password_provider.dart';
 import 'reset_password_state.dart';
-import '../../design_system/tokens/app_colors.dart';
-import '../../design_system/tokens/app_spacing.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   final String token;

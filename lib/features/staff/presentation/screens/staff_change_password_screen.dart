@@ -5,12 +5,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_auth_constants.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/staff_service.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.secondary400;
 
@@ -142,15 +141,23 @@ class _StaffChangePasswordScreenState
     final isWide = MediaQuery.of(context).size.width >= 768;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+      backgroundColor: Colors.transparent,
       body: Padding(
-        padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
+        padding: EdgeInsets.all(isWide ? AppSpacing.xl : AppSpacing.lg),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.go('/staff/profile'),
+                    ),
+                  ],
+                ),
                 Text(
                   'Change Password',
                   style: Theme.of(context)

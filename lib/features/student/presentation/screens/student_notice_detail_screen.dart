@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../data/student_providers.dart';
@@ -25,7 +26,19 @@ class StudentNoticeDetailScreen extends ConsumerWidget {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.all(padding),
-        child: asyncNotice.when(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.go('/student/notices'),
+                ),
+                AppSpacing.hGapSm,
+              ],
+            ),
+            asyncNotice.when(
           loading: () => const Center(
             child: Padding(
               padding: EdgeInsets.all(64),
@@ -104,6 +117,8 @@ class StudentNoticeDetailScreen extends ConsumerWidget {
               ),
             ),
           ),
+        ),
+          ],
         ),
       ),
     );

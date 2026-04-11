@@ -9,6 +9,7 @@ import '../config/api_config.dart';
 import '../network/dio_client.dart';
 import '../../models/driver/driver_dashboard_model.dart';
 import '../../models/driver/driver_profile_model.dart';
+import '../../models/driver/driver_trip_model.dart';
 
 class DriverService {
   DriverService(this._dio);
@@ -80,6 +81,65 @@ class DriverService {
     await _dio.put(ApiConfig.driverChangePassword, data: {
       'current_password': currentPassword,
       'new_password': newPassword,
+    });
+  }
+
+  /// Start a new trip — enables live location sharing.
+  Future<DriverTripModel> startTripWithResult() async {
+    final res = await _dio.post(ApiConfig.driverTripStart);
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    if (data is Map<String, dynamic>) {
+      return DriverTripModel.fromJson(data);
+    }
+    return const DriverTripModel(tripId: '', status: 'IN_PROGRESS');
+  }
+
+  /// Start a new trip — fire-and-forget variant (legacy).
+  Future<void> startTrip() async {
+    await _dio.post(ApiConfig.driverTripStart);
+  }
+
+  /// End the active trip — returns trip model with final status.
+  Future<DriverTripModel> endTripWithResult({String? notes}) async {
+    final res = await _dio.post(
+      ApiConfig.driverTripEnd,
+      data: notes != null ? {'notes': notes} : <String, dynamic>{},
+    );
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    if (data is Map<String, dynamic>) {
+      return DriverTripModel.fromJson(data);
+    }
+    return const DriverTripModel(tripId: '', status: 'COMPLETED');
+  }
+
+  /// End the active trip — fire-and-forget variant (legacy).
+  Future<void> endTrip() async {
+    await _dio.post(ApiConfig.driverTripEnd);
+  }
+
+  /// Push a GPS coordinate update to the server (simple).
+  Future<void> updateLocation(double lat, double lng) async {
+    await _dio.post(ApiConfig.driverLocation, data: {
+      'lat': lat,
+      'lng': lng,
+    });
+  }
+
+  /// Push a GPS coordinate update with extended telemetry.
+  Future<void> postLocation({
+    required double lat,
+    required double lng,
+    double? speed,
+    double? heading,
+    double? accuracy,
+  }) async {
+    await _dio.post(ApiConfig.driverLocation, data: {
+      'lat': lat,
+      'lng': lng,
+      'speed': ?speed,
+      'heading': ?heading,
+      'accuracy': ?accuracy,
+      'recordedAt': DateTime.now().toIso8601String(),
     });
   }
 }

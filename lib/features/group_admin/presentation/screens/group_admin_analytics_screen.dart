@@ -3,16 +3,13 @@
 // PURPOSE: Side-by-side school comparison table for all schools in the group.
 // =============================================================================
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/group_admin_service.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/group_admin/group_admin_models.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../../shared/widgets/list_table_view.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -59,8 +56,9 @@ class _GroupAdminAnalyticsScreenState
   Widget build(BuildContext context) {
     final asyncReport = ref.watch(_comparisonProvider);
     final isNarrow = MediaQuery.of(context).size.width < 600;
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
-    final padding = isNarrow ? 16.0 : 24.0;
+    final isWide =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final padding = isNarrow ? AppSpacing.lg : AppSpacing.xl;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(_comparisonProvider),
@@ -71,10 +69,10 @@ class _GroupAdminAnalyticsScreenState
             children: [
               // ── Header ────────────────────────────────────────────────
               Padding(
-                padding: EdgeInsets.fromLTRB(padding, padding, padding, 16),
+                padding: EdgeInsets.fromLTRB(padding, padding, padding, AppSpacing.lg),
                 child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
+                  spacing: AppSpacing.md,
+                  runSpacing: AppSpacing.md,
                   alignment: WrapAlignment.spaceBetween,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
@@ -89,7 +87,7 @@ class _GroupAdminAnalyticsScreenState
                       onPressed: () {
                         AppSnackbar.info(context, AppStrings.exportComingSoon);
                       },
-                      icon: const Icon(Icons.download, size: 18),
+                      icon: const Icon(Icons.download, size: AppIconSize.sm),
                       label: const Text(AppStrings.export),
                     ),
                   ],
@@ -99,10 +97,7 @@ class _GroupAdminAnalyticsScreenState
               // ── Content ───────────────────────────────────────────────
               Expanded(
                 child: asyncReport.when(
-                  loading: () => Padding(
-                    padding: EdgeInsets.symmetric(horizontal: padding),
-                    child: const ShimmerListLoadingWidget(itemCount: 8),
-                  ),
+                  loading: () => AppLoaderScreen(),
                   error: (err, _) => Center(
                     child: Padding(
                       padding: EdgeInsets.all(padding),
@@ -184,10 +179,8 @@ class _GroupAdminAnalyticsScreenState
             child: Card(
               child: Padding(
                 padding: AppSpacing.paddingMd,
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox(
                       width: 220,
@@ -195,10 +188,10 @@ class _GroupAdminAnalyticsScreenState
                         controller: _searchController,
                         decoration: InputDecoration(
                           hintText: AppStrings.searchByNameCodeCity,
-                          prefixIcon: const Icon(Icons.search, size: 20),
+                          prefixIcon: const Icon(Icons.search, size: AppIconSize.md),
                           suffixIcon: _searchController.text.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18),
+                                  icon: const Icon(Icons.clear, size: AppIconSize.sm),
                                   onPressed: () {
                                     _searchController.clear();
                                     setState(() => _searchQuery = '');
@@ -208,14 +201,15 @@ class _GroupAdminAnalyticsScreenState
                           border: const OutlineInputBorder(),
                           isDense: true,
                           contentPadding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md, vertical: 10),
+                              horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                         ),
                         onChanged: (v) =>
                             setState(() => _searchQuery = v.trim()),
                       ),
                     ),
+                    const Spacer(),
                     TextButton.icon(
-                      icon: const Icon(Icons.filter_alt_off, size: 18),
+                      icon: const Icon(Icons.filter_alt_off, size: AppIconSize.sm),
                       label: const Text(AppStrings.clearFilters),
                       onPressed: () {
                         _searchController.clear();
@@ -256,12 +250,12 @@ class _GroupAdminAnalyticsScreenState
     if (filtered.isEmpty) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(48),
+          padding: const EdgeInsets.all(AppSpacing.xl4),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.school_outlined,
-                  size: 64, color: Theme.of(context).colorScheme.outline),
+                  size: AppIconSize.xl4, color: Theme.of(context).colorScheme.outline),
               AppSpacing.vGapLg,
               Text(
                 _searchQuery.isNotEmpty
@@ -335,7 +329,7 @@ class _GroupAdminAnalyticsScreenState
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       itemCount: filtered.length,
       itemBuilder: (_, i) => _buildMobileCard(context, filtered[i]),
     );
@@ -344,7 +338,7 @@ class _GroupAdminAnalyticsScreenState
   Widget _buildMobileCard(
       BuildContext context, GroupAdminSchoolComparisonItem s) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: InkWell(
         borderRadius: AppRadius.brLg,
         onTap: () {},
@@ -365,8 +359,8 @@ class _GroupAdminAnalyticsScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(s.name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600)),
                         Text(
                           [s.city, s.state]
                               .where((v) => v != null && v.isNotEmpty)
@@ -381,8 +375,8 @@ class _GroupAdminAnalyticsScreenState
               ),
               AppSpacing.vGapMd,
               Wrap(
-                spacing: 16,
-                runSpacing: 8,
+                spacing: AppSpacing.lg,
+                runSpacing: AppSpacing.sm,
                 children: [
                   _infoChip(context, 'Code', s.code),
                   _infoChip(context, 'Board', s.board ?? '—'),
@@ -415,7 +409,8 @@ class _GroupAdminAnalyticsScreenState
                 .labelSmall
                 ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
         Text(value,
-            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w500)),
       ],
     );
   }
@@ -447,7 +442,7 @@ class _GroupAdminAnalyticsScreenState
         icon: Icons.check_circle_outline,
         value: '$activeCount',
         label: 'Active Schools',
-        color: Colors.teal,
+        color: AppColors.success500,
       ),
       _SummaryCard(
         icon: Icons.workspace_premium_outlined,
@@ -464,7 +459,7 @@ class _GroupAdminAnalyticsScreenState
             .map(
               (c) => Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(right: 12),
+                  padding: const EdgeInsets.only(right: AppSpacing.md),
                   child: c,
                 ),
               ),
@@ -507,25 +502,25 @@ class _GroupAdminAnalyticsScreenState
           children: [
             Text(
               s.name,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
-      DataCell(Text(s.code, style: const TextStyle(fontSize: 12))),
+      DataCell(Text(s.code, style: Theme.of(context).textTheme.bodySmall)),
       DataCell(Text(
         [s.city, s.state].where((v) => v != null && v.isNotEmpty).join(', '),
-        style: const TextStyle(fontSize: 12),
+        style: Theme.of(context).textTheme.bodySmall,
       )),
-      DataCell(Text(s.board ?? '—', style: const TextStyle(fontSize: 12))),
+      DataCell(Text(s.board ?? '—', style: Theme.of(context).textTheme.bodySmall)),
       DataCell(_PlanBadge(plan: s.subscriptionPlan)),
       DataCell(_StatusBadge(status: s.status)),
       DataCell(Text('${s.userCount}',
-          style: const TextStyle(fontWeight: FontWeight.w500))),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500))),
       DataCell(Text(
         s.subscriptionEnd != null ? _formatDate(s.subscriptionEnd!) : '—',
-        style: const TextStyle(fontSize: 12),
+        style: Theme.of(context).textTheme.bodySmall,
       )),
       DataCell(_ExpiryStatusDot(expiryStatus: s.expiryStatus)),
     ]);
@@ -566,8 +561,8 @@ class _SummaryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 22),
-            const SizedBox(height: 6),
+            Icon(icon, color: color, size: AppIconSize.md),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               value,
               style: compact
@@ -581,7 +576,7 @@ class _SummaryCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -604,7 +599,7 @@ class _PlanBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = switch (plan.toUpperCase()) {
       'PREMIUM' => AppColors.secondary500,
-      'STANDARD' => Colors.teal,
+      'STANDARD' => AppColors.success500,
       _ => AppColors.neutral400,
     };
     return Container(
@@ -616,8 +611,7 @@ class _PlanBadge extends StatelessWidget {
       ),
       child: Text(
         plan,
-        style: TextStyle(
-          fontSize: 11,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
           fontWeight: FontWeight.w600,
           color: color,
         ),
@@ -642,11 +636,10 @@ class _StatusBadge extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: AppSpacing.xs),
         Text(
           status,
-          style: TextStyle(
-            fontSize: 12,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
             fontWeight: FontWeight.w500,
             color: color,
           ),
@@ -664,7 +657,7 @@ class _ExpiryStatusDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final (color, label) = switch (expiryStatus) {
       'expired' => (AppColors.error500, 'Expired'),
-      'expiring_soon' => (Colors.amber, 'Expiring'),
+      'expiring_soon' => (AppColors.warning500, 'Expiring'),
       _ => (AppColors.success500, 'OK'),
     };
     return Row(
@@ -675,8 +668,8 @@ class _ExpiryStatusDot extends StatelessWidget {
           height: 8,
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
-        const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 11, color: color)),
+        const SizedBox(width: AppSpacing.xs),
+        Text(label, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color)),
       ],
     );
   }
@@ -695,7 +688,7 @@ class _ErrorCard extends StatelessWidget {
         child: Column(
           children: [
             Icon(Icons.error_outline,
-                size: 48, color: Theme.of(context).colorScheme.error),
+                size: AppIconSize.xl3, color: Theme.of(context).colorScheme.error),
             AppSpacing.vGapLg,
             Text(AppStrings.couldNotLoadAnalytics,
                 style: Theme.of(context).textTheme.titleMedium),

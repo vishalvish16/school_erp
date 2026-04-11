@@ -3,14 +3,13 @@
  * Uses existing Prisma schema (School, PlatformPlan, SchoolSubscription)
  */
 import bcrypt from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../../utils/response.js';
 import * as schoolsRepo from '../schools/schools.repository.js';
 import * as plansRepo from '../plans/plans.repository.js';
 import * as subscriptionRepo from '../subscription/subscription.repository.js';
 import { gatherInfraStatus } from './infra-status.helper.js';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 const toStr = (v) => (v != null ? String(v) : null);
 
@@ -39,7 +38,7 @@ const mapSchoolToResponse = (s) => {
             name: s.plan.name,
             slug: s.plan.slug || s.plan.name?.toLowerCase?.()?.replace(/\s+/g, '-') || '',
             price_per_student: parseFloat(s.plan.priceMonthly || s.plan.price_per_student || 0),
-            icon_emoji: s.plan.icon_emoji || '📦',
+            icon_emoji: s.plan.iconEmoji || s.plan.icon_emoji || '📦',
         }
         : planFromSubscription(s.subscriptionPlan);
     const primaryAdmin = s.primaryAdmin ?? null;
@@ -60,8 +59,9 @@ const mapSchoolToResponse = (s) => {
         logo_url: s.logo_url || null,
         group_id: s.groupId || s.group_id || null,
         plan,
-        student_limit: s.student_limit ?? 500,
+        student_limit: s.studentLimit ?? s.student_limit ?? 500,
         student_count: s.studentCount ?? s.student_count ?? 0,
+        teacher_count: s.teacherCount ?? s.teacher_count ?? 0,
         overdue_days: s.overdue_days ?? 0,
         subscription_end: s.subscriptionEnd || s.subscription_end || null,
         features: s.features || {},
@@ -76,7 +76,7 @@ const mapPlanToResponse = (p, extra = {}) => ({
     slug: p.slug || p.name?.toLowerCase?.()?.replace(/\s+/g, '-') || '',
     description: p.description || null,
     price_per_student: parseFloat(p.price ?? p.priceMonthly ?? p.price_per_student ?? 0),
-    icon_emoji: p.icon_emoji || '📦',
+    icon_emoji: p.iconEmoji || p.icon_emoji || '📦',
     color_hex: p.color_hex || '#00D2FF',
     max_students: p.maxUsers ?? p.maxStudents ?? p.max_students ?? null,
     support_level: p.support_level || 'standard',
@@ -95,6 +95,9 @@ export const getDashboardStats = async () => {
     const expiringEnd = new Date(now);
     expiringEnd.setDate(expiringEnd.getDate() + 7);
 
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
     const [
         totalSchools,
         activeSchools,
@@ -105,6 +108,12 @@ export const getDashboardStats = async () => {
         schoolsExpiring,
         schoolsOverdue,
         recentSchools,
+        totalActualStudents,
+        totalTeachers,
+        totalParents,
+        totalDrivers,
+        newSchoolsThisMonth,
+        newSchoolsLastMonth,
     ] = await Promise.all([
         prisma.school.count(),
         prisma.school.count({ where: ACTIVE_STATUS }),
@@ -141,6 +150,18 @@ export const getDashboardStats = async () => {
             orderBy: { createdAt: 'desc' },
             take: 5,
         }),
+        prisma.student.count({ where: { deletedAt: null } }),
+        prisma.staff.count({ where: { deletedAt: null } }),
+        prisma.parent.count({ where: { deletedAt: null } }),
+        prisma.driver.count({ where: { isActive: true, deletedAt: null } }),
+        prisma.school.count({
+            where: { createdAt: { gte: monthStart } },
+        }),
+        prisma.school.count({
+            where: {
+                createdAt: { gte: lastMonthStart, lt: monthStart },
+            },
+        }),
     ]);
 
     // MRR/ARR: use subscriptionPlan enum with approximate prices (schema has no plan relation)
@@ -155,6 +176,14 @@ export const getDashboardStats = async () => {
     );
     const arr = mrr * 12;
 
+    // Fetch platform plans to get saved icons
+    const platformPlans = await prisma.platformPlan.findMany({
+        select: { name: true, iconEmoji: true },
+    }).catch(() => []);
+    const iconByPlanName = Object.fromEntries(
+        platformPlans.map((p) => [p.name.toUpperCase(), p.iconEmoji || '📦'])
+    );
+
     const planDistribution = planCounts.map((pc) => {
         const planName = pc.subscriptionPlan || 'Unknown';
         const count = pc._count.id;
@@ -162,7 +191,7 @@ export const getDashboardStats = async () => {
         return {
             plan_id: planName,
             plan_name: planName,
-            plan_icon: null,
+            plan_icon: iconByPlanName[planName.toUpperCase()] || '📦',
             school_count: count,
             percentage: totalSchools > 0 ? (count / totalSchools) * 100 : 0,
             mrr: planMrr,
@@ -174,7 +203,9 @@ export const getDashboardStats = async () => {
         active_schools: activeSchools,
         trial_schools: trialSchools,
         suspended_schools: suspendedSchools,
-        total_students: totalUsers,
+        // Align with school list / per-school counts: `Student` rows, not all `User` with schoolId.
+        total_students: totalActualStudents,
+        total_users: totalUsers,
         total_groups: await prisma.schoolGroup.count(),
         mrr,
         arr,
@@ -456,6 +487,10 @@ export const updateSchool = async (id, body) => {
     if (data.plan_id) data.planId = data.plan_id;
     if (data.email) data.contactEmail = data.email;
     if (data.phone) data.contactPhone = data.phone;
+    if (data.student_limit !== undefined) {
+        data.studentLimit = parseInt(data.student_limit, 10) || 500;
+        delete data.student_limit;
+    }
     const updated = await schoolsRepo.updateSchool(id, data);
     return mapSchoolToResponse(updated);
 };
@@ -944,12 +979,29 @@ export const removeSchoolFromGroup = async (groupId, schoolId) => {
 const BUILT_IN_PLAN_NAMES = ['Basic', 'Standard', 'Premium'];
 const BUILT_IN_DEFAULTS = { Basic: 99, Standard: 199, Premium: 499 };
 
+/** Default feature sets per plan tier */
+const PLAN_FEATURES = {
+    Basic:    ['attendance', 'fees', 'exams', 'timetable', 'certificates', 'reports'],
+    Standard: ['attendance', 'fees', 'exams', 'timetable', 'certificates', 'reports',
+               'parent_app', 'library', 'online_payments', 'chat_system'],
+    Premium:  ['ai_intelligence', 'attendance', 'certificates', 'chat_system', 'exams',
+               'fees', 'gps_transport', 'hostel', 'library', 'online_payments',
+               'parent_app', 'reports', 'rfid_attendance', 'timetable', 'transport'],
+};
+
+/** All known feature keys across the platform */
+const ALL_FEATURE_KEYS = [
+    'ai_intelligence', 'attendance', 'certificates', 'chat_system', 'exams',
+    'fees', 'gps_transport', 'hostel', 'library', 'online_payments',
+    'parent_app', 'reports', 'rfid_attendance', 'timetable', 'transport',
+];
+
 /** Ensure Basic, Standard, Premium exist in platform_plans so they can be edited */
 const ensureBuiltInPlans = async () => {
     for (const name of BUILT_IN_PLAN_NAMES) {
-        const existing = await prisma.platformPlan.findFirst({ where: { name } });
-        if (!existing) {
-            await prisma.platformPlan.create({
+        let plan = await prisma.platformPlan.findFirst({ where: { name } });
+        if (!plan) {
+            plan = await prisma.platformPlan.create({
                 data: {
                     name,
                     description: null,
@@ -959,6 +1011,20 @@ const ensureBuiltInPlans = async () => {
                     isActive: true,
                 },
             });
+        }
+        // Seed default plan features if none exist for this plan
+        const featureKeys = PLAN_FEATURES[name] || [];
+        if (featureKeys.length > 0) {
+            const existingCount = await prisma.planFeature.count({ where: { planId: plan.id } });
+            if (existingCount === 0) {
+                for (const key of featureKeys) {
+                    await prisma.planFeature.upsert({
+                        where: { planId_featureKey: { planId: plan.id, featureKey: key } },
+                        update: {},
+                        create: { planId: plan.id, featureKey: key, isEnabled: true },
+                    });
+                }
+            }
         }
     }
 };
@@ -975,6 +1041,18 @@ export const getPlans = async () => {
         const countMap = Object.fromEntries((counts || []).map((c) => [c.subscriptionPlan, c._count.id]));
 
         const plans = await plansRepo.getAllPlans({});
+
+        // Fetch all plan features in one query for efficiency
+        const allPlanFeatures = await prisma.planFeature.findMany({
+            orderBy: { featureKey: 'asc' },
+        });
+        const featuresByPlanId = {};
+        for (const f of allPlanFeatures) {
+            const pid = f.planId.toString();
+            if (!featuresByPlanId[pid]) featuresByPlanId[pid] = [];
+            featuresByPlanId[pid].push({ feature_key: f.featureKey, is_enabled: f.isEnabled });
+        }
+
         const builtInNames = new Set(BUILT_IN_PLAN_NAMES);
         const builtIn = [];
         const custom = [];
@@ -982,7 +1060,12 @@ export const getPlans = async () => {
         for (const p of plans || []) {
             const mapped = mapPlanToResponse(p, { school_count: p.active_school_count || 0 });
             const schoolCount = countMap[nameToEnum[p.name]] ?? mapped.school_count ?? 0;
-            const withCount = { ...mapped, school_count: schoolCount };
+            const planId = p.id?.toString?.() ?? String(p.id);
+            const withCount = {
+                ...mapped,
+                school_count: schoolCount,
+                plan_features: featuresByPlanId[planId] || [],
+            };
             if (builtInNames.has(p.name)) {
                 builtIn.push(withCount);
             } else {
@@ -1005,15 +1088,22 @@ export const getPlans = async () => {
                 _count: { id: true },
             });
             const countMap = Object.fromEntries(counts.map((c) => [c.subscriptionPlan, c._count.id]));
-            const data = planEnums.map((slug) => mapPlanToResponse({
-                id: slug,
-                name: planNames[slug] || slug,
-                slug,
-                priceMonthly: planPrices[slug] || 0,
-                maxStudents: 500,
-                isActive: true,
-                status: 'active',
-            }, { school_count: countMap[slug] || 0 }));
+            const data = planEnums.map((slug) => {
+                const name = planNames[slug] || slug;
+                const featureKeys = PLAN_FEATURES[name] || [];
+                return {
+                    ...mapPlanToResponse({
+                        id: slug,
+                        name,
+                        slug,
+                        priceMonthly: planPrices[slug] || 0,
+                        maxStudents: 500,
+                        isActive: true,
+                        status: 'active',
+                    }, { school_count: countMap[slug] || 0 }),
+                    plan_features: featureKeys.map((k) => ({ feature_key: k, is_enabled: true })),
+                };
+            });
             return { data };
         }
         throw err;
@@ -1032,6 +1122,7 @@ export const createPlan = async (body) => {
         price: Number(body.price_per_student ?? body.price_monthly ?? 0),
         maxBranches: body.max_branches ?? 1,
         maxUsers: body.max_students ?? 500,
+        iconEmoji: body.icon_emoji || '📦',
     };
     const plan = await plansRepo.createPlan(data);
     return mapPlanToResponse(plan);
@@ -1044,8 +1135,9 @@ export const updatePlan = async (id, body) => {
         if (body.description !== undefined) data.description = body.description || null;
         if (body.price_per_student != null) data.price = Number(body.price_per_student);
         if (body.max_students != null) data.maxUsers = Number(body.max_students);
+        if (body.icon_emoji != null) data.iconEmoji = body.icon_emoji;
         if (Object.keys(data).length === 0) {
-            throw new AppError('No valid fields to update. Provide at least one of: name, description, price_per_student, max_students.', 400);
+            throw new AppError('No valid fields to update. Provide at least one of: name, description, price_per_student, max_students, icon_emoji.', 400);
         }
         const plan = await plansRepo.updatePlan(id, data);
         return mapPlanToResponse(plan);
@@ -1310,11 +1402,87 @@ export const assignPlan = async (schoolId, body) => {
         const startD = new Date(body.subscription_start);
         if (!isNaN(startD.getTime())) updateData.subscriptionStart = startD;
     }
+    if (body.student_limit !== undefined) {
+        updateData.studentLimit = parseInt(body.student_limit, 10) || 500;
+    }
     await prisma.school.update({
         where: { id: String(schoolId) },
         data: updateData,
     });
+
+    // Sync school features to match plan features
+    try {
+        let planFeatures = [];
+        // Try to resolve plan features from the plan_features table
+        if (planId && !['BASIC', 'STANDARD', 'PREMIUM'].includes(String(planId).toUpperCase())) {
+            planFeatures = await prisma.planFeature.findMany({
+                where: { planId: BigInt(planId) },
+            });
+        }
+        // If planId was an enum name (BASIC/STANDARD/PREMIUM), look up by plan name
+        if (planFeatures.length === 0) {
+            const planName = { BASIC: 'Basic', STANDARD: 'Standard', PREMIUM: 'Premium' }[subscriptionPlan];
+            if (planName) {
+                const dbPlan = await prisma.platformPlan.findFirst({ where: { name: planName } });
+                if (dbPlan) {
+                    planFeatures = await prisma.planFeature.findMany({
+                        where: { planId: dbPlan.id },
+                    });
+                }
+            }
+        }
+        // Only sync if plan has features configured
+        if (planFeatures.length > 0) {
+            const planFeatureKeys = planFeatures
+                .filter((f) => f.isEnabled)
+                .map((f) => f.featureKey);
+            const schoolIdStr = String(schoolId);
+            for (const key of ALL_FEATURE_KEYS) {
+                const shouldEnable = planFeatureKeys.includes(key);
+                await prisma.$executeRaw`
+                    INSERT INTO school_features (school_id, feature_name, is_enabled)
+                    VALUES (${schoolIdStr}::uuid, ${key}, ${shouldEnable})
+                    ON CONFLICT (school_id, feature_name)
+                    DO UPDATE SET is_enabled = ${shouldEnable}
+                `;
+            }
+        }
+    } catch (syncErr) {
+        // If school_features table does not exist or other non-critical error, skip
+        const syncMsg = syncErr?.message || '';
+        if (!syncMsg.includes('does not exist') && !syncMsg.includes('42P01')) {
+            console.warn('Plan feature sync warning:', syncMsg);
+        }
+    }
+
     return { success: true };
+};
+
+/** Update plan features configuration (super admin) */
+export const updatePlanFeatures = async (planId, features) => {
+    if (!features || typeof features !== 'object') {
+        throw new AppError('features object is required', 400);
+    }
+    const bigPlanId = BigInt(planId);
+    // Verify plan exists
+    const plan = await prisma.platformPlan.findUnique({ where: { id: bigPlanId } });
+    if (!plan) throw new AppError('Plan not found', 404);
+
+    // Upsert each feature key for this plan
+    for (const [key, enabled] of Object.entries(features)) {
+        const featureKey = String(key).toLowerCase();
+        const isEnabled = !!enabled;
+        await prisma.planFeature.upsert({
+            where: { planId_featureKey: { planId: bigPlanId, featureKey } },
+            update: { isEnabled },
+            create: { planId: bigPlanId, featureKey, isEnabled },
+        });
+    }
+    const updated = await prisma.planFeature.findMany({
+        where: { planId: bigPlanId },
+        orderBy: { featureKey: 'asc' },
+    });
+    return updated.reduce((acc, f) => ({ ...acc, [f.featureKey]: f.isEnabled }), {});
 };
 
 export const resolveOverdue = async (schoolId, body) => {
@@ -2036,6 +2204,7 @@ export const exportDashboardReport = async () => {
         { metric: 'Trial Schools', value: stats.trial_schools },
         { metric: 'Suspended Schools', value: stats.suspended_schools },
         { metric: 'Total Students', value: stats.total_students },
+        { metric: 'Total Users (school-linked)', value: stats.total_users },
         { metric: 'School Groups', value: stats.total_groups },
         { metric: 'Monthly Revenue (MRR)', value: stats.mrr },
         { metric: 'Annual Revenue (ARR)', value: stats.arr },

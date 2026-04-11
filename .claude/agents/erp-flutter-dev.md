@@ -24,6 +24,90 @@ Read the FLUTTER_PROMPT and implement complete Flutter code for a new module, fo
   - `lib/shared/widgets/widgets.dart` — Shared widgets barrel export
   - `lib/core/constants/app_strings.dart` — ALL text/label constants
   - `lib/shared/widgets/app_feedback.dart` — Single feedback class (toast/dialog/snackbar)
+  - `.cursor/rules/list-screen-ui-patterns.mdc` — List/table UI (search, filters, mobile cards, pagination)
+
+---
+
+## Table row colors — always use AppThemeTokens
+
+`ListTableView` and `ReusableDataTable` must resolve alternating row colors from `AppThemeTokens` so that Super Admin theme settings take effect at runtime:
+
+```dart
+final t = Theme.of(context).extension<AppThemeTokens>();
+// ✅ Correct — resolves from live theme tokens
+color: isSelected
+    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+    : (index.isEven ? t?.tableRowEvenBg : t?.tableRowOddBg),
+
+// ❌ Wrong — hardcoded null leaves rows transparent; theme settings have no effect
+color: null,
+```
+
+Reference: `lib/shared/widgets/list_table_view.dart` (`_buildDataRow`) and `lib/shared/widgets/reusable_data_table.dart` (`themedRows` generator).
+
+## Mobile dialogs (TabBar inside bottom sheet)
+
+For dialogs shown via `showAdaptiveModal` that contain a `TabBar` with 4+ tabs:
+- **Mobile (`< 600px`)**: `isScrollable: false` + icon-only tabs (`Tab(icon: ...)`, no text). Wrap each in `Tooltip(message: 'Label', child: ...)`.
+- **Desktop/tablet**: `isScrollable: true`, `tabAlignment: TabAlignment.start`, icon + text tabs.
+- `showAdaptiveModal` already uses `SafeArea(top: false)` — keep it that way so drag handles aren't obscured.
+
+## Mobile list screens — search & filter strip (narrow / under 600px)
+
+For **list/table screens** with search and filters on **mobile** (typically `MediaQuery.sizeOf(context).width < AppBreakpoints.formMaxWidth`):
+
+- **Reuse** `lib/shared/widgets/list_screen_mobile_toolbar.dart`: **`ListScreenMobileFilterStrip`**, **`ListScreenMobilePillSearchField`**, **`ListScreenMobileFilterRow`**, **`listScreenMobileFilterFieldDecoration`** (with **`SearchableDropdownFormField`**), **`ListScreenMobileMoreFiltersButton`** (tune icon + “Filters” + chevron → bottom sheet for extra filters).
+- **Copy behavior from** `_buildMobileSearchFilters` in **`super_admin_schools_screen.dart`** — do not invent a different layout unless the spec explicitly requires it.
+- **Full checklist** is in **`list-screen-ui-patterns.mdc`** under **Search + Filters** → **Mobile filter strip**.
+
+## Compact mobile list cards (billing / subscription style)
+
+For **dense list screens** (billing, subscriptions, reports — any screen where big cards feel heavy), build a **compact tappable tile** (~60–70px), not a feature card with buttons.
+
+**Rules:**
+- Wrap `Card.child` in `InkWell(onTap: () => _showDetailSheet(item))`. Add `clipBehavior: Clip.hardEdge` to the `Card` so the ripple stays inside the border.
+- **Two rows only:**
+  - Row 1: name (`fontSize: 14, w600, maxLines:1`) + status pill badge (`fontSize: 10, w700`)
+  - Row 2: metadata joined with ` · ` e.g. `Plan · ₹99/mo · 22 Mar 26` (`fontSize: 12, onSurfaceVariant`)
+- **No bottom button row.** Remove `Manage`/`View`/`Edit` buttons — card tap IS the primary action. Use `PopupMenuButton(icon: Icon(Icons.more_vert, size: 18))` for mutating actions only.
+- Card margin: `EdgeInsets.only(bottom: 8)`.
+- Reference: `_buildMobileCard` in `lib/features/super_admin/presentation/screens/super_admin_billing_screen.dart`.
+
+```dart
+// ❌ Heavy card — headlineSmall price + icon rows + two bottom buttons
+Text('₹99', style: textTheme.headlineSmall)
+Row([OutlinedButton('Manage'), FilledButton('View')])
+
+// ✅ Compact tile — tap = detail, ⋮ = actions
+Card(
+  clipBehavior: Clip.hardEdge,
+  child: InkWell(
+    onTap: () => _showDetailSheet(s),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(children: [
+        Expanded(child: Column(children: [
+          // Row 1: name + status badge
+          // Row 2: plan · price · renewal
+        ])),
+        PopupMenuButton(icon: Icon(Icons.more_vert, size: 18), …),
+      ]),
+    ),
+  ),
+)
+```
+
+## Design system imports — always explicit
+
+`AppColors` is **not** re-exported automatically via `design_system.dart` in all files. Always import explicitly:
+
+```dart
+// ✅ Required wherever AppColors.* is used
+import 'package:school_erp_admin/design_system/tokens/app_colors.dart';
+
+// ❌ Missing this causes "The getter 'AppColors' isn't defined" compile error
+//    even when app_spacing.dart is imported
+```
 
 ---
 
@@ -403,22 +487,30 @@ Token map: `instant(50)  fast(150)  normal(250)  moderate(350)  slow(500)  xslow
 | `gradient` | `LinearGradient` | `AppColors.primaryGradient` etc. |
 
 ### RULE 3 — NO DIRECT SNACKBAR / DIALOG CALLS
-Every toast, snackbar, confirmation dialog, alert, loading overlay, and status badge
-**MUST** go through `AppFeedback`. Never call `ScaffoldMessenger`, `showDialog`,
-`showSnackBar`, or build custom SnackBar/AlertDialog widgets inline.
+
+#### 3A — Toast notifications → use AppToast (not ScaffoldMessenger)
+Toasts, success messages, and error banners **MUST** use **`AppToast`** (`lib/shared/widgets/app_toast.dart`). It renders a **centered top-of-screen overlay** with slide-in animation and a type-coloured accent strip. Never call `ScaffoldMessenger.showSnackBar` directly — it renders at bottom-left and is easy to miss on both mobile and web.
 
 ```dart
-// ❌ FORBIDDEN — direct feedback anywhere
+// ❌ FORBIDDEN — bottom-left SnackBar
 ScaffoldMessenger.of(context).showSnackBar(
   SnackBar(content: Text('Saved successfully')),
 );
-showDialog(context: context, builder: (_) => AlertDialog(title: Text('Delete?')));
 
-// ✅ CORRECT — always via AppFeedback
-AppFeedback.showSuccess(context, AppStrings.savedSuccess);
-AppFeedback.showError(context, AppStrings.genericError);
-AppFeedback.showWarning(context, AppStrings.someWarning);
-AppFeedback.showInfo(context, AppStrings.someInfo);
+// ✅ CORRECT — centered overlay toast
+AppToast.showSuccess(context, AppStrings.savedSuccess);
+AppToast.showError(context, AppStrings.genericError);
+AppToast.showWarning(context, AppStrings.someWarning);
+AppToast.showInfo(context, AppStrings.someInfo);
+```
+
+#### 3B — Dialogs, confirmations, loading → use AppFeedback
+Confirmation dialogs, alert dialogs, loading overlays, and status badges **MUST** go through `AppFeedback`. Never call `showDialog` or build custom `AlertDialog` widgets inline.
+
+```dart
+// ✅ CORRECT — dialogs via AppFeedback
+AppFeedback.showSuccess(context, AppStrings.savedSuccess); // (legacy — prefer AppToast above)
+AppFeedback.showError(context, AppStrings.genericError);   // (legacy — prefer AppToast above)
 
 final confirmed = await AppFeedback.confirmDelete(
   context,
@@ -622,6 +714,348 @@ Before declaring a screen done, confirm ALL of these:
 - [ ] Content is max-width constrained on web (`AppBreakpoints.contentMaxWidth`)
 - [ ] Tables have horizontal scroll on small screens
 - [ ] No hardcoded pixel widths that break on small screens
+
+---
+
+## RULE 5 — GLASSMORPHISM DESIGN SYSTEM (Vidyron Visual Identity)
+
+> **The entire app renders the campus background image (`assets/images/auth_background.jpg`) globally — blurred at 28px sigma. All panels, sidebars, topbars, cards, dialogs, and bottom sheets are glass panels floating over this image. NEVER render opaque solid-color surfaces.**
+
+### 5A — Global Background (already wired in `main.dart` — do not touch)
+
+The `MaterialApp.router` builder renders a globally blurred background for both themes:
+- **Light**: blurred campus + `Colors.white.withValues(alpha: 0.08)` → airy frosted glass
+- **Dark**: blurred campus + `Color(0xFF040C18).withValues(alpha: 0.92)` → deep midnight with campus silhouette
+
+**`Scaffold.backgroundColor` is always transparent** (`forceTransparentScaffold: true`). Never set `Scaffold(backgroundColor: ...)` in screens.
+
+### 5B — AppThemeTokens — Glass Color Access
+
+```dart
+final t = Theme.of(context).extension<AppThemeTokens>()!;
+final isDark = Theme.of(context).brightness == Brightness.dark;
+
+// Light glass tokens (key ones):
+// t.cardBg:         Color(0xA8DBEAFE)  65% blue-100 frosted glass
+// t.tableHeaderBg:  Color(0xC0BFDBFE)  75% blue-200
+// t.tableRowEvenBg: Color(0x80EFF6FF)  50% blue-50
+// t.tableRowOddBg:  Color(0x55DBEAFE)  33% blue-100
+// t.inputBg:        Color(0xF0FFFFFF)  94% white — readable inputs
+
+// Dark glass tokens (key ones):
+// t.cardBg:         Color(0xCC0A1829)  80% dark navy glass
+// t.sidebarBg:      Color(0xE8060D1C)  91% deepest sidebar
+// t.tableHeaderBg:  Color(0xF00C1E38)  94% deep blue header
+// t.tableRowEvenBg: Color(0xD00A1829)  82% navy even rows
+// t.tableRowOddBg:  Color(0xC0060D1C)  75% midnight odd rows
+
+// ✅ Always use t.cardBg for card/panel backgrounds
+Container(color: t.cardBg)
+
+// ❌ Never hardcode surface colors
+Container(color: Colors.white)
+Container(color: const Color(0xFF0D1B34))
+```
+
+### 5C — Sidebar & Topbar Glass Pattern
+
+```dart
+// ✅ Sidebar/topbar must use ClipRect > BackdropFilter > Container
+import 'dart:ui' as ui;
+
+ClipRect(
+  child: BackdropFilter(
+    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+    child: Container(
+      color: isDark
+          ? t.sidebarBg.withValues(alpha: 0.88)
+          : Colors.white.withValues(alpha: 0.15),
+      child: /* nav content */,
+    ),
+  ),
+)
+// Reference: lib/features/super_admin/presentation/super_admin_shell.dart
+```
+
+### 5D — Dialog & Popup Glass
+
+Standard `showDialog` → glass applied automatically via `dialogTheme` in `_withTokens`:
+- **Light**: `Color(0xEBEFF6FF)` 92% blue-50 + white border rim
+- **Dark**: `Color(0xEB060D1C)` 92% midnight navy + subtle blue border
+
+`barrierColor` must always be `Colors.black.withValues(alpha: 0.35)` — never a solid color.
+
+**Top-anchored popover** (e.g. notification dropdown from topbar bell):
+```dart
+Dialog(
+  backgroundColor: Colors.transparent,
+  elevation: 0,
+  insetPadding: const EdgeInsets.only(top: 70, right: 12, left: 12, bottom: 40),
+  alignment: Alignment.topRight,
+  child: ClipRRect(
+    borderRadius: BorderRadius.circular(16),
+    child: BackdropFilter(
+      filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xEB060D1C) : const Color(0xEBEFF6FF),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.10)
+                : Colors.white.withValues(alpha: 0.60),
+            width: 1.5,
+          ),
+        ),
+        child: /* content */,
+      ),
+    ),
+  ),
+)
+// Reference: lib/widgets/super_admin/notifications_bell_button.dart
+```
+
+### 5E — Mobile Bottom Sheet — Always `showAdaptiveModal`
+
+**ALWAYS use `showAdaptiveModal`** (`lib/widgets/super_admin/super_admin_dialogs.dart`). It already applies `BackdropFilter` glass on mobile. Never call `showModalBottomSheet` with an opaque container.
+
+```dart
+// ✅ Correct — glass bottom sheet on mobile, glass Dialog on tablet/desktop
+showAdaptiveModal(context, MyContent(), maxWidth: 480);
+showAdaptiveModal(context, MyLargeContent(), maxWidth: kDialogMaxWidthLarge);
+
+// ❌ Wrong — opaque, bypasses glass system
+showModalBottomSheet(
+  builder: (_) => Container(color: Colors.white, child: MyContent()),
+);
+```
+
+Mobile output: `ClipRRect(r:20) > BackdropFilter(28) > Container(glass + white border)`.
+
+### 5F — Mobile Drawer Pattern
+
+```dart
+// ✅ Always use glass drawer — never opaque
+Drawer(
+  backgroundColor: Colors.transparent,
+  elevation: 0,
+  child: ClipRect(
+    child: BackdropFilter(
+      filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+      child: Container(
+        color: isDark
+            ? const Color(0xFF0A1628).withValues(alpha: 0.94)
+            : Colors.white.withValues(alpha: 0.88),
+        child: Column(children: [
+          // 1. Header: gradient panel + avatar ring + email + role badge
+          // 2. Expanded(ListView): _NavItem widgets with active state
+          // 3. Divider + logout pinned at bottom
+        ]),
+      ),
+    ),
+  ),
+)
+// Reference: _SuperAdminDrawer in lib/features/super_admin/presentation/super_admin_shell.dart
+```
+
+### 5G — Glass Preflight Checklist
+
+- [ ] No `Scaffold(backgroundColor: ...)` — scaffold stays transparent
+- [ ] All card/panel surfaces use `t.cardBg` from `AppThemeTokens` (not hardcoded)
+- [ ] Sidebar/topbar uses `ClipRect > BackdropFilter > Container(white.15 or dark.88)`
+- [ ] Mobile bottom sheets use `showAdaptiveModal` — not raw `showModalBottomSheet`
+- [ ] `Drawer` is transparent + `BackdropFilter` — not opaque background color
+- [ ] `import 'dart:ui' as ui;` present whenever using `ui.ImageFilter.blur`
+- [ ] `barrierColor` is `Colors.black.withValues(alpha: 0.35)` — not a solid color
+- [ ] Dark mode tested: navy glass panels visible over midnight campus background
+
+---
+
+## RULE 6 — ALL PORTALS FOLLOW THE SAME DESIGN SYSTEM
+
+> **This rule applies to every screen you write, regardless of which portal** — Super Admin, Group Admin, School Admin, Staff, Teacher, Parent, Student, or Driver.
+
+The Vidyron design system is **one visual identity**. There are no "simplified" portals. A School Admin list screen looks the same as a Super Admin list screen. A Parent dashboard uses `MetricStatCard` the same as the Super Admin dashboard. A Staff portal's mobile cards are compact tappable tiles the same as any other portal.
+
+| Portal | Shell to reference |
+|--------|-------------------|
+| Super Admin | `lib/features/super_admin/presentation/super_admin_shell.dart` |
+| Group Admin | `lib/features/group_admin/presentation/group_admin_shell.dart` |
+| School Admin | `lib/features/school_admin/presentation/school_admin_shell.dart` |
+| Staff | `lib/features/staff/presentation/staff_shell.dart` |
+| Teacher | `lib/features/teacher/presentation/teacher_shell.dart` |
+| Parent | `lib/features/parent/presentation/parent_shell.dart` |
+| Student | `lib/features/student/presentation/student_shell.dart` |
+| Driver | `lib/features/driver/presentation/driver_shell.dart` |
+
+### Portal consistency checklist (run before submitting any portal screen)
+
+- [ ] Shell uses `ClipRect > BackdropFilter > Container` glass sidebar/topbar — same pattern as `super_admin_shell.dart`
+- [ ] `Scaffold.backgroundColor` is NOT set — scaffold stays transparent (RULE 5)
+- [ ] Cards/panels use `t.cardBg` from `AppThemeTokens` — not hardcoded colors
+- [ ] List screens use `ListScreenMobileFilterStrip` + `ListScreenMobilePillSearchField` + `ListScreenMobileFilterRow` on mobile
+- [ ] Mobile entity cards: compact tappable tile, `InkWell` tap = detail, `PopupMenuButton(Icons.more_vert, size:18)` = secondary actions — no bottom button rows
+- [ ] Dashboard KPI rows use `MetricStatCard` (not raw `Icon + Text`)
+- [ ] All user-facing feedback: `AppToast.showSuccess/Error/Warning/Info` — no `showSnackBar` anywhere
+- [ ] Table rows: `AppThemeTokens.tableRowEvenBg/OddBg` — never `null` or hardcoded
+- [ ] Pagination: desktop → `ListPaginationBar` inside table card; mobile → `MobileInfiniteScrollList`
+- [ ] Dialogs/sheets: `showAdaptiveModal` — no raw `showModalBottomSheet` with opaque container
+- [ ] All visible text from `AppStrings` — no inline string literals
+- [ ] Breakpoints from `AppBreakpoints.tablet` (768) — not `kIsWeb`
+
+---
+
+## RULE 7 — SHELL LAYOUT PATTERN (copy exactly for every new portal)
+
+> **Read `lib/features/super_admin/presentation/super_admin_shell.dart` FIRST.** Copy its structure for every new `{portal}_shell.dart` — substitute the portal's routes and nav items. All portals share the same shell skeleton.
+
+### Shell breakpoint
+
+```dart
+final isWide = MediaQuery.of(context).size.width >= 768;
+if (isWide) return _PortalWebLayout(child: child);
+return _PortalMobileLayout(child: child);
+```
+
+### Wide: Scaffold > Row > [Sidebar(214/72) | Expanded(Topbar + child)]
+
+```dart
+// Sidebar: AnimatedContainer(72 collapsed / 214 expanded)
+//   > ClipRect > BackdropFilter(sigmaX:24, sigmaY:24)
+//   > Container(color: isDark ? sidebarBg.withValues(0.88) : white.withValues(0.15),
+//               border: Border(right: BorderSide(color: white.0.08/0.30, width:1)))
+//   > SafeArea(right:false) > Column([LogoBrand, Expanded(ListView(_NavItems)), SizedBox(12)])
+//
+// Topbar: ClipRect > BackdropFilter(sigmaX:24)
+//   > Container(height:60, padding:h20,
+//               color: isDark ? topbarBg.0.88 : white.0.15,
+//               border: Border(bottom: BorderSide))
+//   > Row([Hamburger(36×36), Spacer, NotificationsBell, ThemeToggle, ProfileAvatar(34)])
+```
+
+### _NavItem — exact structure (private class, copy into every shell)
+
+Active state: colored bg from `t?.navItemActiveBg` + 3px left accent bar (`t?.navItemActiveIcon`) + bold label.
+Collapsed mode detected via `LayoutBuilder(constraints.maxWidth < 100)` → icon-only centered + Tooltip.
+
+```dart
+class _NavItem extends StatelessWidget {
+  const _NavItem({required this.icon, required this.activeIcon, required this.label,
+    required this.isActive, required this.onTap, this.isCollapsed = false});
+  final IconData icon, activeIcon;
+  final String label;
+  final bool isActive, isCollapsed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    final content = Material(color: Colors.transparent, child: InkWell(
+      onTap: onTap, borderRadius: AppRadius.brMd,
+      hoverColor: t?.navItemActiveBg.withValues(alpha: 0.5),
+      child: AnimatedContainer(duration: Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: AppRadius.brMd,
+          color: isActive ? t?.navItemActiveBg : Colors.transparent,
+          border: isActive ? Border.all(color: t?.divider.withValues(alpha: 0.3) ?? Colors.transparent) : null,
+        ),
+        child: LayoutBuilder(builder: (ctx, constraints) {
+          if (constraints.maxWidth < 100) {             // icon-only when collapsed
+            return Padding(padding: EdgeInsets.symmetric(vertical: 11),
+              child: Center(child: Icon(isActive ? activeIcon : icon, size: 21,
+                color: isActive ? t?.navItemActiveText : t?.navItemIcon)));
+          }
+          return Padding(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(children: [
+              AnimatedContainer(duration: Duration(milliseconds: 150),  // 3px accent bar
+                width: 3, height: 18, margin: EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: isActive ? t?.navItemActiveIcon : Colors.transparent,
+                  borderRadius: BorderRadius.circular(2))),
+              Icon(isActive ? activeIcon : icon, size: 18,
+                color: isActive ? t?.navItemActiveText : t?.navItemIcon),
+              SizedBox(width: 10),
+              Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, letterSpacing: 0.1,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color: isActive ? t?.navItemActiveText : t?.navItemText))),
+            ]));
+        }),
+      ),
+    ));
+    return isCollapsed ? Tooltip(message: label, preferBelow: false, child: content) : content;
+  }
+}
+```
+
+### _NavGroup section header — 10px w700 letterSpacing 1.2, collapsible chevron
+
+```dart
+// In icon-only mode (constraints.maxWidth < 100): renders only a Divider separator.
+// In full mode: "SECTION NAME" label row + AnimatedRotation chevron + AnimatedSize children.
+// Colors: t?.navItemText.withValues(alpha: 0.6) for label, t?.navItemIcon.withValues(alpha: 0.6) for chevron
+```
+
+### Mobile layout — AppBar + BottomNavigationBar + glass Drawer
+
+```dart
+Scaffold(
+  key: _scaffoldKey,
+  appBar: AppBar(
+    leading: IconButton(icon: Icon(Icons.menu), onPressed: () => _scaffoldKey.currentState?.openDrawer()),
+    title: Row(mainAxisSize: MainAxisSize.min, children: [
+      AppLogoWidget(size: 28, showText: true), AppSpacing.hGapSm,
+      Container(padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(color: scheme.primaryContainer, borderRadius: AppRadius.brXs),
+        child: Text('PORTAL NAME', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold,
+          color: scheme.onPrimaryContainer))),
+    ]),
+    actions: [ThemeToggleButton(), NotificationsBellButton(),
+      IconButton(onPressed: () => context.go('/portal/profile'),
+        icon: CircleAvatar(radius: 14, backgroundColor: scheme.primaryContainer,
+          child: Text(initials, style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.w600, fontSize: 12))))],
+  ),
+  drawer: _PortalDrawer(isDark: isDark, scheme: scheme, authEmail: email),
+  body: widget.child,
+  bottomNavigationBar: BottomNavigationBar(
+    currentIndex: _currentIndex, type: BottomNavigationBarType.fixed,
+    onTap: (i) { /* switch(i) { case 0: context.go('/...'); ... case N: _scaffoldKey.currentState?.openDrawer(); } */ },
+    items: [
+      BottomNavigationBarItem(icon: Icon(Icons.dashboard_outlined), label: AppStrings.dashboard),
+      // 2–3 primary routes
+      BottomNavigationBarItem(icon: Icon(Icons.more_horiz), label: AppStrings.more),  // opens drawer
+    ],
+  ),
+)
+```
+
+### Mobile Drawer — Drawer(transparent) + ClipRect + BackdropFilter(28) + Container(glass)
+
+```dart
+Drawer(backgroundColor: Colors.transparent, elevation: 0,
+  child: ClipRect(child: BackdropFilter(filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+    child: Container(
+      color: isDark ? Color(0xFF0A1628).withValues(alpha: 0.94) : Colors.white.withValues(alpha: 0.88),
+      child: Column(children: [
+        _DrawerHeader(email: authEmail, initials: initials),
+        Expanded(child: ListView(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8), children: [
+          _drawerSectionLabel('MAIN', isDark, scheme),    // 10px w700 letterSpacing 1.4 muted
+          _NavItem(...),   // all routes reuse same _NavItem widget
+          SizedBox(height: 8), Divider(height: 1, color: divColor),
+          _drawerSectionLabel('ACCOUNT', isDark, scheme),
+          _NavItem(profile), _NavItem(changePassword), _NavItem(settings),
+        ])),
+        Divider(height: 1, color: divColor),
+        Padding(padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: LogoutButton(showLabel: true)),
+        SizedBox(height: 8),
+      ]),
+    ),
+  )),
+)
+```
+
+> Full copy-paste code: `.cursor/rules/list-screen-ui-patterns.mdc` → §"Shell / Sidebar Layout Pattern"
 
 ---
 

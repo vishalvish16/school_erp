@@ -2,14 +2,13 @@
  * Infra Status Helper — real metrics for API, DB, storage, connections
  * Persists 30-day uptime per service to JSON file
  */
-import { PrismaClient } from '@prisma/client';
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const HEALTH_FILE = join(__dirname, '../../..', 'data', 'infra_health.json');

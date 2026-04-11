@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/response.js';
 
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 /**
  * Middleware to ensure the school has an active, non-expired subscription.

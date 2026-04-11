@@ -4,12 +4,12 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/school_admin_fees_provider.dart';
 import '../providers/school_admin_students_provider.dart';
 import '../../../../design_system/design_system.dart';
+import '../../../../shared/widgets/app_toast.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -60,12 +60,15 @@ class _SchoolAdminFeeCollectionScreenState
   @override
   Widget build(BuildContext context) {
     final studentsState = ref.watch(schoolAdminStudentsProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
 
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/school-admin/fees'),
+        ),
         title: Text(AppStrings.collectFee),
-        backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(isWide ? 32.0 : 16.0),
@@ -230,7 +233,7 @@ class _SchoolAdminFeeCollectionScreenState
 
                   // Payment Mode
                   DropdownButtonFormField<String>(
-                    value: _paymentMode,
+                    initialValue: _paymentMode,
                     decoration: const InputDecoration(
                       labelText: AppStrings.paymentMode,
                       border: OutlineInputBorder(),
@@ -279,11 +282,12 @@ class _SchoolAdminFeeCollectionScreenState
                             ? null
                             : _submit,
                     icon: _isSaving
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2,
+                                color: Theme.of(context).colorScheme.onPrimary),
                           )
                         : const Icon(Icons.payment),
                     label: Text(
@@ -305,7 +309,7 @@ class _SchoolAdminFeeCollectionScreenState
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_selectedStudentId == null) {
-      AppSnackbar.warning(context, AppStrings.pleaseSelectStudent);
+      AppToast.showWarning(context, AppStrings.pleaseSelectStudent);
       return;
     }
     setState(() => _isSaving = true);
@@ -325,7 +329,7 @@ class _SchoolAdminFeeCollectionScreenState
     if (mounted) {
       setState(() => _isSaving = false);
       if (ok) {
-        AppSnackbar.success(context, AppStrings.paymentRecordedSuccess);
+        AppToast.showSuccess(context, AppStrings.paymentRecordedSuccess);
         _formKey.currentState?.reset();
         _feeHeadCtrl.clear();
         _amountCtrl.clear();

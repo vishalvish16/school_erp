@@ -5,9 +5,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/parent/parent_profile_model.dart';
 import '../../data/parent_profile_provider.dart';
@@ -72,7 +69,7 @@ class _ParentProfileScreenState extends ConsumerState<ParentProfileScreen> {
       body: Padding(
         padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
         child: state.isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? AppLoaderScreen()
             : state.profile == null
                 ? _ErrorView(
                     error: state.errorMessage ?? AppStrings.genericError,

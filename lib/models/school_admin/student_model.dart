@@ -27,6 +27,7 @@ class StudentModel {
   final String? parentPhone;
   final String? parentEmail;
   final String? parentRelation;
+  final String? userId;
   final DateTime createdAt;
 
   const StudentModel({
@@ -53,17 +54,20 @@ class StudentModel {
     this.parentPhone,
     this.parentEmail,
     this.parentRelation,
+    this.userId,
     required this.createdAt,
   });
+
+  bool get hasLogin => userId != null && userId!.isNotEmpty;
 
   String get fullName => '$firstName $lastName';
 
   factory StudentModel.fromJson(Map<String, dynamic> json) {
     // Support both snake_case (API) and camelCase (fallback)
-    String _str(String s, String c) =>
+    String str(String s, String c) =>
         json[s] as String? ?? json[c] as String? ?? '';
-    T? _opt<T>(String s, String c) => json[s] as T? ?? json[c] as T?;
-    DateTime _date(String s, String c) {
+    T? opt<T>(String s, String c) => json[s] as T? ?? json[c] as T?;
+    DateTime date(String s, String c) {
       final v = json[s] ?? json[c];
       if (v == null) return DateTime.now();
       if (v is DateTime) return v;
@@ -71,30 +75,31 @@ class StudentModel {
     }
 
     return StudentModel(
-      id: _str('id', 'id'),
-      schoolId: _str('school_id', 'schoolId'),
-      admissionNo: _str('admission_no', 'admissionNo'),
-      firstName: _str('first_name', 'firstName'),
-      lastName: _str('last_name', 'lastName'),
-      gender: _str('gender', 'gender'),
-      dateOfBirth: _date('date_of_birth', 'dateOfBirth'),
-      bloodGroup: _opt<String>('blood_group', 'bloodGroup'),
-      phone: _opt<String>('phone', 'phone'),
-      email: _opt<String>('email', 'email'),
-      address: _opt<String>('address', 'address'),
-      photoUrl: _opt<String>('photo_url', 'photoUrl'),
-      classId: _opt<String>('class_id', 'classId'),
-      className: _opt<String>('class_name', 'className'),
-      sectionId: _opt<String>('section_id', 'sectionId'),
-      sectionName: _opt<String>('section_name', 'sectionName'),
+      id: str('id', 'id'),
+      schoolId: str('school_id', 'schoolId'),
+      admissionNo: str('admission_no', 'admissionNo'),
+      firstName: str('first_name', 'firstName'),
+      lastName: str('last_name', 'lastName'),
+      gender: str('gender', 'gender'),
+      dateOfBirth: date('date_of_birth', 'dateOfBirth'),
+      bloodGroup: opt<String>('blood_group', 'bloodGroup'),
+      phone: opt<String>('phone', 'phone'),
+      email: opt<String>('email', 'email'),
+      address: opt<String>('address', 'address'),
+      photoUrl: opt<String>('photo_url', 'photoUrl'),
+      classId: opt<String>('class_id', 'classId'),
+      className: opt<String>('class_name', 'className'),
+      sectionId: opt<String>('section_id', 'sectionId'),
+      sectionName: opt<String>('section_name', 'sectionName'),
       rollNo: (json['roll_no'] as num?)?.toInt() ?? (json['rollNo'] as num?)?.toInt(),
-      status: _str('status', 'status').isEmpty ? 'ACTIVE' : _str('status', 'status'),
-      admissionDate: _date('admission_date', 'admissionDate'),
-      parentName: _opt<String>('parent_name', 'parentName'),
-      parentPhone: _opt<String>('parent_phone', 'parentPhone'),
-      parentEmail: _opt<String>('parent_email', 'parentEmail'),
-      parentRelation: _opt<String>('parent_relation', 'parentRelation'),
-      createdAt: _date('created_at', 'createdAt'),
+      status: str('status', 'status').isEmpty ? 'ACTIVE' : str('status', 'status'),
+      admissionDate: date('admission_date', 'admissionDate'),
+      parentName: opt<String>('parent_name', 'parentName'),
+      parentPhone: opt<String>('parent_phone', 'parentPhone'),
+      parentEmail: opt<String>('parent_email', 'parentEmail'),
+      parentRelation: opt<String>('parent_relation', 'parentRelation'),
+      userId: opt<String>('user_id', 'userId'),
+      createdAt: date('created_at', 'createdAt'),
     );
   }
 

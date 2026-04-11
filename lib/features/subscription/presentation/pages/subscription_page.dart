@@ -3,19 +3,16 @@
 // PURPOSE: Main Page for viewing and managing Platform Plans
 // =============================================================================
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../../shared/widgets/list_table_view.dart';
 import '../../../../shared/widgets/reusable_data_table.dart' show StatusBadge;
 import '../../provider/plan_provider.dart';
 import '../../data/models/plan_model.dart';
 import '../widgets/plan_dialog.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class SubscriptionPage extends ConsumerStatefulWidget {
   const SubscriptionPage({super.key});
@@ -96,7 +93,8 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(planProvider);
     final isNarrow = MediaQuery.of(context).size.width < 600;
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
+    final isWide =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
 
     final filteredPlans = state.plans.where((p) {
       final query = _searchQuery.toLowerCase();
@@ -197,21 +195,10 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
                 ),
               ),
 
-              // Plan cards grid
-              if (!state.isLoading &&
-                  state.error == null &&
-                  filteredPlans.isNotEmpty)
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isNarrow ? 16 : 24,
-                    vertical: AppSpacing.lg,
-                  ),
-                  child: _buildCardsGrid(filteredPlans),
-                ),
-
+              // Table (wide) or plan cards (narrow) — single content area
               AppSpacing.vGapLg,
 
-              // Table area
+              // Plans list / table
               Expanded(
                 child: Center(
                   child: Padding(
@@ -238,10 +225,7 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     bool isWide,
   ) {
     if (state.isLoading && state.plans.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      );
+      return AppLoaderScreen();
     }
 
     if (state.error != null) {
@@ -299,6 +283,19 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
     }
 
     final sorted = _sortPlans(filteredPlans, _sortColumnIndex, _sortAscending);
+
+    if (!isWide) {
+      return ListView.builder(
+        padding: const EdgeInsets.only(bottom: 8),
+        itemCount: sorted.length,
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _PlanCard(plan: sorted[index]),
+          );
+        },
+      );
+    }
 
     return Card(
       child: Column(
@@ -388,21 +385,6 @@ class _SubscriptionPageState extends ConsumerState<SubscriptionPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildCardsGrid(List<PlanModel> plans) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-        maxCrossAxisExtent: 400,
-        mainAxisSpacing: 24,
-        crossAxisSpacing: 24,
-        mainAxisExtent: 320,
-      ),
-      itemCount: plans.length,
-      itemBuilder: (context, index) => _PlanCard(plan: plans[index]),
     );
   }
 
@@ -497,7 +479,7 @@ class _PlanCard extends ConsumerWidget {
             Icons.account_tree_outlined,
             '${plan.maxBranches} Branches',
           ),
-          const Spacer(),
+          AppSpacing.vGapLg,
           Row(
             children: [
               const Icon(Icons.business, size: 16, color: AppColors.neutral400),

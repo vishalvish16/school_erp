@@ -882,6 +882,8 @@ Group endpoints by:
 
 For each screen in the Flutter app, specify:
 
+**List screens — search & filters (mobile):** You do **not** need to describe the pill search + pill filter row + **Filters** button layout in prose. Point implementers to **`.cursor/rules/list-screen-ui-patterns.mdc`** (Mobile filter strip), **`lib/shared/widgets/list_screen_mobile_toolbar.dart`**, and **`super_admin_schools_screen.dart`** (`_buildMobileSearchFilters`). Only document **which** filters exist and **behavior**, not custom widget structure.
+
 ```
 Screen name:    [ClassName]
 File path:      lib/features/{module}/presentation/screens/{name}.dart

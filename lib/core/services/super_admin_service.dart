@@ -556,6 +556,16 @@ class SuperAdminService {
   Future<void> markAllNotificationsRead() async {
     await _dio.put('$_basePath/notifications/mark-all-read');
   }
+
+  // ── Plan Features ──────────────────────────────────────────────────────────
+  Future<Map<String, bool>> updatePlanFeatures(String planId, Map<String, bool> features) async {
+    final res = await _dio.put('$_basePath/plans/$planId/features', data: {'features': features});
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    if (data is Map && data['features'] is Map) {
+      return (data['features'] as Map).map((k, v) => MapEntry(k.toString(), v == true));
+    }
+    return {};
+  }
 }
 
 final superAdminServiceProvider = Provider<SuperAdminService>((ref) {

@@ -4,12 +4,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_auth_constants.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -141,7 +140,6 @@ class _SchoolAdminChangePasswordScreenState
     final isWide = MediaQuery.of(context).size.width >= 768;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: Padding(
         padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
         child: Center(
@@ -150,6 +148,14 @@ class _SchoolAdminChangePasswordScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.go('/school-admin/profile'),
+                    ),
+                  ],
+                ),
                 Text(
                   AppStrings.changePassword,
                   style: Theme.of(context)
@@ -159,7 +165,7 @@ class _SchoolAdminChangePasswordScreenState
                 ),
                 AppSpacing.vGapSm,
                 Text(
-                  'Update your account password. Use a strong password with uppercase, lowercase, numbers, and special characters.',
+                  AppStrings.changePasswordSubtitle,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color:
                             Theme.of(context).colorScheme.onSurfaceVariant,
@@ -190,7 +196,7 @@ class _SchoolAdminChangePasswordScreenState
                             ),
                             validator: (v) =>
                                 (v == null || v.isEmpty)
-                                    ? 'Enter current password'
+                                    ? AppStrings.enterCurrentPassword
                                     : null,
                           ),
                           AppSpacing.vGapLg,
@@ -210,7 +216,7 @@ class _SchoolAdminChangePasswordScreenState
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) {
-                                return 'Enter new password';
+                                return AppStrings.enterNewPassword;
                               }
                               for (final r in _passwordRules) {
                                 if (!r.check(v)) return '${r.label} required';
@@ -236,10 +242,10 @@ class _SchoolAdminChangePasswordScreenState
                             ),
                             validator: (v) {
                               if (v == null || v.isEmpty) {
-                                return 'Confirm your new password';
+                                return AppStrings.confirmYourNewPassword;
                               }
                               if (v != _newCtrl.text) {
-                                return 'Passwords do not match';
+                                return AppStrings.passwordsDoNotMatch;
                               }
                               return null;
                             },
@@ -257,8 +263,8 @@ class _SchoolAdminChangePasswordScreenState
                                   )
                                 : const Icon(Icons.lock_reset),
                             label: Text(_isSaving
-                                ? 'Updating...'
-                                : 'Update Password'),
+                                ? AppStrings.updatingPassword
+                                : AppStrings.updatePassword),
                             style: FilledButton.styleFrom(
                               backgroundColor: _accent,
                               padding:

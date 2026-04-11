@@ -5,8 +5,7 @@ import { successResponse, AppError } from '../../utils/response.js';
 import * as smartLoginService from './smart-login.service.js';
 import * as twoFaService from './two-fa.service.js';
 import * as authService from './auth.service.js';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 /** POST /auth/super-admin/verify-2fa */
 export const verify2faController = async (req, res, next) => {

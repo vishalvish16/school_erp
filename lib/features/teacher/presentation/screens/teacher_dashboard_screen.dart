@@ -235,7 +235,7 @@ class _TodayScheduleSection extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: schedule.length,
-            separatorBuilder: (_, __) => AppSpacing.hGapMd,
+            separatorBuilder: (_, _) => AppSpacing.hGapMd,
             itemBuilder: (context, i) {
               final p = schedule[i];
               return SizedBox(

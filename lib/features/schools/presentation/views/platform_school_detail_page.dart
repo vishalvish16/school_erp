@@ -9,8 +9,7 @@ import '../../domain/models/subscription_models.dart';
 import '../../../../shared/widgets/reusable_data_table.dart';
 import 'assign_plan_dialog.dart';
 import 'subscription_history_modal.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
 
 class PlatformSchoolDetailPage extends ConsumerWidget {
   final String schoolId;
@@ -42,7 +41,7 @@ class PlatformSchoolDetailPage extends ConsumerWidget {
         ],
       ),
       body: state.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => AppLoaderScreen(),
         error: (err, _) => Center(child: Text(AppStrings.errorWithMessage(err.toString()))),
         data: (school) => SingleChildScrollView(
           padding: AppSpacing.paddingXl,

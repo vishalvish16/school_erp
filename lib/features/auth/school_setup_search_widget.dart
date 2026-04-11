@@ -11,8 +11,7 @@ import '../../core/constants/app_auth_constants.dart';
 import '../../core/constants/app_strings.dart';
 import '../../core/network/dio_client.dart';
 import '../../models/school_identity.dart';
-import '../../design_system/tokens/app_colors.dart';
-import '../../design_system/tokens/app_spacing.dart';
+import '../../design_system/design_system.dart';
 
 /// Layout mode for search results.
 enum SchoolSearchLayout {
@@ -261,7 +260,7 @@ class _SchoolSetupSearchWidgetState extends ConsumerState<SchoolSetupSearchWidge
         ],
         if (_isLoading) ...[
           AppSpacing.vGapLg,
-          const Center(child: CircularProgressIndicator()),
+          AppLoaderScreen(),
         ],
       ],
     );
@@ -593,9 +592,9 @@ class _SchoolSearchPopupState extends State<_SchoolSearchPopup> {
               ),
             ),
           if (_isLoading)
-            const Padding(
+            Padding(
               padding: AppSpacing.paddingXl,
-              child: Center(child: CircularProgressIndicator()),
+              child: AppLoaderScreen(),
             )
           else
             Flexible(

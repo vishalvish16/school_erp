@@ -3,9 +3,8 @@
  * Every query is scoped to schoolId from JWT — no cross-school access possible.
  */
 import { randomUUID } from 'crypto';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
@@ -114,16 +113,22 @@ export async function debugStudentCount(schoolId) {
     return r[0] || { total: 0, active: 0 };
 }
 
+const VALID_STUDENT_STATUSES = ['ACTIVE', 'INACTIVE', 'PASSED_OUT', 'TRANSFERRED'];
+
 export async function findStudents({ schoolId, page = 1, limit = 20, search, classId, sectionId, status }) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, parseInt(page, 10) || 1);
+    const safeLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const skip = (safePage - 1) * safeLimit;
+
+    const validStatus = status && VALID_STUDENT_STATUSES.includes(String(status).toUpperCase()) ? String(status).toUpperCase() : null;
 
     const where = {
         schoolId,
         deletedAt: null,
-        ...(status   && { status }),
+        ...(validStatus && { status: validStatus }),
         ...(classId  && { classId }),
         ...(sectionId && { sectionId }),
-        ...(search && {
+        ...(search && search.toString().trim() && {
             OR: [
                 { firstName:   { contains: search, mode: 'insensitive' } },
                 { lastName:    { contains: search, mode: 'insensitive' } },
@@ -137,7 +142,7 @@ export async function findStudents({ schoolId, page = 1, limit = 20, search, cla
         prisma.student.findMany({
             where,
             skip,
-            take: limit,
+            take: safeLimit,
             orderBy: { createdAt: 'desc' },
             include: {
                 class_:  { select: { id: true, name: true } },
@@ -147,7 +152,7 @@ export async function findStudents({ schoolId, page = 1, limit = 20, search, cla
         prisma.student.count({ where }),
     ]);
 
-    return { data, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+    return { data, pagination: { page: safePage, limit: safeLimit, total, total_pages: Math.ceil(total / safeLimit) } };
 }
 
 export async function findStudentById(id, schoolId) {
@@ -1099,4 +1104,148 @@ export async function updateSchool(schoolId, data) {
 
 export async function findUserWithPasswordHash(userId) {
     return prisma.user.findFirst({ where: { id: userId }, select: { id: true, passwordHash: true } });
+}
+
+// ── Parents ──────────────────────────────────────────────────────────────────
+
+export async function findParents({ schoolId, page = 1, limit = 20, search }) {
+    const skip = (page - 1) * limit;
+
+    const where = {
+        schoolId,
+        deletedAt: null,
+        ...(search && {
+            OR: [
+                { firstName: { contains: search, mode: 'insensitive' } },
+                { lastName:  { contains: search, mode: 'insensitive' } },
+                { phone:     { contains: search, mode: 'insensitive' } },
+            ],
+        }),
+    };
+
+    const [data, total] = await Promise.all([
+        prisma.parent.findMany({
+            where,
+            skip,
+            take: limit,
+            orderBy: { createdAt: 'desc' },
+            include: {
+                _count: { select: { links: true } },
+            },
+        }),
+        prisma.parent.count({ where }),
+    ]);
+
+    return { data, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+}
+
+export async function findParentById(id, schoolId) {
+    return prisma.parent.findFirst({
+        where: { id, schoolId, deletedAt: null },
+        include: {
+            links: {
+                include: {
+                    student: {
+                        select: {
+                            id: true,
+                            firstName: true,
+                            lastName: true,
+                            admissionNo: true,
+                            class_:  { select: { id: true, name: true } },
+                            section: { select: { id: true, name: true } },
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+export async function findParentByPhone(phone, schoolId) {
+    const { normalizePhone } = await import('../../utils/phone.js');
+    const normalized = normalizePhone(phone);
+    if (!normalized) return null;
+    const digits = String(phone || '').replace(/\D/g, '').slice(-10);
+    const variants = [normalized, digits, phone].filter(Boolean);
+    const unique = [...new Set(variants)];
+    for (const p of unique) {
+        const parent = await prisma.parent.findFirst({ where: { phone: p, schoolId, deletedAt: null } });
+        if (parent) return parent;
+    }
+    return null;
+}
+
+export async function createParent(data) {
+    return prisma.parent.create({ data });
+}
+
+export async function updateParent(id, schoolId, data) {
+    return prisma.parent.update({
+        where: { id, schoolId },
+        data: { ...data, updatedAt: new Date() },
+    });
+}
+
+// ── Student-Parent Links ─────────────────────────────────────────────────────
+
+export async function findStudentParentLinks(studentId) {
+    return prisma.studentParent.findMany({
+        where: { studentId },
+        include: {
+            parent: {
+                select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    phone: true,
+                    email: true,
+                    relation: true,
+                },
+            },
+        },
+        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'asc' }],
+    });
+}
+
+export async function findStudentParentLink(studentId, parentId) {
+    return prisma.studentParent.findFirst({ where: { studentId, parentId } });
+}
+
+export async function createStudentParentLink(data) {
+    return prisma.studentParent.create({
+        data,
+        include: {
+            parent:  { select: { id: true, firstName: true, lastName: true, phone: true } },
+            student: { select: { id: true, firstName: true, lastName: true } },
+        },
+    });
+}
+
+export async function updateStudentParentLink(id, data) {
+    return prisma.studentParent.update({
+        where: { id },
+        data:  { ...data, updatedAt: new Date() },
+    });
+}
+
+export async function clearPrimaryForStudent(studentId) {
+    return prisma.studentParent.updateMany({
+        where: { studentId, isPrimary: true },
+        data:  { isPrimary: false, updatedAt: new Date() },
+    });
+}
+
+export async function deleteStudentParentLink(id) {
+    return prisma.studentParent.delete({ where: { id } });
+}
+
+export async function countStudentParentLinks(studentId) {
+    return prisma.studentParent.count({ where: { studentId } });
+}
+
+export async function findFirstStudentParentLink(studentId) {
+    return prisma.studentParent.findFirst({
+        where: { studentId },
+        orderBy: { createdAt: 'asc' },
+    });
 }

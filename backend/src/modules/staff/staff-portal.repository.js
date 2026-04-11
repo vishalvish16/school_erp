@@ -2,9 +2,8 @@
  * Staff Portal Repository — all Prisma queries for the staff portal.
  * Every query is scoped to schoolId from req.staff.schoolId — no cross-school access possible.
  */
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 

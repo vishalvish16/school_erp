@@ -344,6 +344,44 @@ export const reviewLeaveSchema = Joi.object({
     }),
 });
 
+// ── Parents ──────────────────────────────────────────────────────────────────
+
+export const createParentSchema = Joi.object({
+    firstName: Joi.string().min(1).max(100).required(),
+    lastName:  Joi.string().min(1).max(100).required(),
+    phone:     Joi.string().min(10).max(20).required(),
+    email:     Joi.string().email().optional().allow(null, ''),
+    relation:  Joi.string().max(50).optional().allow(null, ''),
+});
+
+export const updateParentSchema = Joi.object({
+    firstName: Joi.string().min(1).max(100),
+    lastName:  Joi.string().min(1).max(100),
+    email:     Joi.string().email().optional().allow(null, ''),
+    relation:  Joi.string().max(50).optional().allow(null, ''),
+}).min(1);
+
+export const linkParentSchema = Joi.object({
+    parentId:     Joi.string().uuid().optional(),
+    phone:        Joi.string().min(10).max(20).optional(),
+    firstName:    Joi.string().min(1).max(100).optional(),
+    lastName:     Joi.string().min(1).max(100).optional(),
+    email:        Joi.string().email().optional().allow(null, ''),
+    relation:     Joi.string().max(50).optional(),
+    linkRelation: Joi.string().min(1).max(50).required(),
+    isPrimary:    Joi.boolean().optional(),
+}).custom((value, helpers) => {
+    if (!value.parentId && !value.phone) {
+        return helpers.error('any.custom', { message: 'Either parentId or phone is required' });
+    }
+    return value;
+});
+
+export const updateParentLinkSchema = Joi.object({
+    relation:  Joi.string().max(50).optional(),
+    isPrimary: Joi.boolean().optional(),
+}).min(1);
+
 // ── Generic validate middleware ───────────────────────────────────────────────
 
 export const validate = (schema) => (req, res, next) => {

@@ -11,6 +11,8 @@ import express from 'express';
 import { verifyAccessToken } from '../../middleware/auth.middleware.js';
 import { requireStaff } from '../../middleware/staff-guard.middleware.js';
 import * as ctrl from './staff-portal.controller.js';
+import * as reportCtrl from '../student-report/student-report.controller.js';
+import { validate as reportValidate, sendStudentNoticeSchema } from '../student-report/student-report.validation.js';
 import {
     validate,
     createFeePaymentSchema,
@@ -39,6 +41,15 @@ router.get('/fees/payments/:id',     ctrl.getFeePaymentById);
 // ── Students (read-only) ───────────────────────────────────────────────────────
 router.get('/classes',               ctrl.getClasses);
 router.get('/students',              ctrl.getStudents);
+
+// Student Report sub-routes (must come before generic :id route to avoid shadowing)
+router.get('/students/:id/report',              reportCtrl.getStudentReportStaff);
+router.get('/students/:id/attendance/annual',   reportCtrl.getStudentAttendanceAnnualStaff);
+router.get('/students/:id/attendance',          reportCtrl.getStudentAttendanceStaff);
+router.get('/students/:id/fees',                reportCtrl.getStudentFeesStaff);
+router.get('/students/:id/notices',             reportCtrl.getStudentNoticesStaff);
+router.post('/students/:id/notices',            reportValidate(sendStudentNoticeSchema), reportCtrl.sendStudentNoticeStaff);
+
 router.get('/students/:id',          ctrl.getStudentById);
 
 // ── Notices (read-only) ────────────────────────────────────────────────────────

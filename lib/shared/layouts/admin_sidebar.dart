@@ -3,11 +3,12 @@
 // PURPOSE: Enterprise SaaS Sidebar with Collapsible logic & Route Awareness
 // =============================================================================
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../design_system/design_system.dart';
 import '../models/sidebar_menu_model.dart';
-import '../../design_system/tokens/app_spacing.dart';
 
 class AdminSidebar extends StatelessWidget {
   const AdminSidebar({
@@ -23,18 +24,46 @@ class AdminSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final location = GoRouterState.of(context).matchedLocation;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return RepaintBoundary(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
         width: isCollapsed ? 80 : 260,
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        border: Border(
-          right: BorderSide(color: scheme.outlineVariant, width: 1),
-        ),
-      ),
+        decoration: isDark
+            ? null
+            : BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF2563EB).withAlpha(14),
+                    blurRadius: 8,
+                    offset: const Offset(4, 0),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withAlpha(8),
+                    blurRadius: 1,
+                    offset: const Offset(1, 0),
+                  ),
+                ],
+              ),
+        child: ClipRect(
+          child: BackdropFilter(
+            filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? scheme.surface.withValues(alpha: 0.88)
+                    : AppColors.lightSurface,
+                border: Border(
+                  right: BorderSide(
+                    color: isDark
+                        ? scheme.outlineVariant
+                        : AppColors.lightBorder,
+                    width: 1,
+                  ),
+                ),
+              ),
       child: SafeArea(
         bottom: false,
         child: Column(
@@ -116,9 +145,12 @@ class AdminSidebar extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    ),
-    );
+      ),        // closes SafeArea
+            ),  // closes Container (glass decoration)
+          ),    // closes BackdropFilter
+        ),      // closes ClipRect
+    ),          // closes AnimatedContainer
+    );          // closes RepaintBoundary
   }
 }
 

@@ -1,48 +1,27 @@
 // =============================================================================
 // FILE: lib/features/group_admin/presentation/group_admin_shell.dart
 // PURPOSE: Group Admin layout — web sidebar + TopBar + mobile drawer/bottom nav.
-// Copied structure from super_admin_shell.dart; adapted for group admin routes.
+// Glass design system matching super_admin_shell.dart pattern.
 // =============================================================================
+
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/config/api_config.dart';
+import '../../../core/constants/app_strings.dart';
+import '../../../core/theme/app_theme_tokens.dart';
 import '../../../design_system/design_system.dart';
 import '../../../features/auth/auth_guard_provider.dart';
+import '../../../widgets/super_admin/notifications_bell_button.dart';
 import 'providers/group_admin_profile_provider.dart';
-import '../../../design_system/tokens/app_colors.dart';
-import '../../../design_system/tokens/app_spacing.dart';
-import '../../../core/constants/app_strings.dart';
-
-/// Top bar tab definition for Group Admin primary navigation
-class _TopBarTab {
-  const _TopBarTab(this.label, this.route);
-
-  final String label;
-  final String route;
-}
-
-const List<_TopBarTab> _topBarTabs = [
-  _TopBarTab(AppStrings.dashboard, '/group-admin/dashboard'),
-  _TopBarTab(AppStrings.schools, '/group-admin/schools'),
-  _TopBarTab(AppStrings.students, '/group-admin/students'),
-  _TopBarTab(AppStrings.analytics, '/group-admin/analytics'),
-  _TopBarTab(AppStrings.reports, '/group-admin/reports'),
-  _TopBarTab(AppStrings.notices, '/group-admin/notices'),
-  _TopBarTab(AppStrings.alerts, '/group-admin/alerts'),
-  _TopBarTab(AppStrings.notifications, '/group-admin/notifications'),
-  _TopBarTab(AppStrings.profile, '/group-admin/profile'),
-];
 
 /// Amber accent color for GROUP ADMIN badge
 const Color _badgeColor = AppColors.warning300;
 
 class GroupAdminShell extends StatelessWidget {
-  const GroupAdminShell({
-    super.key,
-    required this.child,
-  });
+  const GroupAdminShell({super.key, required this.child});
 
   final Widget child;
 
@@ -56,205 +35,326 @@ class GroupAdminShell extends StatelessWidget {
   }
 }
 
-// ── Web Layout ──────────────────────────────────────────────────────────────
+// =============================================================================
+// WEB LAYOUT — sidebar + topbar + content
+// =============================================================================
 
-class _GroupAdminWebLayout extends ConsumerWidget {
+class _GroupAdminWebLayout extends ConsumerStatefulWidget {
   const _GroupAdminWebLayout({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
+  ConsumerState<_GroupAdminWebLayout> createState() =>
+      _GroupAdminWebLayoutState();
+}
+
+class _GroupAdminWebLayoutState extends ConsumerState<_GroupAdminWebLayout> {
+  bool _isSidebarCollapsed = false;
+  bool _isSidebarHovered = false;
+
+  /// True only when user has pinned collapse AND mouse is not hovering.
+  bool get _effectivelyCollapsed => _isSidebarCollapsed && !_isSidebarHovered;
+
+  @override
+  Widget build(BuildContext context) {
     final loc = GoRouterState.of(context).matchedLocation;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = Theme.of(context).extension<AppThemeTokens>();
 
     return Scaffold(
       body: Row(
         children: [
-          // Sidebar
-          Container(
-            width: 214,
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              border: Border(right: BorderSide(color: scheme.outlineVariant)),
-            ),
-            child: SafeArea(
-              right: false,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        AppLogoWidget(size: 32, showText: true),
-                        AppSpacing.hGapSm,
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _badgeColor.withValues(alpha: 0.20),
-                            borderRadius: AppRadius.brSm,
-                            border: Border.all(
-                                color: _badgeColor.withValues(alpha: 0.5)),
-                          ),
-                          child: const Text(
-                            'GROUP ADMIN',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.warning700,
-                            ),
+          // ── Sidebar ──────────────────────────────────────────────────
+          RepaintBoundary(
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _isSidebarHovered = true),
+              onExit: (_) => setState(() => _isSidebarHovered = false),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                width: _effectivelyCollapsed ? 72 : 214,
+                child: ClipRect(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? (tokens?.sidebarBg ?? const Color(0xFF0A1628))
+                                .withValues(alpha: 0.88)
+                            : Colors.white.withValues(alpha: 0.15),
+                        border: Border(
+                          right: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.08)
+                                : Colors.white.withValues(alpha: 0.30),
+                            width: 1,
                           ),
                         ),
-                      ],
+                      ),
+                      child: SafeArea(
+                        right: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Logo + GROUP ADMIN badge
+                            InkWell(
+                              onTap: () => setState(() =>
+                                  _isSidebarCollapsed = !_isSidebarCollapsed),
+                              child: Container(
+                                width: double.infinity,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 20),
+                                decoration: BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.08),
+                                    ),
+                                  ),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    AppLogoWidget(size: 40, showText: false),
+                                    AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 150),
+                                      height: _effectivelyCollapsed ? 0 : 28,
+                                      child: _effectivelyCollapsed
+                                          ? const SizedBox.shrink()
+                                          : Padding(
+                                              padding: const EdgeInsets.only(
+                                                  top: 6),
+                                              child: AnimatedOpacity(
+                                                duration: const Duration(
+                                                    milliseconds: 150),
+                                                opacity:
+                                                    _effectivelyCollapsed
+                                                        ? 0
+                                                        : 1,
+                                                child: Container(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 3,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: _badgeColor
+                                                        .withValues(
+                                                            alpha: 0.20),
+                                                    borderRadius:
+                                                        AppRadius.brSm,
+                                                    border: Border.all(
+                                                      color: _badgeColor
+                                                          .withValues(
+                                                              alpha: 0.50),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: const Text(
+                                                    'GROUP ADMIN',
+                                                    style: TextStyle(
+                                                      fontSize: 8,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      letterSpacing: 1.2,
+                                                      color:
+                                                          AppColors.warning700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Nav items
+                            Expanded(
+                              child: ListView(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 10,
+                                ),
+                                children: [
+                                  _NavItem(
+                                    icon: Icons.dashboard_outlined,
+                                    activeIcon: Icons.dashboard,
+                                    label: AppStrings.dashboard,
+                                    isActive:
+                                        loc.contains('/group-admin/dashboard'),
+                                    onTap: () =>
+                                        context.go('/group-admin/dashboard'),
+                                    isCollapsed: _effectivelyCollapsed,
+                                  ),
+                                  _NavItem(
+                                    icon: Icons.school_outlined,
+                                    activeIcon: Icons.school,
+                                    label: AppStrings.schools,
+                                    isActive:
+                                        loc.contains('/group-admin/schools'),
+                                    onTap: () =>
+                                        context.go('/group-admin/schools'),
+                                    isCollapsed: _effectivelyCollapsed,
+                                  ),
+                                  _NavItem(
+                                    icon: Icons.people_outline,
+                                    activeIcon: Icons.people,
+                                    label: AppStrings.students,
+                                    isActive:
+                                        loc.contains('/group-admin/students'),
+                                    onTap: () =>
+                                        context.go('/group-admin/students'),
+                                    isCollapsed: _effectivelyCollapsed,
+                                  ),
+
+                                  // MANAGEMENT section
+                                  _NavGroup(
+                                    label: 'MANAGEMENT',
+                                    isCollapsed: _effectivelyCollapsed,
+                                    children: [
+                                      _NavItem(
+                                        icon: Icons.analytics_outlined,
+                                        activeIcon: Icons.analytics,
+                                        label: AppStrings.analytics,
+                                        isActive: loc.contains(
+                                            '/group-admin/analytics'),
+                                        onTap: () => context
+                                            .go('/group-admin/analytics'),
+                                        isCollapsed: _effectivelyCollapsed,
+                                      ),
+                                      _NavItem(
+                                        icon: Icons.bar_chart_outlined,
+                                        activeIcon: Icons.bar_chart,
+                                        label: AppStrings.reports,
+                                        isActive: loc
+                                            .contains('/group-admin/reports'),
+                                        onTap: () =>
+                                            context.go('/group-admin/reports'),
+                                        isCollapsed: _effectivelyCollapsed,
+                                      ),
+                                      _NavItem(
+                                        icon:
+                                            Icons.notifications_active_outlined,
+                                        activeIcon: Icons.notifications_active,
+                                        label: AppStrings.alerts,
+                                        isActive:
+                                            loc.contains('/group-admin/alerts'),
+                                        onTap: () =>
+                                            context.go('/group-admin/alerts'),
+                                        isCollapsed: _effectivelyCollapsed,
+                                      ),
+                                      _NavItem(
+                                        icon: Icons.campaign_outlined,
+                                        activeIcon: Icons.campaign,
+                                        label: AppStrings.notices,
+                                        isActive: loc
+                                            .contains('/group-admin/notices'),
+                                        onTap: () =>
+                                            context.go('/group-admin/notices'),
+                                        isCollapsed: _effectivelyCollapsed,
+                                      ),
+                                    ],
+                                  ),
+
+                                  // ACCOUNT section
+                                  _NavGroup(
+                                    label: 'ACCOUNT',
+                                    isCollapsed: _effectivelyCollapsed,
+                                    children: [
+                                      _NavItem(
+                                        icon: Icons.notifications_outlined,
+                                        activeIcon: Icons.notifications,
+                                        label: AppStrings.notifications,
+                                        isActive: loc.contains(
+                                            '/group-admin/notifications'),
+                                        onTap: () => context
+                                            .go('/group-admin/notifications'),
+                                        isCollapsed: _effectivelyCollapsed,
+                                      ),
+                                      _NavItem(
+                                        icon: Icons.person_outline_rounded,
+                                        activeIcon: Icons.person_rounded,
+                                        label: AppStrings.profile,
+                                        isActive: loc.contains(
+                                            '/group-admin/profile'),
+                                        onTap: () =>
+                                            context.go('/group-admin/profile'),
+                                        isCollapsed: _effectivelyCollapsed,
+                                      ),
+                                      _NavItem(
+                                        icon: Icons.lock_reset_outlined,
+                                        activeIcon: Icons.lock_reset,
+                                        label: AppStrings.changePassword,
+                                        isActive: loc.contains(
+                                            '/group-admin/change-password'),
+                                        onTap: () => context.go(
+                                            '/group-admin/change-password'),
+                                        isCollapsed: _effectivelyCollapsed,
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
-                  const Divider(height: 1),
-                  Expanded(
-                    child: ListView(
-                      padding: EdgeInsets.symmetric(
-                          vertical: AppSpacing.lg, horizontal: AppSpacing.md),
-                      children: [
-                        _NavItem(
-                          icon: Icons.dashboard_outlined,
-                          activeIcon: Icons.dashboard,
-                          label: AppStrings.dashboard,
-                          isActive: loc.contains('/group-admin/dashboard'),
-                          onTap: () => context.go('/group-admin/dashboard'),
-                        ),
-                        _NavItem(
-                          icon: Icons.school_outlined,
-                          activeIcon: Icons.school,
-                          label: AppStrings.schools,
-                          isActive: loc.contains('/group-admin/schools'),
-                          onTap: () => context.go('/group-admin/schools'),
-                        ),
-                        _NavItem(
-                          icon: Icons.people_outline,
-                          activeIcon: Icons.people,
-                          label: AppStrings.students,
-                          isActive: loc.contains('/group-admin/students'),
-                          onTap: () => context.go('/group-admin/students'),
-                        ),
-                        _NavItem(
-                          icon: Icons.analytics_outlined,
-                          activeIcon: Icons.analytics,
-                          label: AppStrings.analytics,
-                          isActive: loc.contains('/group-admin/analytics'),
-                          onTap: () => context.go('/group-admin/analytics'),
-                        ),
-                        _NavItem(
-                          icon: Icons.bar_chart_outlined,
-                          activeIcon: Icons.bar_chart,
-                          label: AppStrings.reports,
-                          isActive: loc.contains('/group-admin/reports'),
-                          onTap: () => context.go('/group-admin/reports'),
-                        ),
-                        _NavItem(
-                          icon: Icons.campaign_outlined,
-                          activeIcon: Icons.campaign,
-                          label: AppStrings.notices,
-                          isActive: loc.contains('/group-admin/notices'),
-                          onTap: () => context.go('/group-admin/notices'),
-                        ),
-                        _NavItem(
-                          icon: Icons.notifications_active_outlined,
-                          activeIcon: Icons.notifications_active,
-                          label: AppStrings.alerts,
-                          isActive: loc.contains('/group-admin/alerts'),
-                          onTap: () => context.go('/group-admin/alerts'),
-                        ),
-                        AppSpacing.vGapLg,
-                        const Padding(
-                          padding: AppSpacing.paddingHMd,
-                          child: Text(
-                            'ACCOUNT',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.neutral400,
-                            ),
-                          ),
-                        ),
-                        AppSpacing.vGapSm,
-                        _NavItem(
-                          icon: Icons.notifications_outlined,
-                          activeIcon: Icons.notifications,
-                          label: AppStrings.notifications,
-                          isActive: loc.contains('/group-admin/notifications'),
-                          onTap: () =>
-                              context.go('/group-admin/notifications'),
-                        ),
-                        _NavItem(
-                          icon: Icons.person_outline,
-                          activeIcon: Icons.person,
-                          label: AppStrings.profile,
-                          isActive: loc == '/group-admin/profile',
-                          onTap: () => context.go('/group-admin/profile'),
-                        ),
-                        _NavItem(
-                          icon: Icons.lock_reset_outlined,
-                          activeIcon: Icons.lock_reset,
-                          label: AppStrings.changePassword,
-                          isActive: loc.contains('/group-admin/change-password'),
-                          onTap: () =>
-                              context.go('/group-admin/change-password'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
 
-          // Content area + TopBar
+          // ── Content + Topbar ────────────────────────────────────────
           Expanded(
             child: Column(
               children: [
-                // TopBar
-                Container(
-                  height: 56,
-                  padding: AppSpacing.paddingHXl,
-                  decoration: BoxDecoration(
-                    color: scheme.surface,
-                    border: Border(
-                        bottom: BorderSide(color: scheme.outlineVariant)),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              for (int i = 0; i < _topBarTabs.length; i++) ...[
-                                _TopBarTabButton(
-                                  label: _topBarTabs[i].label,
-                                  route: _topBarTabs[i].route,
-                                  isActive: loc == _topBarTabs[i].route ||
-                                      (_topBarTabs[i].route !=
-                                              '/group-admin/dashboard' &&
-                                          loc.startsWith(
-                                              _topBarTabs[i].route)),
-                                ),
-                                if (i < _topBarTabs.length - 1)
-                                  AppSpacing.hGapSm,
-                              ],
-                            ],
+                ClipRect(
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                    child: Builder(builder: (context) {
+                      final isDark =
+                          Theme.of(context).brightness == Brightness.dark;
+                      final tokens =
+                          Theme.of(context).extension<AppThemeTokens>();
+                      return Container(
+                        height: 60,
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 20),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? (tokens?.topbarBg ??
+                                      const Color(0xFF0A1628))
+                                  .withValues(alpha: 0.88)
+                              : Colors.white.withValues(alpha: 0.15),
+                          border: Border(
+                            bottom: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.white.withValues(alpha: 0.30),
+                              width: 1,
+                            ),
                           ),
                         ),
-                      ),
-                      AppSpacing.hGapLg,
-                      const ThemeToggleButton(),
-                      AppSpacing.hGapSm,
-                      _GroupAdminLogoutButton(size: 32),
-                    ],
+                        child: Row(
+                          children: [
+                            const Spacer(),
+                            const ThemeToggleButton(),
+                            const SizedBox(width: 8),
+                            _GroupAdminLogoutButton(size: 34),
+                          ],
+                        ),
+                      );
+                    }),
                   ),
                 ),
-                Expanded(child: child),
+                Expanded(child: widget.child),
               ],
             ),
           ),
@@ -264,7 +364,9 @@ class _GroupAdminWebLayout extends ConsumerWidget {
   }
 }
 
-// ── Mobile Layout ───────────────────────────────────────────────────────────
+// =============================================================================
+// MOBILE LAYOUT — AppBar + Drawer + BottomNav + Content
+// =============================================================================
 
 class _GroupAdminMobileLayout extends ConsumerStatefulWidget {
   const _GroupAdminMobileLayout({required this.child});
@@ -291,10 +393,13 @@ class _GroupAdminMobileLayoutState
         loc.contains('/group-admin/profile') ||
         loc.contains('/group-admin/change-password') ||
         loc.contains('/group-admin/analytics') ||
-        loc.contains('/group-admin/reports')) {
-      _currentIndex = 2;
+        loc.contains('/group-admin/reports') ||
+        loc.contains('/group-admin/notices') ||
+        loc.contains('/group-admin/alerts') ||
+        loc.contains('/group-admin/students')) {
+      _currentIndex = 2; // More (drawer)
     } else {
-      _currentIndex = 0;
+      _currentIndex = 0; // Dashboard
     }
   }
 
@@ -311,6 +416,7 @@ class _GroupAdminMobileLayoutState
   Widget build(BuildContext context) {
     final authState = ref.watch(authGuardProvider);
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -318,7 +424,7 @@ class _GroupAdminMobileLayoutState
         leading: IconButton(
           icon: const Icon(Icons.menu),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-          tooltip: 'Open menu',
+          tooltip: AppStrings.openMenu,
         ),
         title: LayoutBuilder(
           builder: (context, constraints) {
@@ -352,172 +458,31 @@ class _GroupAdminMobileLayoutState
         ),
         actions: [
           const ThemeToggleButton(),
-          _GroupAdminLogoutButton(size: 32),
-        ],
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: _badgeColor.withValues(alpha: 0.20),
-              ),
-              child: SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Consumer(
-                      builder: (ctx, ref, _) {
-                        final profileAsync = ref.watch(groupAdminProfileProvider);
-                        final p = profileAsync.valueOrNull;
-                        final avatarUrl = (p?.avatarUrl != null && p!.avatarUrl!.isNotEmpty)
-                            ? (p.avatarUrl!.startsWith('http')
-                                ? p.avatarUrl!
-                                : '${ApiConfig.baseUrl}${p.avatarUrl}')
-                            : '';
-                        return CircleAvatar(
-                          radius: 32,
-                          backgroundColor: _badgeColor,
-                          backgroundImage: avatarUrl.isNotEmpty
-                              ? NetworkImage(avatarUrl)
-                              : null,
-                          child: avatarUrl.isEmpty
-                              ? Text(
-                                  _getInitials(authState.userEmail ?? 'GA'),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 20,
-                                  ),
-                                )
-                              : null,
-                        );
-                      },
-                    ),
-                    AppSpacing.vGapMd,
-                    Text(
-                      authState.userEmail ?? 'Group Admin',
-                      style: TextStyle(
-                        color: scheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    AppSpacing.vGapXs,
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacing.sm, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _badgeColor,
-                        borderRadius: AppRadius.brXs,
-                      ),
-                      child: const Text(
-                        'GROUP ADMIN',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+          const NotificationsBellButton(),
+          IconButton(
+            onPressed: () => context.go('/group-admin/profile'),
+            icon: CircleAvatar(
+              radius: 14,
+              backgroundColor: _badgeColor.withValues(alpha: 0.20),
+              child: Text(
+                _getInitials(
+                    ref.watch(authGuardProvider).userEmail ?? 'GA'),
+                style: const TextStyle(
+                  color: AppColors.warning700,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
                 ),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.dashboard_outlined),
-              title: const Text(AppStrings.dashboard),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/dashboard');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.school_outlined),
-              title: const Text(AppStrings.schools),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/schools');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.people_outline),
-              title: const Text(AppStrings.students),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/students');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.analytics_outlined),
-              title: const Text(AppStrings.analytics),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/analytics');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.bar_chart_outlined),
-              title: const Text(AppStrings.reports),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/reports');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.campaign_outlined),
-              title: const Text(AppStrings.notices),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/notices');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.notifications_active_outlined),
-              title: const Text(AppStrings.alerts),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/alerts');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.notifications_outlined),
-              title: const Text(AppStrings.notifications),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/notifications');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text(AppStrings.profile),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/profile');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.lock_reset_outlined),
-              title: const Text(AppStrings.changePassword),
-              onTap: () {
-                Navigator.pop(context);
-                context.go('/group-admin/change-password');
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text(AppStrings.signOut),
-              onTap: () async {
-                Navigator.pop(context);
-                await _confirmAndLogout(context);
-              },
-            ),
-          ],
-        ),
+            tooltip: AppStrings.profile,
+          ),
+        ],
+      ),
+      drawer: _GroupAdminDrawer(
+        isDark: isDark,
+        scheme: scheme,
+        authEmail: authState.userEmail ?? 'Group Admin',
+        getInitials: _getInitials,
       ),
       body: widget.child,
       bottomNavigationBar: BottomNavigationBar(
@@ -539,161 +504,31 @@ class _GroupAdminMobileLayoutState
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(
-              icon: Icon(Icons.dashboard_outlined), label: AppStrings.dashboard),
+            icon: Icon(Icons.dashboard_outlined),
+            label: AppStrings.dashboard,
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.school_outlined), label: AppStrings.schools),
+            icon: Icon(Icons.school_outlined),
+            label: AppStrings.schools,
+          ),
           BottomNavigationBarItem(
-              icon: Icon(Icons.more_horiz), label: AppStrings.more),
+            icon: Icon(Icons.more_horiz),
+            label: AppStrings.more,
+          ),
         ],
       ),
     );
   }
-
-  Future<void> _confirmAndLogout(BuildContext context) async {
-    final confirmed = await AppDialogs.confirm(
-      context,
-      title: AppStrings.signOutQuestion,
-      message: AppStrings.signOutConfirmGroupAdmin,
-      confirmLabel: AppStrings.signOut,
-    );
-    if (!confirmed || !context.mounted) return;
-    await ref.read(authGuardProvider.notifier).clearSession();
-    if (context.mounted) context.go('/login/group');
-  }
 }
 
-// ── Shared Tab Button ───────────────────────────────────────────────────────
-
-class _TopBarTabButton extends StatelessWidget {
-  const _TopBarTabButton({
-    required this.label,
-    required this.route,
-    required this.isActive,
-  });
-
-  final String label;
-  final String route;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => context.go(route),
-        borderRadius: AppRadius.brMd,
-        child: Container(
-          height: 56,
-          padding: AppSpacing.paddingHMd,
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isActive ? _badgeColor : Colors.transparent,
-                width: 2,
-              ),
-            ),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight:
-                  isActive ? FontWeight.w600 : FontWeight.w500,
-              color: isActive ? _badgeColor : scheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Nav Item ─────────────────────────────────────────────────────────────────
-
-class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.icon,
-    required this.activeIcon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    const activeColor = _badgeColor;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.brMd,
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.brMd,
-            color: isActive
-                ? activeColor.withValues(alpha: 0.10)
-                : null,
-            border: isActive
-                ? const Border(
-                    left: BorderSide(color: activeColor, width: 2),
-                  )
-                : null,
-          ),
-          child: Padding(
-            padding:
-                EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 10),
-            child: Row(
-              children: [
-                Icon(
-                  isActive ? activeIcon : icon,
-                  size: 22,
-                  color: isActive ? activeColor : scheme.onSurfaceVariant,
-                ),
-                AppSpacing.hGapMd,
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: isActive
-                          ? FontWeight.w600
-                          : FontWeight.normal,
-                      color: isActive ? activeColor : scheme.onSurface,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Logout Button ─────────────────────────────────────────────────────────────
+// =============================================================================
+// GROUP ADMIN LOGOUT BUTTON (topbar)
+// =============================================================================
 
 class _GroupAdminLogoutButton extends ConsumerWidget {
-  const _GroupAdminLogoutButton({required this.size});
+  const _GroupAdminLogoutButton({this.size = 34});
 
   final double size;
-
-  String _avatarUrl(AsyncValue<dynamic> profile) {
-    final p = profile.valueOrNull;
-    if (p == null) return '';
-    final url = p.avatarUrl;
-    if (url == null || url.isEmpty) return '';
-    return url.startsWith('http') ? url : '${ApiConfig.baseUrl}$url';
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -701,27 +536,45 @@ class _GroupAdminLogoutButton extends ConsumerWidget {
     final profileAsync = ref.watch(groupAdminProfileProvider);
     final avatarUrl = _avatarUrl(profileAsync);
     final initials = _getInitials(authState.userEmail ?? 'GA');
-    return IconButton(
-      onPressed: () => _showLogoutConfirmation(context, ref),
-      icon: CircleAvatar(
-        radius: size / 2,
-        backgroundColor: _badgeColor.withValues(alpha: 0.20),
-        backgroundImage: avatarUrl.isNotEmpty
-            ? NetworkImage(avatarUrl)
-            : null,
-        child: avatarUrl.isEmpty
-            ? Text(
-                initials,
-                style: const TextStyle(
-                  color: AppColors.warning700,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
-              )
-            : null,
+
+    return Tooltip(
+      message: AppStrings.profile,
+      child: InkWell(
+        onTap: () => context.go('/group-admin/profile'),
+        borderRadius: AppRadius.brXl2,
+        child: Padding(
+          padding: AppSpacing.paddingXs,
+          child: Builder(builder: (ctx) {
+            final t = Theme.of(ctx).extension<AppThemeTokens>();
+            return CircleAvatar(
+              radius: size / 2,
+              backgroundColor: t?.primary ?? _badgeColor,
+              backgroundImage:
+                  avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+              child: avatarUrl.isEmpty
+                  ? Text(
+                      initials,
+                      style: TextStyle(
+                        color: t?.onPrimary ?? Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: size * 0.38,
+                        letterSpacing: 0.5,
+                      ),
+                    )
+                  : null,
+            );
+          }),
+        ),
       ),
-      tooltip: AppStrings.signOut,
     );
+  }
+
+  String _avatarUrl(AsyncValue<dynamic> profile) {
+    final p = profile.valueOrNull;
+    if (p == null) return '';
+    final url = p.avatarUrl;
+    if (url == null || url.isEmpty) return '';
+    return url.startsWith('http') ? url : '${ApiConfig.baseUrl}$url';
   }
 
   String _getInitials(String email) {
@@ -732,9 +585,195 @@ class _GroupAdminLogoutButton extends ConsumerWidget {
     }
     return email.length >= 2 ? email.substring(0, 2).toUpperCase() : 'GA';
   }
+}
 
-  Future<void> _showLogoutConfirmation(
-      BuildContext context, WidgetRef ref) async {
+// =============================================================================
+// MOBILE DRAWER — glass design
+// =============================================================================
+
+class _GroupAdminDrawer extends ConsumerWidget {
+  const _GroupAdminDrawer({
+    required this.isDark,
+    required this.scheme,
+    required this.authEmail,
+    required this.getInitials,
+  });
+
+  final bool isDark;
+  final ColorScheme scheme;
+  final String authEmail;
+  final String Function(String) getInitials;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loc = GoRouterState.of(context).matchedLocation;
+
+    void nav(String route) {
+      Navigator.pop(context);
+      context.go(route);
+    }
+
+    bool isActive(String segment) => loc.contains(segment);
+
+    // Glass colors
+    final bgColor = isDark
+        ? const Color(0xFF0A1628).withValues(alpha: 0.94)
+        : Colors.white.withValues(alpha: 0.88);
+
+    final divColor = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : scheme.primary.withValues(alpha: 0.12);
+
+    return Drawer(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            color: bgColor,
+            child: Column(
+              children: [
+                // ── Header ──────────────────────────────────────────
+                _DrawerHeader(
+                  isDark: isDark,
+                  scheme: scheme,
+                  email: authEmail,
+                  initials: getInitials(authEmail),
+                ),
+
+                // ── Nav items (scrollable) ──────────────────────────
+                Expanded(
+                  child: ListView(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    children: [
+                      // MAIN section
+                      _drawerSectionLabel('MAIN', isDark, scheme),
+                      _NavItem(
+                        icon: Icons.dashboard_outlined,
+                        activeIcon: Icons.dashboard,
+                        label: AppStrings.dashboard,
+                        isActive: isActive('/dashboard'),
+                        onTap: () => nav('/group-admin/dashboard'),
+                      ),
+                      _NavItem(
+                        icon: Icons.school_outlined,
+                        activeIcon: Icons.school,
+                        label: AppStrings.schools,
+                        isActive: isActive('/schools'),
+                        onTap: () => nav('/group-admin/schools'),
+                      ),
+                      _NavItem(
+                        icon: Icons.people_outline,
+                        activeIcon: Icons.people,
+                        label: AppStrings.students,
+                        isActive: isActive('/students'),
+                        onTap: () => nav('/group-admin/students'),
+                      ),
+
+                      // MANAGEMENT section
+                      const SizedBox(height: 8),
+                      Divider(height: 1, color: divColor),
+                      _drawerSectionLabel('MANAGEMENT', isDark, scheme),
+                      _NavItem(
+                        icon: Icons.analytics_outlined,
+                        activeIcon: Icons.analytics,
+                        label: AppStrings.analytics,
+                        isActive: isActive('/analytics'),
+                        onTap: () => nav('/group-admin/analytics'),
+                      ),
+                      _NavItem(
+                        icon: Icons.bar_chart_outlined,
+                        activeIcon: Icons.bar_chart,
+                        label: AppStrings.reports,
+                        isActive: isActive('/reports'),
+                        onTap: () => nav('/group-admin/reports'),
+                      ),
+                      _NavItem(
+                        icon: Icons.notifications_active_outlined,
+                        activeIcon: Icons.notifications_active,
+                        label: AppStrings.alerts,
+                        isActive: isActive('/alerts'),
+                        onTap: () => nav('/group-admin/alerts'),
+                      ),
+                      _NavItem(
+                        icon: Icons.campaign_outlined,
+                        activeIcon: Icons.campaign,
+                        label: AppStrings.notices,
+                        isActive: isActive('/notices'),
+                        onTap: () => nav('/group-admin/notices'),
+                      ),
+
+                      // ACCOUNT section
+                      const SizedBox(height: 8),
+                      Divider(height: 1, color: divColor),
+                      _drawerSectionLabel('ACCOUNT', isDark, scheme),
+                      _NavItem(
+                        icon: Icons.notifications_outlined,
+                        activeIcon: Icons.notifications,
+                        label: AppStrings.notifications,
+                        isActive: isActive('/notifications'),
+                        onTap: () => nav('/group-admin/notifications'),
+                      ),
+                      _NavItem(
+                        icon: Icons.person_outline_rounded,
+                        activeIcon: Icons.person_rounded,
+                        label: AppStrings.profile,
+                        isActive: isActive('/profile'),
+                        onTap: () => nav('/group-admin/profile'),
+                      ),
+                      _NavItem(
+                        icon: Icons.lock_reset_outlined,
+                        activeIcon: Icons.lock_reset,
+                        label: AppStrings.changePassword,
+                        isActive: isActive('/change-password'),
+                        onTap: () => nav('/group-admin/change-password'),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ── Logout pinned at bottom ─────────────────────────
+                Divider(height: 1, color: divColor),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: _NavItem(
+                    icon: Icons.logout,
+                    activeIcon: Icons.logout,
+                    label: AppStrings.signOut,
+                    isActive: false,
+                    onTap: () => _confirmAndLogout(context, ref),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerSectionLabel(String label, bool isDark, ColorScheme scheme) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 14, top: 14, bottom: 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.35)
+              : scheme.primary.withValues(alpha: 0.55),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmAndLogout(BuildContext context, WidgetRef ref) async {
     final confirmed = await AppDialogs.confirm(
       context,
       title: AppStrings.signOutQuestion,
@@ -742,7 +781,349 @@ class _GroupAdminLogoutButton extends ConsumerWidget {
       confirmLabel: AppStrings.signOut,
     );
     if (!confirmed || !context.mounted) return;
+    Navigator.of(context).pop(); // close drawer
     await ref.read(authGuardProvider.notifier).clearSession();
     if (context.mounted) context.go('/login/group');
+  }
+}
+
+// =============================================================================
+// DRAWER HEADER — gradient panel + avatar ring + email + role badge
+// =============================================================================
+
+class _DrawerHeader extends StatelessWidget {
+  const _DrawerHeader({
+    required this.isDark,
+    required this.scheme,
+    required this.email,
+    required this.initials,
+  });
+
+  final bool isDark;
+  final ColorScheme scheme;
+  final String email;
+  final String initials;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 24,
+        left: 20,
+        right: 20,
+        bottom: 20,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  _badgeColor.withValues(alpha: 0.30),
+                  _badgeColor.withValues(alpha: 0.10),
+                ]
+              : [
+                  _badgeColor.withValues(alpha: 0.15),
+                  _badgeColor.withValues(alpha: 0.04),
+                ],
+        ),
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.10)
+                : _badgeColor.withValues(alpha: 0.20),
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar with ring
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _badgeColor.withValues(alpha: 0.50),
+                width: 2,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 28,
+              backgroundColor: _badgeColor,
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 18,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            email,
+            style: TextStyle(
+              color: isDark ? Colors.white : const Color(0xFF0F172A),
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: _badgeColor,
+              borderRadius: AppRadius.brXs,
+            ),
+            child: const Text(
+              'GROUP ADMIN',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 1.2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// =============================================================================
+// NAV GROUP — collapsible section with label + chevron
+// =============================================================================
+
+class _NavGroup extends StatefulWidget {
+  const _NavGroup({
+    required this.label,
+    required this.isCollapsed,
+    required this.children,
+  });
+
+  final String label;
+  final bool isCollapsed;
+  final List<Widget> children;
+
+  @override
+  State<_NavGroup> createState() => _NavGroupState();
+}
+
+class _NavGroupState extends State<_NavGroup> {
+  bool _isExpanded = true;
+
+  Widget _buildDivider(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    final divColor =
+        t?.divider.withValues(alpha: 0.3) ??
+        Colors.white.withValues(alpha: 0.15);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Divider(indent: 12, endIndent: 12, height: 1, color: divColor),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    final labelColor =
+        t?.navItemText.withValues(alpha: 0.6) ??
+        Colors.white.withValues(alpha: 0.45);
+    final chevronColor =
+        t?.navItemIcon.withValues(alpha: 0.6) ??
+        Colors.white.withValues(alpha: 0.45);
+
+    // Use LayoutBuilder so layout adapts to actual rendered width during
+    // animation, not the boolean flag (which flips instantly while container
+    // still animates).
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final narrow = constraints.maxWidth < 100;
+
+        if (narrow) {
+          // Icon-only mode: divider separator, children always visible
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [_buildDivider(context), ...widget.children],
+          );
+        }
+
+        // Full-width mode: clickable header with chevron + animated children
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            InkWell(
+              onTap: () => setState(() => _isExpanded = !_isExpanded),
+              borderRadius: AppRadius.brSm,
+              child: Padding(
+                padding: const EdgeInsets.only(
+                    top: 20, bottom: 6, left: 8, right: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        widget.label,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: labelColor,
+                          letterSpacing: 1.2,
+                        ),
+                        overflow: TextOverflow.clip,
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: _isExpanded ? 0 : -0.25,
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeOut,
+                      child: Icon(
+                        Icons.expand_more,
+                        size: 16,
+                        color: chevronColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              child: _isExpanded
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: widget.children,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// =============================================================================
+// NAV ITEM — glass-themed with 3px left accent bar on active
+// =============================================================================
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    this.isCollapsed = false,
+  });
+
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  final bool isCollapsed;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    final activeTextColor   = t?.navItemActiveText ?? Colors.white;
+    final inactiveIconColor = t?.navItemIcon       ?? const Color(0xFFAEC6E8);
+    final inactiveTextColor = t?.navItemText       ?? const Color(0xFFAEC6E8);
+    final activeBg          = t?.navItemActiveBg   ?? const Color(0x2E60A5FA);
+    final hoverBg           = t?.navItemActiveBg.withValues(alpha: 0.5) ?? const Color(0x1460A5FA);
+    final activeAccent      = t?.navItemActiveIcon ?? const Color(0xFF60A5FA);
+    final borderHint        = t?.divider.withValues(alpha: 0.3) ?? Colors.white.withValues(alpha: 0.15);
+    final splashHint        = activeTextColor.withValues(alpha: 0.1);
+
+    final content = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppRadius.brMd,
+        hoverColor: hoverBg,
+        splashColor: splashHint,
+        highlightColor: splashHint.withValues(alpha: 0.5),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          decoration: BoxDecoration(
+            borderRadius: AppRadius.brMd,
+            color: isActive ? activeBg : Colors.transparent,
+            border: isActive ? Border.all(color: borderHint, width: 1) : null,
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 100;
+              if (narrow) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  child: Center(
+                    child: Tooltip(
+                      message: label,
+                      child: Icon(
+                        isActive ? activeIcon : icon,
+                        size: 21,
+                        color: isActive ? activeTextColor : inactiveIconColor,
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 3,
+                      height: 18,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        color: isActive ? activeAccent : Colors.transparent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    Icon(
+                      isActive ? activeIcon : icon,
+                      size: 18,
+                      color: isActive ? activeTextColor : inactiveIconColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                          color: isActive ? activeTextColor : inactiveTextColor,
+                          letterSpacing: 0.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    if (isCollapsed) {
+      return Tooltip(
+        message: label,
+        preferBelow: false,
+        child: content,
+      );
+    }
+    return content;
   }
 }

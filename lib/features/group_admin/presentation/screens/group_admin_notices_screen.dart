@@ -3,14 +3,11 @@
 // PURPOSE: Broadcast notices to all schools in the group. Full CRUD.
 // =============================================================================
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/group_admin_service.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
 import '../../../../core/constants/app_strings.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -72,8 +69,7 @@ class GroupAdminNoticesScreen extends ConsumerWidget {
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: padding),
                   child: asyncData.when(
-                    loading: () =>
-                        const ShimmerListLoadingWidget(itemCount: 8),
+                    loading: () => AppLoaderScreen(),
                     error: (err, _) => Card(
                       child: Padding(
                         padding: AppSpacing.paddingXl,

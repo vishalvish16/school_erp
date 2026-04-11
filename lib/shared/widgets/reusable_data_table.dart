@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_strings.dart';
-import '../../design_system/tokens/app_colors.dart';
-import '../../design_system/tokens/app_spacing.dart';
+import '../../core/theme/app_theme_tokens.dart';
+import '../../design_system/design_system.dart';
 
 class ReusableDataTable extends StatelessWidget {
   final List<String> columns;
@@ -33,7 +33,7 @@ class ReusableDataTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return AppLoaderScreen();
     }
 
     if (rows.isEmpty) {
@@ -53,6 +53,31 @@ class ReusableDataTable extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final t = Theme.of(context).extension<AppThemeTokens>();
+
+        // Apply even/odd row colors from theme tokens — DataTable has no
+        // built-in alternating row support so we inject color per-DataRow.
+        final themedRows = List.generate(rows.length, (i) {
+          final row = rows[i];
+          // Only override color if the caller hasn't set one already.
+          if (row.color != null) return row;
+          final rowBg = i.isEven ? t?.tableRowEvenBg : t?.tableRowOddBg;
+          return DataRow(
+            key: row.key,
+            selected: row.selected,
+            onSelectChanged: row.onSelectChanged,
+            onLongPress: row.onLongPress,
+            color: WidgetStateProperty.resolveWith((states) {
+              if (states.contains(WidgetState.selected) ||
+                  states.contains(WidgetState.hovered)) {
+                return t?.tableHoverBg;
+              }
+              return rowBg;
+            }),
+            cells: row.cells,
+          );
+        });
+
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
@@ -60,9 +85,9 @@ class ReusableDataTable extends StatelessWidget {
             child: DataTable(
               sortColumnIndex: sortColumnIndex,
               sortAscending: sortAscending,
-              headingRowColor: WidgetStateProperty.resolveWith(
-                (states) => AppColors.neutral100,
-              ),
+              headingRowColor: WidgetStateProperty.resolveWith((states) {
+                return t?.tableHeaderBg ?? AppColors.neutral100;
+              }),
               columns: List.generate(columns.length, (i) {
                 final isSortable = sortableColumns != null &&
                     sortableColumns!.contains(i) &&
@@ -100,7 +125,7 @@ class ReusableDataTable extends StatelessWidget {
                       : null,
                 );
               }),
-              rows: rows,
+              rows: themedRows,
             ),
           ),
         );
@@ -116,21 +141,22 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).extension<AppThemeTokens>();
     Color bgColor;
     Color textColor;
 
     switch (status.toUpperCase()) {
       case 'ACTIVE':
-        bgColor = AppColors.success100;
-        textColor = AppColors.success700;
+        bgColor   = t?.successBg   ?? AppColors.success100;
+        textColor = t?.successText ?? AppColors.success700;
         break;
       case 'SUSPENDED':
-        bgColor = AppColors.error100;
-        textColor = AppColors.error700;
+        bgColor   = t?.errorBg   ?? AppColors.error100;
+        textColor = t?.errorText ?? AppColors.error700;
         break;
       default:
-        bgColor = AppColors.neutral200;
-        textColor = AppColors.neutral800;
+        bgColor   = t?.chipInactiveBg ?? AppColors.neutral200;
+        textColor = t?.textSecondary  ?? AppColors.neutral800;
     }
 
     return Container(

@@ -8,8 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/staff/staff_profile_model.dart';
 import '../providers/staff_profile_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.secondary400;
 
@@ -66,11 +64,11 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
     }
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+      backgroundColor: Colors.transparent,
       body: Padding(
-        padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
+        padding: EdgeInsets.all(isWide ? AppSpacing.xl : AppSpacing.lg),
         child: state.isLoading
-            ? const Center(child: CircularProgressIndicator())
+            ? AppLoaderScreen()
             : state.profile == null
                 ? _ErrorView(
                     error: state.errorMessage ?? 'Could not load profile',
@@ -97,12 +95,12 @@ class _StaffProfileScreenState extends ConsumerState<StaffProfileScreen> {
                             // Avatar + name header
                             _AvatarHeader(
                                 profile: state.profile!),
-                            const SizedBox(height: 20),
+                            AppSpacing.vGapXl,
 
                             // Info / Edit card
                             Card(
                               child: Padding(
-                                padding: const EdgeInsets.all(20),
+                                padding: EdgeInsets.all(AppSpacing.xl),
                                 child: _isEditing
                                     ? _EditForm(
                                         formKey: _formKey,
@@ -226,9 +224,8 @@ class _AvatarHeader extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 profile.designation!,
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: _accent,
-                    fontSize: 12,
                     fontWeight: FontWeight.w500),
               ),
             ],
@@ -262,7 +259,7 @@ class _ProfileView extends StatelessWidget {
             const Spacer(),
             TextButton.icon(
               onPressed: onEdit,
-              icon: const Icon(Icons.edit, size: 16),
+              icon: Icon(Icons.edit, size: AppIconSize.sm),
               label: const Text('Edit'),
             ),
           ],
@@ -309,8 +306,8 @@ class _Row extends StatelessWidget {
           ),
           Expanded(
             child: Text(value,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w500)),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w500)),
           ),
         ],
       ),
@@ -378,7 +375,7 @@ class _EditForm extends StatelessWidget {
             ),
             keyboardType: TextInputType.phone,
           ),
-          const SizedBox(height: 20),
+          AppSpacing.vGapXl,
           Row(
             children: [
               Expanded(

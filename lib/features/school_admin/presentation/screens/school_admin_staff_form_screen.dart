@@ -9,10 +9,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/school_admin/staff_model.dart';
-import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
-
-const Color _accent = AppColors.success500;
+import '../../../../shared/widgets/app_toast.dart';
 
 // Simple provider to load staff for edit mode
 final _editStaffProvider =
@@ -36,7 +34,7 @@ class SchoolAdminStaffFormScreen extends ConsumerWidget {
     return async.when(
       loading: () => Scaffold(
         appBar: AppBar(title: const Text('Edit Staff')),
-        body: const Center(child: CircularProgressIndicator()),
+        body: AppLoaderScreen(),
       ),
       error: (err, _) => Scaffold(
         appBar: AppBar(title: const Text('Edit Staff')),
@@ -51,8 +49,7 @@ class SchoolAdminStaffFormScreen extends ConsumerWidget {
               AppSpacing.vGapLg,
               FilledButton(
                 onPressed: () => ref.invalidate(_editStaffProvider(staffId)),
-                style: FilledButton.styleFrom(backgroundColor: _accent),
-                child: const Text('Retry'),
+                  child: const Text('Retry'),
               ),
             ],
           ),
@@ -175,22 +172,18 @@ class _StaffFormState extends ConsumerState<_StaffForm>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Stack(
       children: [
         Scaffold(
-          backgroundColor:
-              Theme.of(context).colorScheme.surfaceContainerLowest,
           appBar: AppBar(
-            backgroundColor: Theme.of(context).colorScheme.surface,
             title: Text(_isEdit ? 'Edit Staff' : 'Add Staff',
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold)),
+                style: const TextStyle(fontWeight: FontWeight.bold)),
             bottom: TabBar(
               controller: _tab,
-              labelColor: _accent,
-              unselectedLabelColor:
-                  Theme.of(context).colorScheme.onSurfaceVariant,
-              indicatorColor: _accent,
+              labelColor: scheme.primary,
+              unselectedLabelColor: scheme.onSurfaceVariant,
+              indicatorColor: scheme.primary,
               tabs: const [
                 Tab(text: 'Personal'),
                 Tab(text: 'Employment'),
@@ -267,9 +260,9 @@ class _StaffFormState extends ConsumerState<_StaffForm>
           ),
         ),
         if (_submitting)
-          const ColoredBox(
-            color: AppColors.neutral300,
-            child: Center(child: CircularProgressIndicator()),
+          ColoredBox(
+            color: scheme.scrim.withValues(alpha: 0.3),
+            child: const AppLoaderScreen(),
           ),
       ],
     );
@@ -294,7 +287,7 @@ class _StaffFormState extends ConsumerState<_StaffForm>
         }
       } catch (e) {
         if (mounted) {
-          AppSnackbar.error(context, _extractUserMessage(e));
+          AppToast.showError(context, _extractUserMessage(e));
         }
       } finally {
         if (mounted) setState(() => _submitting = false);
@@ -403,7 +396,7 @@ class _StaffFormState extends ConsumerState<_StaffForm>
     if (firstInvalid >= 0) {
       _tab.animateTo(firstInvalid);
       setState(() {});
-      AppSnackbar.warning(context, 'Please complete the ${_tabName(firstInvalid)} tab');
+      AppToast.showWarning(context, 'Please complete the ${_tabName(firstInvalid)} tab');
       return;
     }
 
@@ -451,7 +444,7 @@ class _StaffFormState extends ConsumerState<_StaffForm>
             setState(() => _submitting = false);
             _tab.animateTo(2); // Contact tab
             setState(() {});
-            AppSnackbar.warning(context, 'Email is required when creating login credentials');
+            AppToast.showWarning(context, 'Email is required when creating login credentials');
             return;
           }
           body['createLogin'] = true;
@@ -480,13 +473,13 @@ class _StaffFormState extends ConsumerState<_StaffForm>
       _passwordCtrl.clear();
 
       if (mounted) {
-        AppSnackbar.success(context, _isEdit ? 'Staff updated successfully' : 'Staff added successfully');
+        AppToast.showSuccess(context, _isEdit ? 'Staff updated successfully' : 'Staff added successfully');
         context.go('/school-admin/staff');
       }
     } catch (e) {
       if (mounted) {
         final msg = _extractUserMessage(e);
-        AppSnackbar.error(context, msg);
+        AppToast.showError(context, msg);
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -579,14 +572,12 @@ class _BottomActionsState extends State<_BottomActions> {
               onPressed: widget.submitting ? null : widget.onNext,
               icon: const Icon(Icons.arrow_forward, size: 16),
               label: const Text('Next'),
-              style: FilledButton.styleFrom(backgroundColor: _accent),
             )
           else
             FilledButton.icon(
               onPressed: widget.submitting ? null : widget.onSubmit,
               icon: const Icon(Icons.check, size: 16),
               label: Text(widget.isEdit ? 'Update' : 'Save Staff'),
-              style: FilledButton.styleFrom(backgroundColor: _accent),
             ),
         ],
       ),
@@ -653,7 +644,7 @@ class _PersonalTab extends StatelessWidget {
             ),
             AppSpacing.vGapMd,
             DropdownButtonFormField<String>(
-              value: gender,
+              initialValue: gender,
               decoration: const InputDecoration(
                   labelText: 'Gender *',
                   border: OutlineInputBorder(),
@@ -694,7 +685,7 @@ class _PersonalTab extends StatelessWidget {
             ),
             AppSpacing.vGapMd,
             DropdownButtonFormField<String?>(
-              value: bloodGroup,
+              initialValue: bloodGroup,
               decoration: const InputDecoration(
                   labelText: 'Blood Group',
                   border: OutlineInputBorder(),
@@ -772,7 +763,7 @@ class _EmploymentTab extends StatelessWidget {
                 label: 'Department', ctrl: departmentCtrl, required: false),
             AppSpacing.vGapMd,
             DropdownButtonFormField<String>(
-              value: employeeType,
+              initialValue: employeeType,
               decoration: const InputDecoration(
                   labelText: 'Employee Type *',
                   border: OutlineInputBorder(),
@@ -992,7 +983,7 @@ class _LoginTab extends StatelessWidget {
             ),
             AppSpacing.vGapMd,
             DropdownButtonFormField<String>(
-              value: role,
+              initialValue: role,
               decoration: const InputDecoration(
                   labelText: 'Role',
                   border: OutlineInputBorder(),
@@ -1021,7 +1012,7 @@ class _SectionLabel extends StatelessWidget {
       label,
       style: Theme.of(context).textTheme.titleSmall?.copyWith(
             fontWeight: FontWeight.bold,
-            color: _accent,
+            color: Theme.of(context).colorScheme.primary,
           ),
     );
   }

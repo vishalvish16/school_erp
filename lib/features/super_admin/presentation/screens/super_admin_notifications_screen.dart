@@ -8,9 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/super_admin_service.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class SuperAdminNotificationsScreen extends ConsumerStatefulWidget {
   const SuperAdminNotificationsScreen({super.key});
@@ -197,11 +196,8 @@ class _SuperAdminNotificationsScreenState
               ),
             ),
             if (_loading)
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: padding),
-                  child: const ShimmerListLoadingWidget(itemCount: 8),
-                ),
+              const Expanded(
+                child: AppLoaderScreen(),
               )
             else if (_error != null)
               Expanded(
@@ -254,7 +250,7 @@ class _SuperAdminNotificationsScreenState
                         _loadMore();
                         return const Padding(
                           padding: AppSpacing.paddingLg,
-                          child: Center(child: CircularProgressIndicator()),
+                          child: Center(child: SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2))),
                         );
                       }
                       return const SizedBox.shrink();

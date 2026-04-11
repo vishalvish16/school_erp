@@ -110,7 +110,7 @@ class SchoolIdentityBanner extends StatelessWidget {
                       width: 48,
                       height: 48,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholderIcon(48),
+                      errorBuilder: (_, _, _) => _buildPlaceholderIcon(48),
                     )
                   : _buildPlaceholderIcon(48),
             ),
@@ -180,7 +180,7 @@ class SchoolIdentityBanner extends StatelessWidget {
                       width: 52,
                       height: 52,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholderIcon(52),
+                      errorBuilder: (_, _, _) => _buildPlaceholderIcon(52),
                     )
                   : _buildPlaceholderIcon(52),
             ),

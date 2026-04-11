@@ -9,14 +9,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/super_admin_service.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
-import '../../../../widgets/super_admin/dialogs/add_school_dialog.dart';
 import '../../../../widgets/super_admin/dialogs/resolve_overdue_dialog.dart';
 import '../../../../widgets/super_admin/dialogs/school_detail_dialog.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../widgets/super_admin/super_admin_dialogs.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../shared/widgets/metric_stat_card.dart';
 
 class SuperAdminDashboardScreen extends ConsumerStatefulWidget {
   const SuperAdminDashboardScreen({super.key});
@@ -45,35 +43,6 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
     super.dispose();
   }
 
-  Future<void> _openAddSchool() async {
-    final service = ref.read(superAdminServiceProvider);
-    List<Map<String, dynamic>> plans = [];
-    List<Map<String, dynamic>> groups = [];
-    try {
-      final p = await service.getPlans();
-      plans = p.map((e) => {
-        'id': e.id,
-        'name': e.name,
-        'price_per_student': e.pricePerStudent,
-        'priceMonthly': e.pricePerStudent,
-      }).toList();
-      final g = await service.getGroups();
-      groups = g.map((e) => {'id': e.id, 'name': e.name}).toList();
-    } catch (_) {}
-    if (!mounted) return;
-    showAdaptiveModal(
-      context,
-      AddSchoolDialog(
-        plans: plans,
-        groups: groups,
-        onCreate: (body) async {
-          await service.createSchool(body);
-          if (mounted) _load();
-        },
-      ),
-      maxWidth: kDialogMaxWidthLarge,
-    );
-  }
 
   void _openResolveOverdue(SuperAdminSchoolModel school) {
     showAdaptiveModal(
@@ -133,11 +102,11 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+    final width = MediaQuery.sizeOf(context).width;
     final isWide = width >= 768;
     final isNarrow = width < 600;
     final scheme = Theme.of(context).colorScheme;
-    final padding = isNarrow ? 16.0 : 24.0;
+    final padding = isNarrow ? AppSpacing.lg : AppSpacing.xl;
 
     return RefreshIndicator(
       onRefresh: _load,
@@ -147,18 +116,19 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header — title left, actions right
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
               alignment: WrapAlignment.spaceBetween,
               crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.md,
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Platform Overview',
+                      AppStrings.platformOverview,
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -172,37 +142,26 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
                     ),
                   ],
                 ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () => _exportReport(),
-                      icon: const Icon(Icons.download, size: 18),
-                      label: Text(isNarrow ? 'Export' : 'Export Report'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () => _openAddSchool(),
-                      icon: const Icon(Icons.add, size: 20),
-                      label: Text(isNarrow ? 'Add School' : 'Add School'),
-                    ),
-                  ],
+                TextButton.icon(
+                  onPressed: () => _exportReport(),
+                  icon: Icon(Icons.download_rounded, size: AppIconSize.md),
+                  label: Text(isNarrow ? AppStrings.export : AppStrings.exportReport),
                 ),
               ],
             ),
             AppSpacing.vGapXl,
 
             if (_loading)
-              const Center(child: Padding(
-                padding: EdgeInsets.all(48),
-                child: CircularProgressIndicator(),
+              Center(child: Padding(
+                padding: EdgeInsets.all(AppSpacing.xl4),
+                child: const CircularProgressIndicator(),
               ))
             else if (_error != null)
               _buildErrorCard()
             else
               ...[
-                // Stats row
-                _buildStatsRow(isWide),
+                // Stats row (metric cards — same pattern as Billing; narrow = horizontal scroll)
+                _buildStatsRow(),
                 AppSpacing.vGapXl,
 
                 // Needs attention (both layouts)
@@ -237,22 +196,25 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
         padding: AppSpacing.paddingXl,
         child: Column(
           children: [
-            Icon(Icons.error_outline, size: 48, color: Theme.of(context).colorScheme.error),
+            Icon(Icons.error_outline, size: AppIconSize.xl3, color: Theme.of(context).colorScheme.error),
             AppSpacing.vGapLg,
             Text(
-              'Could not load dashboard',
+              AppStrings.couldNotLoadDashboard,
               style: Theme.of(context).textTheme.titleMedium,
             ),
             AppSpacing.vGapSm,
             Text(
-              _error ?? 'Unknown error',
-              style: Theme.of(context).textTheme.bodySmall,
+              _error ?? AppStrings.unknownError,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
               textAlign: TextAlign.center,
             ),
             AppSpacing.vGapLg,
-            FilledButton(
+            FilledButton.icon(
               onPressed: _load,
-              child: const Text('Retry'),
+              icon: Icon(Icons.refresh, size: AppIconSize.md),
+              label: Text(AppStrings.retry),
             ),
           ],
         ),
@@ -260,64 +222,80 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
     );
   }
 
-  Widget _buildStatsRow(bool isWide) {
+  Widget _buildStatsRow() {
     final s = _stats ?? SuperAdminDashboardStatsModel();
-    final cards = [
-      _StatCard(
-        icon: Icons.school,
-        value: '${s.totalSchools}',
-        label: 'Total Schools',
-        color: AppColors.secondary500,
-        onTap: () => context.go('/super-admin/schools'),
+    final useRow = MediaQuery.sizeOf(context).width >= 600;
+    final items = <(IconData, String, String, Color, VoidCallback)>[
+      (
+        Icons.school_rounded,
+        '${s.totalSchools}',
+        'Total Schools',
+        AppColors.primary500,
+        () => context.go('/super-admin/schools'),
       ),
-      _StatCard(
-        icon: Icons.people,
-        value: '${s.totalStudents}',
-        label: 'Students',
-        color: AppColors.success500,
-        onTap: () => context.go('/super-admin/schools'),
+      (
+        Icons.people_rounded,
+        '${s.totalStudents}',
+        'Total Students',
+        AppColors.secondary500,
+        () => context.go('/super-admin/schools'),
       ),
-      _StatCard(
-        icon: Icons.payments,
-        value: '₹${s.mrr.toStringAsFixed(0)}',
-        label: 'MRR',
-        color: AppColors.warning500,
-        onTap: () => context.go('/super-admin/billing'),
+      (
+        Icons.currency_rupee_rounded,
+        '₹${s.mrr.toStringAsFixed(0)}',
+        'Monthly Revenue',
+        AppColors.warning500,
+        () => context.go('/super-admin/billing'),
       ),
-      _StatCard(
-        icon: Icons.group,
-        value: '${s.totalGroups}',
-        label: 'Groups',
-        color: Colors.purple,
-        onTap: () => context.go('/super-admin/groups'),
+      (
+        Icons.account_tree_rounded,
+        '${s.totalGroups}',
+        'School Groups',
+        AppColors.primary400,
+        () => context.go('/super-admin/groups'),
       ),
     ];
-    if (isWide) {
+    if (useRow) {
       return Row(
-        children: cards.map((c) => Expanded(child: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: c,
-        ))).toList(),
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(
+              child: MetricStatCard(
+                icon: items[i].$1,
+                value: items[i].$2,
+                label: items[i].$3,
+                color: items[i].$4,
+                onTap: items[i].$5,
+                compact: false,
+              ),
+            ),
+            if (i < items.length - 1) SizedBox(width: AppSpacing.md),
+          ],
+        ],
       );
     }
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: cards[0]),
-            AppSpacing.hGapMd,
-            Expanded(child: cards[1]),
-          ],
-        ),
-        AppSpacing.vGapMd,
-        Row(
-          children: [
-            Expanded(child: cards[2]),
-            AppSpacing.hGapMd,
-            Expanded(child: cards[3]),
-          ],
-        ),
-      ],
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: items.length,
+        separatorBuilder: (_, _) => SizedBox(width: AppSpacing.md),
+        itemBuilder: (context, i) {
+          final e = items[i];
+          return SizedBox(
+            width: 148,
+            child: MetricStatCard(
+              icon: e.$1,
+              value: e.$2,
+              label: e.$3,
+              color: e.$4,
+              onTap: e.$5,
+              compact: true,
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -425,7 +403,7 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
               )
             else
               ...list.take(5).map((school) => ListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: 0, vertical: AppSpacing.xs),
+                contentPadding: EdgeInsets.symmetric(vertical: AppSpacing.xs),
                 leading: SizedBox(
                   width: 40,
                   height: 40,
@@ -443,7 +421,7 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                 ),
-                trailing: const Icon(Icons.chevron_right, size: 20),
+                trailing: Icon(Icons.chevron_right, size: AppIconSize.md),
                 onTap: () => showAdaptiveModal(
                   context,
                   SchoolDetailDialog(
@@ -486,13 +464,13 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
               )
             else
               ...list.map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.only(bottom: AppSpacing.sm),
                 child: InkWell(
                   onTap: () => context.go('/super-admin/schools?plan_id=${p.planId}'),
                   borderRadius: AppRadius.brMd,
                   child: Row(
                     children: [
-                      Text(p.planIcon ?? '📦', style: const TextStyle(fontSize: 20)),
+                      Text(p.planIcon ?? '📦', style: TextStyle(fontSize: AppIconSize.md)),
                       AppSpacing.hGapSm,
                       Expanded(
                         child: Column(
@@ -527,63 +505,5 @@ class _SuperAdminDashboardScreenState extends ConsumerState<SuperAdminDashboardS
   String _formatDate(DateTime d) {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     return '${months[d.month - 1]} ${d.day}, ${d.year}';
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Padding(
-      padding: AppSpacing.paddingMd,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 24),
-          AppSpacing.vGapSm,
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ],
-      ),
-    );
-    return Card(
-      child: onTap != null
-          ? InkWell(
-              onTap: onTap,
-              borderRadius: AppRadius.brLg,
-              child: child,
-            )
-          : child,
-    );
   }
 }

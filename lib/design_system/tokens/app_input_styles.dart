@@ -15,8 +15,16 @@ abstract final class AppInputStyles {
   // ── Base InputDecorationTheme (used in ThemeData) ───────────────────────────
   static InputDecorationTheme inputDecorationTheme(ColorScheme scheme) {
     final isDark = scheme.brightness == Brightness.dark;
-    final fillColor = isDark ? AppColors.darkSurfaceVar : AppColors.neutral100;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+
+    // Dark: glass navy fill + white-glass border (clearly visible on #07111F bg)
+    // Light: white fill + blue-tinted border (matching brand login style)
+    final fillColor = isDark
+        ? AppColors.brandNavy700        // #122040 — slightly lighter than card
+        : AppColors.lightSurface;       // white
+    final borderColor = isDark
+        ? AppColors.glassWhite18        // rgba(255,255,255,0.18) — visible glass border
+        : AppColors.lightBorder;        // #C7D8F5 — blue border
+    final focusColor = AppColors.brandBlue; // #2563EB — brand blue focus for both modes
 
     return InputDecorationTheme(
       filled: true,
@@ -36,10 +44,7 @@ abstract final class AppInputStyles {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: AppRadius.brMd,
-        borderSide: BorderSide(
-          color: isDark ? AppColors.primary400 : AppColors.primary600,
-          width: 2,
-        ),
+        borderSide: BorderSide(color: focusColor, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: AppRadius.brMd,
@@ -52,7 +57,9 @@ abstract final class AppInputStyles {
       disabledBorder: OutlineInputBorder(
         borderRadius: AppRadius.brMd,
         borderSide: BorderSide(
-          color: borderColor.withAlpha(128),
+          color: isDark
+              ? AppColors.glassWhite05
+              : AppColors.lightBorder.withAlpha(100),
           width: 1,
         ),
       ),
@@ -68,9 +75,7 @@ abstract final class AppInputStyles {
           return AppTextStyles.caption(color: AppColors.error600);
         }
         if (states.contains(WidgetState.focused)) {
-          return AppTextStyles.caption(
-            color: isDark ? AppColors.primary400 : AppColors.primary600,
-          );
+          return AppTextStyles.caption(color: focusColor);
         }
         return AppTextStyles.caption(
           color: isDark ? AppColors.darkTextSub : AppColors.lightTextSub,
@@ -81,17 +86,13 @@ abstract final class AppInputStyles {
       ),
       errorStyle: AppTextStyles.caption(color: AppColors.error600),
       prefixIconColor: WidgetStateColor.resolveWith((states) {
-        if (states.contains(WidgetState.focused)) {
-          return isDark ? AppColors.primary400 : AppColors.primary600;
-        }
-        return isDark ? AppColors.darkTextHint : AppColors.lightTextHint;
+        if (states.contains(WidgetState.focused)) return focusColor;
+        return isDark ? AppColors.darkTextSub : AppColors.lightTextSub;
       }),
       suffixIconColor: WidgetStateColor.resolveWith((states) {
         if (states.contains(WidgetState.error)) return AppColors.error600;
-        if (states.contains(WidgetState.focused)) {
-          return isDark ? AppColors.primary400 : AppColors.primary600;
-        }
-        return isDark ? AppColors.darkTextHint : AppColors.lightTextHint;
+        if (states.contains(WidgetState.focused)) return focusColor;
+        return isDark ? AppColors.darkTextSub : AppColors.lightTextSub;
       }),
       isDense: true,
       floatingLabelBehavior: FloatingLabelBehavior.auto,

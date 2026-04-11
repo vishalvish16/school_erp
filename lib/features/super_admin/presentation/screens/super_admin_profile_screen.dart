@@ -9,7 +9,6 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../auth/auth_guard_provider.dart';
 import '../../../../widgets/super_admin/logout_button_widget.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class SuperAdminProfileScreen extends ConsumerWidget {
   const SuperAdminProfileScreen({super.key});

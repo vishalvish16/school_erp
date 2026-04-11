@@ -1,5 +1,7 @@
 # School ERP AI - Project Context for Claude Code
 
+- Codex will review your output once you are done.
+
 ## Project Overview
 Multi-tenant SaaS School Management Platform — **Vidyron** (vidyron.in)
 - **Frontend**: Flutter (Dart) — web, iOS, Android — using Riverpod + GoRouter
@@ -94,10 +96,11 @@ When building a new module, invoke agents in this order:
 3. `/erp-db-architect` — Schema + migrations
 4. `/erp-backend-dev` — Node.js API module
 5. `/erp-flutter-dev` — Flutter screens + state
-6. `/erp-code-reviewer` — Code quality review
-7. `/erp-security-reviewer` — Security audit
-8. `/erp-qa-tester` — Testing
-9. `/erp-doc-writer` — Documentation
+6. `/erp-ui-ux-reviewer` — **Visual quality audit & fix** (glassmorphism, tokens, responsive sections, portal UX)
+<!-- 7. `/erp-code-reviewer` — Code quality review
+8. `/erp-security-reviewer` — Security audit
+9. `/erp-qa-tester` — Testing
+10. `/erp-doc-writer` — Documentation -->
 
 Or use the all-in-one: `/build-erp-module {module_name}`
 

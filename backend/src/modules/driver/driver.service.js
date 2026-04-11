@@ -4,9 +4,8 @@
 import bcrypt from 'bcrypt';
 import { AppError } from '../../utils/response.js';
 import { driverRepository } from './driver.repository.js';
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 function formatDate(date) {
   if (!date) return null;
@@ -19,6 +18,10 @@ class DriverService {
     const vehicle = driver.vehicle;
     const route = vehicle?.route;
     const stops = route?.stops || [];
+
+    // Get active trip status from DriverTrip table
+    const activeTrip = await driverRepository.findActiveTrip(driver.id);
+    const tripStatus = activeTrip ? activeTrip.status : 'NOT_STARTED';
 
     return {
       driver: {
@@ -49,7 +52,8 @@ class DriverService {
           }
         : null,
       studentCount: 0,
-      tripStatus: 'NOT_STARTED',
+      tripStatus,
+      activeTripId: activeTrip?.id || null,
     };
   }
 
@@ -128,6 +132,34 @@ class DriverService {
 
     await driverRepository.update(driverId, schoolId, updates);
     return this.getProfile(driverId, schoolId);
+  }
+
+  async startTrip({ driverId, schoolId, vehicleId, routeId }) {
+    const trip = await driverRepository.startTrip(driverId, schoolId, vehicleId, routeId);
+    return {
+      tripId: trip.id,
+      status: trip.status,
+      startedAt: trip.startedAt?.toISOString() || null,
+    };
+  }
+
+  async endTrip({ driverId, notes }) {
+    const trip = await driverRepository.endTrip(driverId, notes);
+    if (!trip) throw new AppError('No active trip found', 404);
+    return {
+      tripId: trip.id,
+      status: trip.status,
+      startedAt: trip.startedAt?.toISOString() || null,
+      endedAt: trip.endedAt?.toISOString() || null,
+    };
+  }
+
+  async recordLocation({ driverId, schoolId, vehicleId, lat, lng, speed, heading, accuracy, recordedAt }) {
+    const activeTrip = await driverRepository.findActiveTrip(driverId);
+    await driverRepository.recordLocation(driverId, schoolId, vehicleId, activeTrip?.id || null, {
+      lat, lng, speed, heading, accuracy, recordedAt,
+    });
+    return { recorded: true };
   }
 
   async changePassword(driverId, schoolId, userId, currentPassword, newPassword) {

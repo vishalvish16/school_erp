@@ -51,17 +51,21 @@ class SchoolsRepository implements ISchoolsRepository {
     final searchVal = search?.trim() ?? '';
     if (searchVal.isNotEmpty) {
       queryParams['search'] = searchVal;
-      queryParams['code'] = searchVal; // Backend uses both for name OR schoolCode
+      queryParams['code'] =
+          searchVal; // Backend uses both for name OR schoolCode
     }
-    if (status != null && status.isNotEmpty && status != 'ALL')
+    if (status != null && status.isNotEmpty && status != 'ALL') {
       queryParams['status'] = status;
+    }
     if (planId != null && planId.isNotEmpty) queryParams['planId'] = planId;
     if (sortBy != null && sortBy.isNotEmpty) queryParams['sortBy'] = sortBy;
-    if (sortOrder != null && sortOrder.isNotEmpty) queryParams['sortOrder'] = sortOrder;
+    if (sortOrder != null && sortOrder.isNotEmpty) {
+      queryParams['sortOrder'] = sortOrder;
+    }
 
-    final uri = Uri.parse('/api/platform/schools').replace(
-      queryParameters: queryParams,
-    );
+    final uri = Uri.parse(
+      '/api/platform/schools',
+    ).replace(queryParameters: queryParams);
     final response = await _dio.get(uri.toString());
 
     Map<String, dynamic> payload = {};

@@ -3,11 +3,12 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../../../design_system/design_system.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../providers/school_admin_notifications_provider.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
 
 class SchoolAdminNotificationsScreen extends ConsumerStatefulWidget {
   const SchoolAdminNotificationsScreen({super.key});
@@ -50,42 +51,50 @@ class _SchoolAdminNotificationsScreenState
             children: [
               Padding(
                 padding: EdgeInsets.fromLTRB(padding, padding, padding, 0),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.spaceBetween,
+                child: Row(
                   children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          AppStrings.notifications,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        if (state.unreadCount > 0) ...[
-                          AppSpacing.hGapSm,
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: AppSpacing.sm, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: scheme.primary,
-                              borderRadius: AppRadius.brLg,
-                            ),
-                            child: Text(
-                              '${state.unreadCount} new',
-                              style: TextStyle(
-                                color: scheme.onPrimary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+                    Text(
+                      AppStrings.notifications,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
                     ),
+                    if (state.unreadCount > 0) ...[
+                      AppSpacing.hGapSm,
+                      Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: scheme.primary,
+                          borderRadius: AppRadius.brLg,
+                        ),
+                        child: Text(
+                          '${state.unreadCount} new',
+                          style: TextStyle(
+                            color: scheme.onPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                    const Spacer(),
+                    if (state.unreadCount > 0)
+                      TextButton(
+                        onPressed: () {
+                          final notifier = ref.read(
+                              schoolAdminNotificationsProvider.notifier);
+                          for (final n in state.notifications) {
+                            final isRead = n['is_read'] as bool? ?? false;
+                            if (!isRead) {
+                              final id = n['id'] as String? ?? '';
+                              if (id.isNotEmpty) notifier.markRead(id);
+                            }
+                          }
+                        },
+                        child: Text(AppStrings.markAllRead),
+                      ),
                     IconButton(
                       onPressed: () => ref
                           .read(schoolAdminNotificationsProvider.notifier)
@@ -99,10 +108,7 @@ class _SchoolAdminNotificationsScreenState
               AppSpacing.vGapLg,
               if (state.isLoading)
                 Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: padding),
-                    child: const ShimmerListLoadingWidget(itemCount: 8),
-                  ),
+                  child: AppLoaderScreen(),
                 )
               else if (state.errorMessage != null)
                 Expanded(
@@ -158,7 +164,7 @@ class _SchoolAdminNotificationsScreenState
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: EdgeInsets.symmetric(horizontal: padding),
                     itemCount: state.notifications.length,
-                    separatorBuilder: (ctx, i) => const SizedBox.shrink(),
+                    separatorBuilder: (ctx, i) => AppSpacing.vGapXs,
                     itemBuilder: (ctx, i) {
                       final n = state.notifications[i];
                       final isRead = n['is_read'] as bool? ?? false;

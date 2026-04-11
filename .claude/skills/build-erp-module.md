@@ -102,9 +102,13 @@ Launch `erp-flutter-dev`:
 ```
 Read docs/modules/{module_name}/FLUTTER_PROMPT.md
 Read .claude/CLAUDE.md for Flutter patterns.
+Read .claude/agents/erp-flutter-dev.md — ALL rules apply, especially RULE 5 (glassmorphism).
 Read these existing files for patterns:
 - lib/core/services/super_admin_service.dart
 - lib/features/super_admin/presentation/screens/super_admin_schools_screen.dart
+- lib/features/super_admin/presentation/super_admin_shell.dart  ← glass sidebar/drawer pattern
+- lib/widgets/super_admin/super_admin_dialogs.dart               ← showAdaptiveModal (glass bottom sheet)
+- lib/widgets/super_admin/notifications_bell_button.dart         ← top-anchored popover glass pattern
 - lib/features/auth/auth_guard_provider.dart
 - lib/core/config/api_config.dart
 - lib/routes/app_router.dart
@@ -120,7 +124,56 @@ Update:
 - lib/core/config/api_config.dart — add endpoint constants
 - lib/routes/app_router.dart — add new routes
 
-Follow ALL Flutter patterns exactly — Riverpod, GoRouter, Design System components.
+GLASSMORPHISM MANDATORY RULES (RULE 5 — erp-flutter-dev.md):
+- Never set Scaffold(backgroundColor: ...) — always transparent
+- All card/panel surfaces use t.cardBg from AppThemeTokens
+- Sidebars/topbars: ClipRect > BackdropFilter(blur 24) > Container(white.15 / dark.88)
+- Mobile bottom sheets: always showAdaptiveModal — never raw showModalBottomSheet with opaque container
+- Mobile drawers: Drawer(backgroundColor: transparent) + BackdropFilter glass
+- Dialogs: barrierColor must be Colors.black.withValues(alpha: 0.35) — never a solid color
+- Add import 'dart:ui' as ui; when using ui.ImageFilter.blur
+- Run RULE 5G glass preflight checklist before declaring done
+```
+
+---
+
+## Step 5.5 — UI/UX Reviewer: Visual Quality & Design System
+
+Launch `erp-ui-ux-reviewer`:
+
+```
+Read .claude/agents/erp-ui-ux-reviewer.md — ALL rules apply.
+
+Review and FIX all Flutter UI/UX for the {module_name} module.
+
+Target files:
+- lib/features/{module_name}/presentation/screens/ (all screens)
+- lib/features/{module_name}/presentation/widgets/ (all dialogs, components)
+- lib/features/{module_name}/presentation/*_shell.dart (if shell was created)
+
+Reference implementations to read FIRST:
+- lib/features/super_admin/presentation/super_admin_shell.dart
+- lib/features/super_admin/presentation/screens/super_admin_schools_screen.dart
+- lib/features/super_admin/presentation/screens/super_admin_dashboard_screen.dart
+- lib/features/super_admin/presentation/screens/super_admin_billing_screen.dart
+- lib/shared/widgets/metric_stat_card.dart
+- lib/shared/widgets/list_table_view.dart
+- lib/shared/widgets/list_screen_mobile_toolbar.dart
+- lib/shared/widgets/mobile_infinite_scroll.dart
+
+For EVERY screen:
+1. Audit header section (wide Wrap + narrow ListScreenMobileHeader)
+2. Audit stats row (MetricStatCard — wide Row/Expanded, narrow horizontal ListView 148px tiles)
+3. Audit filter section (wide Card+Wrap, narrow ListScreenMobileFilterStrip)
+4. Audit table/list (ListTableView in ConstrainedBox wide, MobileInfiniteScrollList narrow)
+5. Audit mobile cards (InkWell card tap + HoverPopupMenu ⋮, no bottom buttons, AppColors status chips)
+6. Audit empty/error/loading states
+7. Audit all token usage (no raw hex colors, no raw SizedBox, no kIsWeb, AppStrings for all text)
+8. Audit glassmorphism (no opaque backgrounds, showAdaptiveModal for modals)
+9. Audit touch targets (≥44px interactive elements)
+10. Audit toast notifications (AppToast only, no showSnackBar)
+
+Fix EVERY issue found. Output a UI/UX review report.
 ```
 
 ---

@@ -2,20 +2,18 @@
 // FILE: lib/features/school_admin/presentation/screens/school_admin_fees_screen.dart
 // =============================================================================
 
-import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../models/school_admin/fee_structure_model.dart';
 import '../../../../models/school_admin/fee_payment_model.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+import '../../../../shared/widgets/app_toast.dart';
+import '../../../../shared/widgets/metric_stat_card.dart';
+
 import '../providers/school_admin_fees_provider.dart';
 import '../providers/school_admin_classes_provider.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -63,7 +61,11 @@ class _SchoolAdminFeesScreenState extends ConsumerState<SchoolAdminFeesScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
+    final feesState = ref.watch(schoolAdminFeesProvider);
+    final summary = feesState.summary;
+    final totalCollected = summary.values
+        .fold<double>(0, (sum, v) => sum + (v is num ? v.toDouble() : 0));
 
     return RefreshIndicator(
       onRefresh: _refreshAll,
@@ -73,7 +75,11 @@ class _SchoolAdminFeesScreenState extends ConsumerState<SchoolAdminFeesScreen>
           children: [
             // ── Header ──
             Padding(
-              padding: EdgeInsets.all(isNarrow ? 16.0 : 24.0),
+              padding: EdgeInsets.fromLTRB(
+                  isNarrow ? 16.0 : 24.0,
+                  isNarrow ? 16.0 : 24.0,
+                  isNarrow ? 16.0 : 24.0,
+                  0),
               child: Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -98,6 +104,99 @@ class _SchoolAdminFeesScreenState extends ConsumerState<SchoolAdminFeesScreen>
               ),
             ),
 
+            // ── Stats row ──
+            if (!isNarrow)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: MetricStatCard(
+                        icon: Icons.payments_outlined,
+                        value: '${feesState.structures.length}',
+                        label: 'Fee Structures',
+                        color: AppColors.secondary500,
+                      ),
+                    ),
+                    AppSpacing.hGapMd,
+                    Expanded(
+                      child: MetricStatCard(
+                        icon: Icons.receipt_long_outlined,
+                        value: '${feesState.payments.length}',
+                        label: 'Payments',
+                        color: AppColors.success500,
+                      ),
+                    ),
+                    AppSpacing.hGapMd,
+                    Expanded(
+                      child: MetricStatCard(
+                        icon: Icons.account_balance_wallet_outlined,
+                        value: totalCollected > 0
+                            ? '₹${(totalCollected / 1000).toStringAsFixed(1)}K'
+                            : '₹0',
+                        label: 'Collected',
+                        color: AppColors.warning500,
+                      ),
+                    ),
+                    AppSpacing.hGapMd,
+                    Expanded(
+                      child: MetricStatCard(
+                        icon: Icons.pending_actions_outlined,
+                        value: summary.isNotEmpty ? 'Active' : '—',
+                        label: 'Status',
+                        color: AppColors.info500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              SizedBox(
+                height: 118,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  children: [
+                    SizedBox(
+                      width: 148,
+                      child: MetricStatCard(
+                        icon: Icons.payments_outlined,
+                        value: '${feesState.structures.length}',
+                        label: 'Fee Structures',
+                        color: AppColors.secondary500,
+                        compact: true,
+                      ),
+                    ),
+                    AppSpacing.hGapMd,
+                    SizedBox(
+                      width: 148,
+                      child: MetricStatCard(
+                        icon: Icons.receipt_long_outlined,
+                        value: '${feesState.payments.length}',
+                        label: 'Payments',
+                        color: AppColors.success500,
+                        compact: true,
+                      ),
+                    ),
+                    AppSpacing.hGapMd,
+                    SizedBox(
+                      width: 148,
+                      child: MetricStatCard(
+                        icon: Icons.account_balance_wallet_outlined,
+                        value: totalCollected > 0
+                            ? '₹${(totalCollected / 1000).toStringAsFixed(1)}K'
+                            : '₹0',
+                        label: 'Collected',
+                        color: AppColors.warning500,
+                        compact: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            AppSpacing.vGapMd,
+
             // ── Tab bar ──
             TabBar(
               controller: _tabController,
@@ -106,8 +205,6 @@ class _SchoolAdminFeesScreenState extends ConsumerState<SchoolAdminFeesScreen>
                 Tab(text: 'Payments'),
                 Tab(text: 'Summary'),
               ],
-              indicatorColor: _accent,
-              labelColor: _accent,
             ),
             AppSpacing.vGapSm,
 
@@ -139,7 +236,7 @@ class _FeeStructuresTab extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
 
     if (state.isLoading) {
-      return const ShimmerListLoadingWidget(itemCount: 8);
+      return AppLoaderScreen();
     }
 
     if (state.errorMessage != null) {
@@ -217,7 +314,7 @@ class _FeeStructuresTab extends ConsumerWidget {
                       .read(schoolAdminFeesProvider.notifier)
                       .deleteStructure(state.structures[i].id);
                   if (ok && ctx.mounted) {
-                    AppSnackbar.success(ctx, AppStrings.feeStructureDeleted);
+                    AppToast.showSuccess(ctx, AppStrings.feeStructureDeleted);
                   }
                 },
               ),
@@ -269,7 +366,7 @@ class _FeeStructuresTab extends ConsumerWidget {
                   ),
                   AppSpacing.vGapMd,
                   DropdownButtonFormField<String>(
-                    value: frequency,
+                    initialValue: frequency,
                     decoration: const InputDecoration(
                         labelText: AppStrings.frequency,
                         border: OutlineInputBorder()),
@@ -281,7 +378,7 @@ class _FeeStructuresTab extends ConsumerWidget {
                   ),
                   AppSpacing.vGapMd,
                   DropdownButtonFormField<String?>(
-                    value: classId,
+                    initialValue: classId,
                     decoration: const InputDecoration(
                         labelText: AppStrings.classOptional,
                         border: OutlineInputBorder()),
@@ -321,7 +418,7 @@ class _FeeStructuresTab extends ConsumerWidget {
                     Navigator.of(ctx).pop();
                   } else {
                     final err = ref.read(schoolAdminFeesProvider).errorMessage;
-                    AppSnackbar.error(ctx, err ?? AppStrings.failedToCreateFeeStructure);
+                    AppToast.showError(ctx, err ?? AppStrings.failedToCreateFeeStructure);
                   }
                 }
               },
@@ -390,7 +487,7 @@ class _FeePaymentsTab extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
 
     if (state.isLoadingPayments) {
-      return const ShimmerListLoadingWidget(itemCount: 8);
+      return AppLoaderScreen();
     }
 
     if (state.payments.isEmpty) {

@@ -1,9 +1,8 @@
 /**
  * Audit repository — persists super admin actions to database
  */
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 /**
  * Insert audit log. Uses raw SQL for flexibility (table may exist from migrations).

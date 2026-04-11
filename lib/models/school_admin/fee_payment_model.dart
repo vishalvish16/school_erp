@@ -36,11 +36,11 @@ class FeePaymentModel {
 
   factory FeePaymentModel.fromJson(Map<String, dynamic> json) {
     // Support both camelCase (API/Prisma) and snake_case
-    String _str(String k1, String k2) =>
+    String str(String k1, String k2) =>
         json[k1] as String? ?? json[k2] as String? ?? '';
-    String? _strOpt(String k1, String k2) =>
+    String? strOpt(String k1, String k2) =>
         json[k1] as String? ?? json[k2] as String?;
-    DateTime _date(String k1, String k2) {
+    DateTime date(String k1, String k2) {
       final v = json[k1] ?? json[k2];
       if (v == null) return DateTime.now();
       if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
@@ -48,19 +48,19 @@ class FeePaymentModel {
       return DateTime.now();
     }
     return FeePaymentModel(
-      id: _str('id', 'id'),
-      schoolId: _str('schoolId', 'school_id'),
-      studentId: _str('studentId', 'student_id'),
-      studentName: _strOpt('studentName', 'student_name'),
-      feeHead: _str('feeHead', 'fee_head'),
-      academicYear: _str('academicYear', 'academic_year'),
+      id: str('id', 'id'),
+      schoolId: str('schoolId', 'school_id'),
+      studentId: str('studentId', 'student_id'),
+      studentName: strOpt('studentName', 'student_name'),
+      feeHead: str('feeHead', 'fee_head'),
+      academicYear: str('academicYear', 'academic_year'),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      paymentDate: _date('paymentDate', 'payment_date'),
-      paymentMode: _str('paymentMode', 'payment_mode'),
-      receiptNo: _str('receiptNo', 'receipt_no'),
-      collectedBy: _str('collectedBy', 'collected_by'),
-      remarks: _strOpt('remarks', 'remarks'),
-      createdAt: _date('createdAt', 'created_at'),
+      paymentDate: date('paymentDate', 'payment_date'),
+      paymentMode: str('paymentMode', 'payment_mode'),
+      receiptNo: str('receiptNo', 'receipt_no'),
+      collectedBy: str('collectedBy', 'collected_by'),
+      remarks: strOpt('remarks', 'remarks'),
+      createdAt: date('createdAt', 'created_at'),
     );
   }
 

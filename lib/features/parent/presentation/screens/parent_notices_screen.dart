@@ -88,7 +88,7 @@ class _ParentNoticesScreenState extends ConsumerState<ParentNoticesScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: result.notices.length,
-                      separatorBuilder: (_, __) => AppSpacing.vGapMd,
+                      separatorBuilder: (_, _) => AppSpacing.vGapMd,
                       itemBuilder: (_, i) {
                         final n = result.notices[i];
                         return _NoticeCard(notice: n);
@@ -169,6 +169,25 @@ class _NoticeCard extends StatelessWidget {
                                 fontWeight: FontWeight.w600, fontSize: 15),
                           ),
                         ),
+                        if (notice.isUrgent)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.error500.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Urgent',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.error500,
+                              ),
+                            ),
+                          ),
+                        if (notice.isUrgent && notice.isPinned)
+                          AppSpacing.hGapXs,
                         if (notice.isPinned)
                           Icon(Icons.push_pin,
                               size: 16, color: AppColors.warning500),

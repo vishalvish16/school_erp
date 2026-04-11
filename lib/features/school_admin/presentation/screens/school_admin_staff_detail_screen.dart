@@ -17,6 +17,7 @@ import '../../../../models/school_admin/staff_timetable_model.dart';
 import '../../../../models/school_admin/staff_leave_model.dart';
 import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../shared/widgets/app_toast.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -97,10 +98,12 @@ class _SchoolAdminStaffDetailScreenState
   Widget build(BuildContext context) {
     final asyncStaff = ref.watch(_staffDetailProv(widget.staffId));
 
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        leading: BackButton(
+          onPressed: () => context.go('/school-admin/staff'),
+        ),
         title: asyncStaff.maybeWhen(
           data: (s) => Text(s.fullName,
               style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -114,7 +117,7 @@ class _SchoolAdminStaffDetailScreenState
                 TextButton.icon(
                   onPressed: () => context
                       .go('/school-admin/staff/${widget.staffId}/edit'),
-                  icon: const Icon(Icons.edit, size: 18),
+                  icon: const Icon(Icons.edit, size: AppIconSize.sm),
                   label: const Text('Edit'),
                 ),
                 AppSpacing.hGapXs,
@@ -144,15 +147,14 @@ class _SchoolAdminStaffDetailScreenState
         bottom: TabBar(
           controller: _tab,
           isScrollable: true,
-          labelColor: _accent,
-          unselectedLabelColor:
-              Theme.of(context).colorScheme.onSurfaceVariant,
-          indicatorColor: _accent,
+          labelColor: scheme.primary,
+          unselectedLabelColor: scheme.onSurfaceVariant,
+          indicatorColor: scheme.primary,
           tabs: _tabs,
         ),
       ),
       body: asyncStaff.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => AppLoaderScreen(),
         error: (err, _) => _ErrorRetry(
           message: err.toString().replaceAll('Exception: ', ''),
           onRetry: () => ref.invalidate(_staffDetailProv(widget.staffId)),
@@ -264,7 +266,7 @@ class _StatusToggleButtonState extends ConsumerState<_StatusToggleButton> {
       widget.onToggled();
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -288,7 +290,7 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 768;
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
     return RefreshIndicator(
       onRefresh: () async {},
       child: SingleChildScrollView(
@@ -480,7 +482,7 @@ class _QualificationsTab extends ConsumerWidget {
     final async = ref.watch(_staffQualsProv(staffId));
 
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => _ErrorRetry(
         message: err.toString().replaceAll('Exception: ', ''),
         onRetry: () => ref.invalidate(_staffQualsProv(staffId)),
@@ -656,7 +658,7 @@ class _QualCardState extends ConsumerState<_QualCard> {
       widget.onChanged();
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _deleting = false);
@@ -795,7 +797,7 @@ class _QualFormDialogState extends ConsumerState<_QualFormDialog> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -814,7 +816,7 @@ class _DocumentsTab extends ConsumerWidget {
     final async = ref.watch(_staffDocsProv(staffId));
 
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => _ErrorRetry(
         message: err.toString().replaceAll('Exception: ', ''),
         onRetry: () => ref.invalidate(_staffDocsProv(staffId)),
@@ -991,11 +993,11 @@ class _DocCardState extends ConsumerState<_DocCard> {
           .verifyDocument(widget.staffId, widget.doc.id);
       widget.onChanged();
       if (mounted) {
-        AppSnackbar.success(context, 'Document marked as verified');
+        AppToast.showSuccess(context, 'Document marked as verified');
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1019,7 +1021,7 @@ class _DocCardState extends ConsumerState<_DocCard> {
       widget.onChanged();
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -1071,7 +1073,7 @@ class _DocFormDialogState extends ConsumerState<_DocFormDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: _type,
+                initialValue: _type,
                 decoration: const InputDecoration(
                     labelText: 'Document Type *',
                     border: OutlineInputBorder(),
@@ -1137,7 +1139,7 @@ class _DocFormDialogState extends ConsumerState<_DocFormDialog> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1156,7 +1158,7 @@ class _SubjectsTab extends ConsumerWidget {
     final async = ref.watch(_staffSubjectsProv(staffId));
 
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => _ErrorRetry(
         message: err.toString().replaceAll('Exception: ', ''),
         onRetry: () => ref.invalidate(_staffSubjectsProv(staffId)),
@@ -1291,7 +1293,7 @@ class _SubjectCardState extends ConsumerState<_SubjectCard> {
       widget.onChanged();
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _removing = false);
@@ -1404,7 +1406,7 @@ class _AssignSubjectDialogState extends ConsumerState<_AssignSubjectDialog> {
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -1425,7 +1427,7 @@ class _TimetableTab extends ConsumerWidget {
     final async = ref.watch(_staffTimetableProv(staffId));
 
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => _ErrorRetry(
         message: err.toString().replaceAll('Exception: ', ''),
         onRetry: () => ref.invalidate(_staffTimetableProv(staffId)),
@@ -1529,7 +1531,7 @@ class _LeavesTab extends ConsumerWidget {
     final async = ref.watch(_staffLeavesProv(staffId));
 
     return async.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => _ErrorRetry(
         message: err.toString().replaceAll('Exception: ', ''),
         onRetry: () => ref.invalidate(_staffLeavesProv(staffId)),

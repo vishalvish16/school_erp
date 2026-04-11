@@ -8,6 +8,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_auth_constants.dart';
 import '../../design_system/design_system.dart';
+import 'auth_school_setup_entry.dart';
 
 /// Wraps auth content with header, left branding panel (web), footer (web), background
 class AuthScreenLayout extends StatelessWidget {
@@ -54,7 +55,7 @@ class AuthScreenLayout extends StatelessWidget {
           SafeArea(
             child: Column(
               children: [
-                _buildHeader(isMobile: isMobile),
+                _buildHeader(context, isMobile: isMobile),
                 Expanded(
                   child: Center(
                     child: ScrollConfiguration(
@@ -122,7 +123,7 @@ class AuthScreenLayout extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader({required bool isMobile}) {
+  Widget _buildHeader(BuildContext context, {required bool isMobile}) {
     return Padding(
       padding: const EdgeInsets.symmetric(
         vertical: AuthSizes.headerPaddingV,
@@ -135,16 +136,20 @@ class AuthScreenLayout extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Image.asset(
-                AuthAssets.logo,
-                height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
-                fit: BoxFit.contain,
-                isAntiAlias: true,
-                filterQuality: FilterQuality.high,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.school_rounded,
-                  size: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
-                  color: AuthColors.primary,
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onLongPress: () => openSchoolSetupRolePicker(context),
+                child: Image.asset(
+                  AuthAssets.logo,
+                  height: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                  fit: BoxFit.contain,
+                  isAntiAlias: true,
+                  filterQuality: FilterQuality.high,
+                  errorBuilder: (_, _, _) => Icon(
+                    Icons.school_rounded,
+                    size: isMobile ? AuthSizes.logoHeightMobile : AuthSizes.logoHeightWeb,
+                    color: AuthColors.primary,
+                  ),
                 ),
               ),
               if (isMobile) ...[
@@ -184,7 +189,7 @@ class AuthScreenLayout extends StatelessWidget {
           width: AuthSizes.taglineIconSize,
           height: AuthSizes.taglineIconSize,
           fit: BoxFit.contain,
-          errorBuilder: (_, __, ___) => Icon(
+          errorBuilder: (_, _, _) => Icon(
             Icons.shield,
             size: AuthSizes.taglineIconSize,
             color: AuthColors.primary,
@@ -402,7 +407,7 @@ class AuthScreenLayout extends StatelessWidget {
         width: isMobile ? AuthSizes.footerIconMobile : AuthSizes.footerIconWeb,
         height: isMobile ? AuthSizes.footerIconMobile : AuthSizes.footerIconWeb,
         fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => Icon(
+        errorBuilder: (_, _, _) => Icon(
           Icons.verified_user,
           size: isMobile ? AuthSizes.footerIconMobile : AuthSizes.footerIconWeb,
           color: AuthColors.primary,

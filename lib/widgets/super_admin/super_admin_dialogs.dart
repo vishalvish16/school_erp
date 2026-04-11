@@ -3,7 +3,7 @@
 // PURPOSE: Adaptive modal helper — Dialog on web, BottomSheet on mobile
 // =============================================================================
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../../design_system/tokens/app_spacing.dart';
 
@@ -23,7 +23,7 @@ void showAdaptiveModal(
   double? maxWidth,
 }) {
   final effectiveMaxWidth = maxWidth ?? _kDialogMaxWidthSimple;
-  if (kIsWeb || MediaQuery.of(context).size.width >= 768) {
+  if (MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
@@ -35,16 +35,31 @@ void showAdaptiveModal(
       ),
     );
   } else {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      builder: (_) => ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF0A1628).withValues(alpha: 0.92)
+                  : const Color(0xEBEFF6FF),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.white.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+            ),
+            child: SafeArea(top: false, child: content),
+          ),
         ),
-        child: SafeArea(child: content),
       ),
     );
   }

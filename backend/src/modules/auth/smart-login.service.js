@@ -3,14 +3,13 @@
  */
 import crypto from 'crypto';
 import bcrypt from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
 import * as jwtUtils from '../../utils/jwt.js';
 import { AppError } from '../../utils/response.js';
 import * as authRepository from './auth.repository.js';
 import * as smartRepo from './smart-login.repository.js';
 import { sendEmail } from '../../config/mailer.js';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 const MAX_LOGIN_ATTEMPTS_PER_IP = 5;
 const LOGIN_ATTEMPT_WINDOW_MINUTES = 15;

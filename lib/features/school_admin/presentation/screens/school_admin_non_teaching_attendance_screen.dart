@@ -5,13 +5,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
 import '../providers/school_admin_non_teaching_attendance_provider.dart';
 import '../../../../models/school_admin/non_teaching_attendance_model.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
-
-const Color _accent = AppColors.success500;
+import '../../../../shared/widgets/app_toast.dart';
 
 const List<String> _statusOptions = [
   'PRESENT',
@@ -53,121 +51,139 @@ class _State
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(nonTeachingAttendanceProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
+    final scheme = Theme.of(context).colorScheme;
     final summary = state.summary;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: Padding(
         padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Title
-            Text(
-              'Non-Teaching Attendance',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            AppSpacing.vGapLg,
-
-            // Date selector
-            Card(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.chevron_left),
-                      onPressed: () {
-                        final prev = state.selectedDate
-                            .subtract(const Duration(days: 1));
-                        ref
-                            .read(nonTeachingAttendanceProvider.notifier)
-                            .changeDate(prev);
-                      },
-                    ),
-                    AppSpacing.hGapSm,
-                    Text(
-                      _formatDate(state.selectedDate),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    AppSpacing.hGapSm,
-                    IconButton(
-                      icon: const Icon(Icons.chevron_right),
-                      onPressed: () {
-                        final next = state.selectedDate
-                            .add(const Duration(days: 1));
-                        if (!next.isAfter(DateTime.now())) {
-                          ref
-                              .read(nonTeachingAttendanceProvider
-                                  .notifier)
-                              .changeDate(next);
-                        }
-                      },
-                    ),
-                    const Spacer(),
-                    _CategoryFilterChips(),
-                  ],
-                ),
-              ),
-            ),
-            AppSpacing.vGapMd,
-
-            // Summary row
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+            // ── Header ────────────────────────────────────────────────────
+            if (isWide)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  for (final entry in summary.entries)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _SummaryBox(
-                        label: NonTeachingAttendanceModel.labelForStatus(
-                            entry.key),
-                        count: entry.value,
-                        color: NonTeachingAttendanceModel.colorForStatus(
-                            entry.key),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () =>
+                        context.go('/school-admin/non-teaching-staff'),
+                    tooltip: 'Back',
+                  ),
+                  AppSpacing.hGapSm,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Non-Teaching Attendance',
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
+                      AppSpacing.vGapXs,
+                      Text(
+                        'Mark daily attendance for support staff',
+                        style:
+                            Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  // Date navigator
+                  _DateNavigator(state: state),
+                  AppSpacing.hGapMd,
+                  // Category filter
+                  _CategoryFilterDropdown(),
+                ],
+              )
+            else
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context
+                            .go('/school-admin/non-teaching-staff'),
+                      ),
+                      Expanded(
+                        child: Text(
+                          'Non-Teaching Attendance',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ],
+                  ),
+                  AppSpacing.vGapSm,
+                  _DateNavigator(state: state),
+                  AppSpacing.vGapSm,
+                  _CategoryFilterDropdown(),
                 ],
               ),
+            AppSpacing.vGapMd,
+
+            // ── Summary chips ─────────────────────────────────────────────
+            SizedBox(
+              height: 80,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: summary.entries.length,
+                separatorBuilder: (_, _) => AppSpacing.hGapSm,
+                itemBuilder: (ctx, i) {
+                  final entry = summary.entries.elementAt(i);
+                  return _SummaryBox(
+                    label: NonTeachingAttendanceModel.labelForStatus(
+                        entry.key),
+                    count: entry.value,
+                    color: NonTeachingAttendanceModel.colorForStatus(
+                        entry.key),
+                  );
+                },
+              ),
             ),
             AppSpacing.vGapMd,
 
-            // Error
+            // ── Error ─────────────────────────────────────────────────────
             if (state.errorMessage != null)
               _ErrorBanner(message: state.errorMessage!),
 
-            // Staff list
+            // ── Staff list ────────────────────────────────────────────────
             Expanded(
               child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? AppLoaderScreen()
                   : state.staffWithAttendance.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.how_to_reg_outlined,
-                                  size: 56,
-                                  color: AppColors.neutral400),
+                                  size: AppIconSize.xl4,
+                                  color: scheme.onSurfaceVariant),
                               AppSpacing.vGapMd,
-                              const Text(
-                                  'No staff found for selected filters'),
+                              Text(
+                                'No staff found for selected filters',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium
+                                    ?.copyWith(
+                                        color: scheme.onSurfaceVariant),
+                              ),
                             ],
                           ),
                         )
                       : ListView.builder(
-                          itemCount:
-                              state.staffWithAttendance.length,
+                          itemCount: state.staffWithAttendance.length,
                           itemBuilder: (ctx, i) {
-                            final staff =
-                                state.staffWithAttendance[i];
+                            final staff = state.staffWithAttendance[i];
                             return _AttendanceRow(
                               staff: staff,
                               isWide: isWide,
@@ -180,77 +196,159 @@ class _State
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: state.isSaving ? null : _saveAll,
-        backgroundColor: _accent,
         icon: state.isSaving
-            ? const SizedBox(
-                width: 20,
-                height: 20,
+            ? SizedBox(
+                width: AppIconSize.md,
+                height: AppIconSize.md,
                 child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white))
-            : const Icon(Icons.save),
+                    strokeWidth: AppBorderWidth.medium,
+                    color: Theme.of(context).colorScheme.onPrimary))
+            : const Icon(Icons.save, size: AppIconSize.md),
         label: Text(state.isSaving ? 'Saving...' : 'Save All'),
       ),
     );
   }
 
   Future<void> _saveAll() async {
-    final ok = await ref
-        .read(nonTeachingAttendanceProvider.notifier)
-        .saveAll();
+    final ok =
+        await ref.read(nonTeachingAttendanceProvider.notifier).saveAll();
     if (mounted) {
       if (ok) {
-        AppSnackbar.success(context, 'Attendance saved');
+        AppToast.showSuccess(context, 'Attendance saved');
       } else {
-        AppSnackbar.error(context, 'Failed to save');
+        AppToast.showError(context, 'Failed to save');
       }
     }
+  }
+}
+
+// ── Date Navigator ────────────────────────────────────────────────────────────
+
+class _DateNavigator extends ConsumerWidget {
+  const _DateNavigator({required this.state});
+  final NonTeachingAttendanceState state;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: AppRadius.brMd,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left, size: AppIconSize.md),
+            onPressed: () {
+              final prev =
+                  state.selectedDate.subtract(const Duration(days: 1));
+              ref
+                  .read(nonTeachingAttendanceProvider.notifier)
+                  .changeDate(prev);
+            },
+          ),
+          Text(
+            _formatDate(state.selectedDate),
+            style: const TextStyle(
+                fontWeight: FontWeight.w600, fontSize: 14),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, size: AppIconSize.md),
+            onPressed: () {
+              final next =
+                  state.selectedDate.add(const Duration(days: 1));
+              if (!next.isAfter(DateTime.now())) {
+                ref
+                    .read(nonTeachingAttendanceProvider.notifier)
+                    .changeDate(next);
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 
   String _formatDate(DateTime d) {
     const days = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday',
-      'Friday', 'Saturday', 'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final dayName = days[d.weekday - 1];
     return '$dayName, ${d.day} ${months[d.month - 1]} ${d.year}';
   }
 }
 
-// ── Category filter chips ─────────────────────────────────────────────────────
+// ── Category filter dropdown ──────────────────────────────────────────────────
 
-class _CategoryFilterChips extends ConsumerWidget {
+class _CategoryFilterDropdown extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(nonTeachingAttendanceProvider);
-    return DropdownButton<String?>(
-      value: state.categoryFilter,
-      hint: const Text('Category'),
-      isDense: true,
-      underline: const SizedBox.shrink(),
-      items: [
-        const DropdownMenuItem<String?>(
-            value: null, child: Text('All')),
-        for (final c in _categories)
-          DropdownMenuItem<String?>(
-              value: c, child: Text(_catLabel(c))),
-      ],
-      onChanged: (v) => ref
-          .read(nonTeachingAttendanceProvider.notifier)
-          .setCategoryFilter(v),
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: BoxDecoration(
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: AppRadius.brMd,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: state.categoryFilter,
+          hint: const Text('Category', style: TextStyle(fontSize: 13)),
+          isDense: true,
+          items: [
+            const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('All', style: TextStyle(fontSize: 13))),
+            for (final c in _categories)
+              DropdownMenuItem<String?>(
+                  value: c,
+                  child: Text(_catLabel(c),
+                      style: const TextStyle(fontSize: 13))),
+          ],
+          onChanged: (v) => ref
+              .read(nonTeachingAttendanceProvider.notifier)
+              .setCategoryFilter(v),
+        ),
+      ),
     );
   }
 
   String _catLabel(String c) {
     switch (c) {
-      case 'FINANCE': return 'Finance';
-      case 'LIBRARY': return 'Library';
-      case 'LABORATORY': return 'Lab';
-      case 'ADMIN_SUPPORT': return 'Admin';
-      default: return 'General';
+      case 'FINANCE':
+        return 'Finance';
+      case 'LIBRARY':
+        return 'Library';
+      case 'LABORATORY':
+        return 'Lab';
+      case 'ADMIN_SUPPORT':
+        return 'Admin';
+      default:
+        return 'General';
     }
   }
 }
@@ -269,23 +367,37 @@ class _SummaryBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14, vertical: AppSpacing.sm),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      elevation: 0,
+      color: scheme.surface,
+      shape: RoundedRectangleBorder(
         borderRadius: AppRadius.brMd,
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        side: BorderSide(color: color.withValues(alpha: 0.4)),
       ),
-      child: Column(
-        children: [
-          Text('$count',
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: AppRadius.brMd,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$count',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
-                  color: color)),
-          Text(label,
-              style: TextStyle(fontSize: 11, color: color)),
-        ],
+                  color: color),
+            ),
+            Text(
+              label,
+              style: TextStyle(fontSize: 11, color: color),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -323,8 +435,7 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
         existing?['check_in_time'] as String? ?? '';
     _checkOutCtrl.text =
         existing?['check_out_time'] as String? ?? '';
-    _remarksCtrl.text =
-        existing?['remarks'] as String? ?? '';
+    _remarksCtrl.text = existing?['remarks'] as String? ?? '';
   }
 
   @override
@@ -337,7 +448,9 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
 
   void _updateRecord() {
     final staffId = widget.staff['id'] as String? ?? '';
-    ref.read(nonTeachingAttendanceProvider.notifier).updateLocalRecord(
+    ref
+        .read(nonTeachingAttendanceProvider.notifier)
+        .updateLocalRecord(
           staffId,
           _status,
           checkIn: _checkInCtrl.text.trim().isEmpty
@@ -354,22 +467,27 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final firstName = (widget.staff['firstName'] ??
-            widget.staff['first_name'] ?? '') as String;
+        widget.staff['first_name'] ??
+        '') as String;
     final lastName = (widget.staff['lastName'] ??
-            widget.staff['last_name'] ?? '') as String;
+        widget.staff['last_name'] ??
+        '') as String;
     final fullName = '$firstName $lastName'.trim();
     final roleMap = widget.staff['role'] as Map<String, dynamic>?;
     final roleName = (roleMap?['displayName'] ??
-        roleMap?['display_name'] ?? '') as String;
+        roleMap?['display_name'] ??
+        '') as String;
     final empNo = (widget.staff['employeeNo'] ??
-        widget.staff['employee_no'] ?? '') as String;
+        widget.staff['employee_no'] ??
+        '') as String;
 
     final statusColor =
         NonTeachingAttendanceModel.colorForStatus(_status);
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Padding(
         padding: AppSpacing.paddingMd,
         child: Column(
@@ -395,58 +513,62 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(fullName.isEmpty ? empNo : fullName,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w600)),
+                      Text(
+                        fullName.isEmpty ? empNo : fullName,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600),
+                      ),
                       if (roleName.isNotEmpty)
-                        Text(roleName,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.neutral400)),
+                        Text(
+                          roleName,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                  color: scheme.onSurfaceVariant),
+                        ),
                     ],
                   ),
                 ),
-                // Status dropdown
-                DropdownButton<String>(
-                  value: _status,
-                  isDense: true,
-                  underline: const SizedBox.shrink(),
-                  selectedItemBuilder: (ctx) => _statusOptions
-                      .map((s) => Container(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 10, vertical: AppSpacing.xs),
-                            decoration: BoxDecoration(
-                              color: NonTeachingAttendanceModel
-                                  .colorForStatus(s)
-                                  .withValues(alpha: 0.15),
-                              borderRadius:
-                                  AppRadius.brLg,
-                            ),
-                            child: Text(
-                              NonTeachingAttendanceModel
-                                  .labelForStatus(s),
-                              style: TextStyle(
-                                color: NonTeachingAttendanceModel
-                                    .colorForStatus(s),
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ))
-                      .toList(),
-                  items: _statusOptions
-                      .map((s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(
+                // Status dropdown — styled pill
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.12),
+                    borderRadius: AppRadius.brLg,
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _status,
+                      isDense: true,
+                      selectedItemBuilder: (ctx) => _statusOptions
+                          .map((s) => Text(
                                 NonTeachingAttendanceModel
-                                    .labelForStatus(s)),
-                          ))
-                      .toList(),
-                  onChanged: (v) {
-                    if (v != null) {
-                      setState(() => _status = v);
-                      _updateRecord();
-                    }
-                  },
+                                    .labelForStatus(s),
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                              ))
+                          .toList(),
+                      items: _statusOptions
+                          .map((s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(
+                                    NonTeachingAttendanceModel
+                                        .labelForStatus(s)),
+                              ))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) {
+                          setState(() => _status = v);
+                          _updateRecord();
+                        }
+                      },
+                    ),
+                  ),
                 ),
                 // Expand toggle
                 IconButton(
@@ -454,7 +576,7 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
                     _expanded
                         ? Icons.expand_less
                         : Icons.expand_more,
-                    size: 20,
+                    size: AppIconSize.md,
                   ),
                   onPressed: () =>
                       setState(() => _expanded = !_expanded),
@@ -469,11 +591,12 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
                   Expanded(
                     child: TextField(
                       controller: _checkInCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Check-in Time',
                         hintText: 'HH:MM',
                         isDense: true,
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                            borderRadius: AppRadius.brMd),
                       ),
                       onChanged: (_) => _updateRecord(),
                     ),
@@ -482,11 +605,12 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
                   Expanded(
                     child: TextField(
                       controller: _checkOutCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Check-out Time',
                         hintText: 'HH:MM',
                         isDense: true,
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                            borderRadius: AppRadius.brMd),
                       ),
                       onChanged: (_) => _updateRecord(),
                     ),
@@ -496,10 +620,11 @@ class _AttendanceRowState extends ConsumerState<_AttendanceRow> {
                     flex: 2,
                     child: TextField(
                       controller: _remarksCtrl,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Remarks',
                         isDense: true,
-                        border: OutlineInputBorder(),
+                        border: OutlineInputBorder(
+                            borderRadius: AppRadius.brMd),
                       ),
                       onChanged: (_) => _updateRecord(),
                     ),
@@ -520,20 +645,18 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(10),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: AppSpacing.paddingMd,
       decoration: BoxDecoration(
-        color: Theme.of(context)
-            .colorScheme
-            .errorContainer
-            .withValues(alpha: 0.4),
+        color: scheme.errorContainer.withValues(alpha: 0.4),
         borderRadius: AppRadius.brMd,
       ),
-      child: Text(message,
-          style: TextStyle(
-              color: Theme.of(context).colorScheme.error,
-              fontSize: 13)),
+      child: Text(
+        message,
+        style: TextStyle(color: scheme.error, fontSize: 13),
+      ),
     );
   }
 }

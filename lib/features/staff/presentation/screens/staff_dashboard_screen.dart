@@ -11,8 +11,7 @@ import '../providers/staff_dashboard_provider.dart';
 import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
-
-const Color _accent = AppColors.secondary400;
+import '../../../../shared/widgets/metric_stat_card.dart';
 
 class StaffDashboardScreen extends ConsumerWidget {
   const StaffDashboardScreen({super.key});
@@ -20,8 +19,8 @@ class StaffDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncStats = ref.watch(staffDashboardProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
-    final padding = isWide ? 24.0 : 16.0;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final padding = isWide ? AppSpacing.xl : AppSpacing.lg;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(staffDashboardProvider),
@@ -31,8 +30,8 @@ class StaffDashboardScreen extends ConsumerWidget {
         child: asyncStats.when(
           loading: () => const Center(
             child: Padding(
-              padding: EdgeInsets.all(64),
-              child: CircularProgressIndicator(),
+              padding: EdgeInsets.all(AppSpacing.xl5),
+              child: CircularProgressIndicator(strokeWidth: 2.5),
             ),
           ),
           error: (err, _) => _ErrorCard(
@@ -43,7 +42,7 @@ class StaffDashboardScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Staff Dashboard',
+                AppStrings.staffDashboardTitle,
                 style: Theme.of(context)
                     .textTheme
                     .headlineSmall
@@ -61,7 +60,7 @@ class StaffDashboardScreen extends ConsumerWidget {
               AppSpacing.vGapXl,
 
               // Stats cards
-              _buildStatsGrid(context, stats, isWide),
+              _buildStatsRow(context, stats, isWide),
               AppSpacing.vGapXl,
 
               // Quick actions
@@ -80,36 +79,36 @@ class StaffDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsGrid(
+  Widget _buildStatsRow(
       BuildContext context, StaffDashboardModel stats, bool isWide) {
     final cards = [
-      _StatCard(
+      MetricStatCard(
         icon: Icons.today,
-        value: '₹${_fmt(stats.feeCollectedToday)}',
-        label: 'Collected Today',
-        subtitle: '${stats.totalPaymentsToday} payments',
-        color: _accent,
+        value: '\u20B9${_fmt(stats.feeCollectedToday)}',
+        label: AppStrings.collectedToday,
+        subtitle: AppStrings.paymentsCount(stats.totalPaymentsToday),
+        color: AppColors.secondary400,
         onTap: () => context.go('/staff/fees'),
       ),
-      _StatCard(
+      MetricStatCard(
         icon: Icons.calendar_month,
-        value: '₹${_fmt(stats.feeCollectedThisMonth)}',
-        label: 'This Month',
-        subtitle: '${stats.totalPaymentsThisMonth} payments',
+        value: '\u20B9${_fmt(stats.feeCollectedThisMonth)}',
+        label: AppStrings.thisMonth,
+        subtitle: AppStrings.paymentsCount(stats.totalPaymentsThisMonth),
         color: AppColors.success500,
         onTap: () => context.go('/staff/fees'),
       ),
-      _StatCard(
+      MetricStatCard(
         icon: Icons.people,
         value: '${stats.totalStudents}',
-        label: 'Total Students',
-        color: Colors.purple,
+        label: AppStrings.totalStudents,
+        color: AppColors.primary500,
         onTap: () => context.go('/staff/students'),
       ),
-      _StatCard(
+      MetricStatCard(
         icon: Icons.campaign,
         value: '${stats.activeNoticesCount}',
-        label: 'Active Notices',
+        label: AppStrings.activeNotices,
         color: AppColors.warning500,
         onTap: () => context.go('/staff/notices'),
       ),
@@ -117,30 +116,55 @@ class StaffDashboardScreen extends ConsumerWidget {
 
     if (isWide) {
       return Row(
-        children: cards
-            .map((c) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: c,
-                  ),
-                ))
-            .toList(),
+        children: [
+          for (int i = 0; i < cards.length; i++) ...[
+            Expanded(child: cards[i]),
+            if (i < cards.length - 1) SizedBox(width: AppSpacing.md),
+          ],
+        ],
       );
     }
-    return Column(
-      children: [
-        Row(children: [
-          Expanded(child: cards[0]),
-          AppSpacing.hGapMd,
-          Expanded(child: cards[1]),
-        ]),
-        AppSpacing.vGapMd,
-        Row(children: [
-          Expanded(child: cards[2]),
-          AppSpacing.hGapMd,
-          Expanded(child: cards[3]),
-        ]),
-      ],
+
+    // Narrow: horizontal scroll strip
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        separatorBuilder: (_, __) => SizedBox(width: AppSpacing.md),
+        itemCount: cards.length,
+        itemBuilder: (_, i) => SizedBox(
+          width: 148,
+          child: MetricStatCard(
+            compact: true,
+            icon: [Icons.today, Icons.calendar_month, Icons.people, Icons.campaign][i],
+            value: [
+              '\u20B9${_fmt(stats.feeCollectedToday)}',
+              '\u20B9${_fmt(stats.feeCollectedThisMonth)}',
+              '${stats.totalStudents}',
+              '${stats.activeNoticesCount}',
+            ][i],
+            label: [
+              AppStrings.collectedToday,
+              AppStrings.thisMonth,
+              AppStrings.totalStudents,
+              AppStrings.activeNotices,
+            ][i],
+            color: [
+              AppColors.secondary400,
+              AppColors.success500,
+              AppColors.primary500,
+              AppColors.warning500,
+            ][i],
+            onTap: [
+              () => context.go('/staff/fees'),
+              () => context.go('/staff/fees'),
+              () => context.go('/staff/students'),
+              () => context.go('/staff/notices'),
+            ][i],
+          ),
+        ),
+      ),
     );
   }
 
@@ -148,26 +172,26 @@ class StaffDashboardScreen extends ConsumerWidget {
     final actions = [
       _QuickAction(
         icon: Icons.add_card,
-        label: 'Collect Fee',
-        color: _accent,
+        label: AppStrings.collectFee,
+        color: AppColors.secondary400,
         onTap: () => context.go('/staff/fees'),
       ),
       _QuickAction(
         icon: Icons.person_search,
-        label: 'Find Student',
-        color: Colors.purple,
+        label: AppStrings.findStudent,
+        color: AppColors.primary500,
         onTap: () => context.go('/staff/students'),
       ),
       _QuickAction(
         icon: Icons.campaign,
-        label: 'View Notices',
+        label: AppStrings.viewNotices,
         color: AppColors.warning500,
         onTap: () => context.go('/staff/notices'),
       ),
       _QuickAction(
         icon: Icons.notifications,
-        label: 'Notifications',
-        color: Colors.teal,
+        label: AppStrings.notifications,
+        color: AppColors.info500,
         onTap: () => context.go('/staff/notifications'),
       ),
     ];
@@ -176,7 +200,7 @@ class StaffDashboardScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Quick Actions',
+          AppStrings.quickActions,
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -185,14 +209,12 @@ class StaffDashboardScreen extends ConsumerWidget {
         AppSpacing.vGapMd,
         if (isWide)
           Row(
-            children: actions
-                .map((a) => Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: a,
-                      ),
-                    ))
-                .toList(),
+            children: [
+              for (int i = 0; i < actions.length; i++) ...[
+                Expanded(child: actions[i]),
+                if (i < actions.length - 1) SizedBox(width: AppSpacing.md),
+              ],
+            ],
           )
         else
           Row(
@@ -224,16 +246,16 @@ class StaffDashboardScreen extends ConsumerWidget {
 
   Widget _buildRecentPayments(
       BuildContext context, List<StaffRecentPayment> payments) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Text(
-              'Recent Payments',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
+              AppStrings.recentPayments,
+              style: textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
             const Spacer(),
@@ -256,33 +278,35 @@ class StaffDashboardScreen extends ConsumerWidget {
                 dense: true,
                 leading: CircleAvatar(
                   radius: 16,
-                  backgroundColor: _accent.withValues(alpha: 0.15),
-                  child: const Icon(Icons.receipt, size: 16, color: _accent),
+                  backgroundColor: AppColors.secondary400.withValues(alpha: 0.15),
+                  child: Icon(Icons.receipt, size: AppIconSize.sm, color: AppColors.secondary400),
                 ),
                 title: Text(
                   p.studentName,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
+                  style: textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 subtitle: Text(
-                  '${p.feeHead}  •  ${p.receiptNo}  •  ${p.paymentMode}',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  '${p.feeHead}  \u2022  ${p.receiptNo}  \u2022  ${p.paymentMode}',
+                  style: textTheme.bodySmall,
                 ),
                 trailing: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '₹${_fmt(p.amount)}',
-                      style: const TextStyle(
+                      '\u20B9${_fmt(p.amount)}',
+                      style: textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        fontSize: 13,
                         color: AppColors.success500,
                       ),
                     ),
                     Text(
                       _formatDate(p.paymentDate),
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -313,75 +337,6 @@ class StaffDashboardScreen extends ConsumerWidget {
   }
 }
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-    this.subtitle,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-  final String? subtitle;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 26),
-          AppSpacing.vGapSm,
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (subtitle != null)
-            Text(
-              subtitle!,
-              style: const TextStyle(fontSize: 11, color: AppColors.neutral400),
-              overflow: TextOverflow.ellipsis,
-            ),
-        ],
-      ),
-    );
-    return Card(
-      child: onTap != null
-          ? InkWell(
-              onTap: onTap,
-              borderRadius: AppRadius.brLg,
-              child: content,
-            )
-          : content,
-    );
-  }
-}
-
 // ── Quick Action ──────────────────────────────────────────────────────────────
 
 class _QuickAction extends StatelessWidget {
@@ -404,7 +359,7 @@ class _QuickAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppRadius.brLg,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: AppSpacing.paddingMd,
           child: Row(
             children: [
               Container(
@@ -414,15 +369,14 @@ class _QuickAction extends StatelessWidget {
                   color: color.withValues(alpha: 0.12),
                   borderRadius: AppRadius.brMd,
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: AppIconSize.md),
               ),
-              const SizedBox(width: 10),
+              AppSpacing.hGapMd,
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
                   ),
                 ),
               ),
@@ -444,22 +398,32 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(AppSpacing.xl2),
         child: Column(
           children: [
             Icon(Icons.error_outline,
-                size: 48, color: Theme.of(context).colorScheme.error),
+                size: AppIconSize.xl4, color: scheme.error),
             AppSpacing.vGapLg,
             Text(AppStrings.couldNotLoadDashboard,
-                style: Theme.of(context).textTheme.titleMedium),
+                style: textTheme.titleMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                )),
             AppSpacing.vGapSm,
             Text(error,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
                 textAlign: TextAlign.center),
-            AppSpacing.vGapLg,
-            FilledButton(onPressed: onRetry, child: const Text(AppStrings.retry)),
+            AppSpacing.vGapXl,
+            FilledButton.icon(
+              onPressed: onRetry,
+              icon: Icon(Icons.refresh, size: AppIconSize.md),
+              label: const Text(AppStrings.retry),
+            ),
           ],
         ),
       ),

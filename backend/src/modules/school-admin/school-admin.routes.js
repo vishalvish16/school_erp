@@ -7,6 +7,8 @@ import express from 'express';
 import { verifyAccessToken } from '../../middleware/auth.middleware.js';
 import { requireSchoolAdmin } from '../../middleware/school-admin-guard.middleware.js';
 import * as ctrl from './school-admin.controller.js';
+import * as reportCtrl from '../student-report/student-report.controller.js';
+import { validate as reportValidate, sendStudentNoticeSchema } from '../student-report/student-report.validation.js';
 import {
     validate,
     createStudentSchema,
@@ -38,6 +40,10 @@ import {
     updateUserProfileSchema,
     updateSchoolProfileSchema,
     changePasswordSchema,
+    createParentSchema,
+    updateParentSchema,
+    linkParentSchema,
+    updateParentLinkSchema,
 } from './school-admin.validation.js';
 
 const router = express.Router();
@@ -54,6 +60,15 @@ router.get('/academic-years', ctrl.getAcademicYears);
 // ── Students ──────────────────────────────────────────────────────────────────
 router.get('/students',     ctrl.getStudents);
 router.post('/students',    validate(createStudentSchema), ctrl.createStudent);
+
+// Student Report sub-routes (must come before generic :id route to avoid shadowing)
+router.get('/students/:id/report',              reportCtrl.getStudentReportSchoolAdmin);
+router.get('/students/:id/attendance/annual',   reportCtrl.getStudentAttendanceAnnualSchoolAdmin);
+router.get('/students/:id/attendance',          reportCtrl.getStudentAttendanceSchoolAdmin);
+router.get('/students/:id/fees',                reportCtrl.getStudentFeesSchoolAdmin);
+router.get('/students/:id/notices',             reportCtrl.getStudentNoticesSchoolAdmin);
+router.post('/students/:id/notices',            reportValidate(sendStudentNoticeSchema), reportCtrl.sendStudentNoticeSchoolAdmin);
+
 router.get('/students/:id', ctrl.getStudentById);
 router.put('/students/:id', validate(updateStudentSchema), ctrl.updateStudent);
 router.delete('/students/:id', ctrl.deleteStudent);
@@ -150,6 +165,18 @@ router.delete('/notices/:id', ctrl.deleteNotice);
 router.get('/notifications/unread-count', ctrl.getUnreadNotificationCount);
 router.get('/notifications',              ctrl.getNotifications);
 router.put('/notifications/:id/read',     ctrl.markNotificationRead);
+
+// ── Parents ──────────────────────────────────────────────────────────────────
+router.get('/parents',                              ctrl.searchParents);
+router.post('/parents',                             validate(createParentSchema), ctrl.createParent);
+router.get('/parents/:parentId',                    ctrl.getParentById);
+router.patch('/parents/:parentId',                  validate(updateParentSchema), ctrl.updateParent);
+
+// Parent<->Student links
+router.get('/students/:id/parents',                 ctrl.getStudentParents);
+router.post('/students/:id/parents',                validate(linkParentSchema), ctrl.linkParentToStudent);
+router.patch('/students/:id/parents/:parentId',     validate(updateParentLinkSchema), ctrl.updateParentLink);
+router.delete('/students/:id/parents/:parentId',    ctrl.unlinkParentFromStudent);
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 router.get('/profile',          ctrl.getProfile);

@@ -2,13 +2,12 @@
  * 2FA (TOTP) Service — setup, enable, disable, verify
  */
 import { generateSecret, verify, generateURI } from 'otplib';
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../../utils/response.js';
 import * as jwtUtils from '../../utils/jwt.js';
 import * as smartRepo from './smart-login.repository.js';
 import crypto from 'crypto';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 import bcrypt from 'bcrypt';
 
 const ISSUER = 'VIDYRON Super Admin';

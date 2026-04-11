@@ -2,9 +2,8 @@
  * Student Portal Repository — Prisma queries for student portal.
  * All queries are scoped to studentId/schoolId from req.student.
  */
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 export async function findByUserId(userId) {
     return prisma.student.findFirst({
@@ -199,11 +198,11 @@ export async function getTimetable(classId, sectionId, schoolId) {
     }));
 }
 
-export async function getNotices(schoolId, page, limit) {
-    const skip = (page - 1) * limit;
+export async function getNotices(studentId, schoolId, page, limit) {
     const now = new Date();
 
-    const where = {
+    // 1. School notices (targetRole: student, all, or null)
+    const schoolWhere = {
         schoolId,
         deletedAt: null,
         publishedAt: { lte: now },
@@ -224,11 +223,10 @@ export async function getNotices(schoolId, page, limit) {
         ],
     };
 
-    const [data, total] = await Promise.all([
+    // 2. Student notices for this student (targetStudent = true)
+    const [schoolNotices, studentNotices] = await Promise.all([
         prisma.schoolNotice.findMany({
-            where,
-            skip,
-            take: limit,
+            where: schoolWhere,
             orderBy: [{ isPinned: 'desc' }, { publishedAt: 'desc' }],
             select: {
                 id: true,
@@ -239,15 +237,97 @@ export async function getNotices(schoolId, page, limit) {
                 isPinned: true,
             },
         }),
-        prisma.schoolNotice.count({ where }),
+        prisma.studentNotice.findMany({
+            where: {
+                schoolId,
+                studentId,
+                targetStudent: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                subject: true,
+                message: true,
+                priority: true,
+                createdAt: true,
+            },
+        }),
     ]);
 
-    return { data, pagination: { page, limit, total, total_pages: Math.ceil(total / limit) } };
+    // Merge and normalize
+    const schoolMapped = schoolNotices.map((n) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body,
+        publishedAt: n.publishedAt,
+        expiresAt: n.expiresAt,
+        isPinned: n.isPinned,
+    }));
+
+    const studentMapped = studentNotices.map((n) => ({
+        id: `stn-${n.id}`,
+        title: n.subject,
+        body: n.message,
+        publishedAt: n.createdAt,
+        expiresAt: null,
+        isPinned: false,
+    }));
+
+    const merged = [...schoolMapped, ...studentMapped].sort((a, b) => {
+        const dateA = a.publishedAt ? new Date(a.publishedAt) : new Date(0);
+        const dateB = b.publishedAt ? new Date(b.publishedAt) : new Date(0);
+        return dateB - dateA;
+    });
+
+    const total = merged.length;
+    const skip = (page - 1) * limit;
+    const data = merged.slice(skip, skip + limit);
+
+    return {
+        data,
+        pagination: { page, limit, total, total_pages: Math.ceil(total / limit) },
+    };
 }
 
-export async function getNoticeById(id, schoolId) {
+export async function getNoticeById(id, studentId, schoolId) {
     const now = new Date();
-    return prisma.schoolNotice.findFirst({
+
+    // StudentNotice: id format "stn-{uuid}"
+    if (id.startsWith('stn-')) {
+        const rawId = id.slice(4);
+        const notice = await prisma.studentNotice.findFirst({
+            where: {
+                id: rawId,
+                schoolId,
+                studentId,
+                targetStudent: true,
+            },
+            include: {
+                sentBy: {
+                    select: { id: true, firstName: true, lastName: true },
+                },
+            },
+        });
+        if (!notice) return null;
+        return {
+            id: `stn-${notice.id}`,
+            title: notice.subject,
+            body: notice.message,
+            publishedAt: notice.createdAt,
+            expiresAt: null,
+            isPinned: false,
+            source: 'student',
+            priority: notice.priority,
+            sentBy: notice.sentBy
+                ? {
+                      id: notice.sentBy.id,
+                      name: [notice.sentBy.firstName, notice.sentBy.lastName].filter(Boolean).join(' ') || 'Unknown',
+                  }
+                : null,
+        };
+    }
+
+    const notice = await prisma.schoolNotice.findFirst({
         where: {
             id,
             schoolId,
@@ -270,11 +350,13 @@ export async function getNoticeById(id, schoolId) {
             ],
         },
     });
+    return notice ? { ...notice, source: 'school' } : null;
 }
 
-export async function getStudentDocuments(studentId) {
+export async function getStudentDocuments(studentId, schoolId) {
     return prisma.studentDocument.findMany({
-        where: { studentId, deletedAt: null },
+        where: { studentId, schoolId, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
         select: {
             id: true,
             documentType: true,
@@ -283,6 +365,20 @@ export async function getStudentDocuments(studentId) {
             fileSizeKb: true,
             verified: true,
             verifiedAt: true,
+        },
+    });
+}
+
+export async function findActiveDrivers(schoolId) {
+    return prisma.driver.findMany({
+        where: {
+            schoolId,
+            tripActive: true,
+            deletedAt: null,
+            isActive: true,
+        },
+        include: {
+            vehicle: { select: { vehicleNo: true } },
         },
     });
 }

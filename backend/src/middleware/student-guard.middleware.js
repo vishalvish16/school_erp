@@ -5,10 +5,9 @@
  * Attaches req.student (the Student record) — all downstream queries MUST use
  * req.student.schoolId for tenant isolation instead of req.user.school_id.
  */
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/response.js';
 
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 export const requireStudent = async (req, res, next) => {
     try {

@@ -28,7 +28,7 @@ class ThemeToggleButton extends StatelessWidget {
           child: Icon(
             isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
             key: ValueKey(isDark),
-            color: Theme.of(context).colorScheme.primary,
+            // Inherits from parent IconTheme — matches bell icon exactly
           ),
         ),
         onPressed: notifier.toggle,

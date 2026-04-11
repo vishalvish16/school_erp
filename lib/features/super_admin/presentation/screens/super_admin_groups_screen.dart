@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/super_admin_service.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../../widgets/super_admin/dialogs/add_school_dialog.dart';
 import '../../../../widgets/super_admin/dialogs/add_school_to_group_dialog.dart';
 import '../../../../widgets/super_admin/dialogs/create_group_dialog.dart';
@@ -17,7 +17,6 @@ import '../../../../widgets/super_admin/dialogs/edit_group_dialog.dart';
 import '../../../../widgets/super_admin/dialogs/school_detail_dialog.dart';
 import '../../../../widgets/super_admin/super_admin_dialogs.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class SuperAdminGroupsScreen extends ConsumerStatefulWidget {
   const SuperAdminGroupsScreen({super.key});
@@ -592,11 +591,8 @@ class _SuperAdminGroupsScreenState extends ConsumerState<SuperAdminGroupsScreen>
               ),
             ),
             if (_loading)
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: padding),
-                  child: const ShimmerListLoadingWidget(itemCount: 8),
-                ),
+              const Expanded(
+                child: AppLoaderScreen(),
               )
             else if (_error != null)
               Expanded(

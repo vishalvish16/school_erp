@@ -3,16 +3,15 @@
 // PURPOSE: Admin view of non-teaching staff leaves with approve/reject actions.
 // =============================================================================
 
-import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+import '../../../../shared/widgets/app_toast.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
+
 import '../providers/school_admin_non_teaching_leaves_provider.dart';
 import '../../../../models/school_admin/non_teaching_leave_model.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -59,7 +58,7 @@ class _State
   Widget build(BuildContext context) {
     final state = ref.watch(nonTeachingLeavesProvider);
     final cs = Theme.of(context).colorScheme;
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
 
     return RefreshIndicator(
       onRefresh: () => ref
@@ -77,6 +76,10 @@ class _State
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => context.go('/school-admin/non-teaching-staff'),
+                  ),
                   Text(
                     'Non-Teaching Staff Leaves',
                     style: Theme.of(context)
@@ -106,7 +109,7 @@ class _State
             // ── Content ──
             Expanded(
               child: state.isLoading
-                  ? const ShimmerListLoadingWidget(itemCount: 8)
+                  ? AppLoaderScreen()
                   : state.errorMessage != null
                       ? Center(
                           child: Card(
@@ -214,9 +217,9 @@ class _State
         .reviewLeave(leaveId, 'APPROVED');
     if (context.mounted) {
       if (ok) {
-        AppSnackbar.success(context, 'Leave approved');
+        AppToast.showSuccess(context, 'Leave approved');
       } else {
-        AppSnackbar.error(context, 'Failed to approve');
+        AppToast.showError(context, 'Failed to approve');
       }
     }
   }
@@ -283,9 +286,9 @@ class _State
             adminRemark: remark);
     if (context.mounted) {
       if (ok) {
-        AppSnackbar.warning(context, 'Leave rejected');
+        AppToast.showWarning(context, 'Leave rejected');
       } else {
-        AppSnackbar.error(context, 'Failed to reject');
+        AppToast.showError(context, 'Failed to reject');
       }
     }
   }
@@ -305,121 +308,151 @@ class _LeaveCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        leave.staffName ?? 'Staff',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15),
-                      ),
-                      if (leave.employeeNo != null)
-                        Text(leave.employeeNo!,
-                            style: const TextStyle(
-                                fontFamily: 'monospace',
-                                fontSize: 11,
-                                color: AppColors.neutral400)),
-                      if (leave.roleName != null)
-                        Text(leave.roleName!,
-                            style: const TextStyle(
-                                fontSize: 12, color: AppColors.neutral400)),
-                    ],
-                  ),
-                ),
-                _Chip(
-                  label: leave.statusLabel,
-                  color: leave.statusColor,
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            Row(
-              children: [
-                _Chip(
-                    label: leave.leaveTypeLabel,
-                    color: leave.leaveTypeColor),
-                AppSpacing.hGapSm,
-                Text(
-                  '${_fmt(leave.fromDate)} – ${_fmt(leave.toDate)}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 13),
-                ),
-                AppSpacing.hGapSm,
-                Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context)
-                        .colorScheme
-                        .surfaceContainerHighest,
-                    borderRadius: AppRadius.brLg,
-                  ),
-                  child: Text(
-                    '${leave.totalDays} day${leave.totalDays != 1 ? 's' : ''}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-            AppSpacing.vGapSm,
-
-            Text(
-              leave.reason,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13, color: AppColors.neutral400),
-            ),
-
-            if (leave.adminRemark != null) ...[
-              const SizedBox(height: 6),
-              Text(
-                'Remark: ${leave.adminRemark}',
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.neutral400,
-                    fontStyle: FontStyle.italic),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-
-            if (onApprove != null || onReject != null) ...[
-              const SizedBox(height: 10),
+      clipBehavior: Clip.hardEdge,
+      child: InkWell(
+        onTap: () {},
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (onReject != null)
-                    OutlinedButton(
-                      onPressed: onReject,
-                      style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.error500,
-                          side: const BorderSide(color: AppColors.error500)),
-                      child: const Text('Reject'),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          leave.staffName ?? 'Staff',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15),
+                        ),
+                        if (leave.employeeNo != null)
+                          Text(leave.employeeNo!,
+                              style: const TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontSize: 11,
+                                  color: AppColors.neutral400)),
+                        if (leave.roleName != null)
+                          Text(leave.roleName!,
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppColors.neutral400)),
+                      ],
                     ),
-                  AppSpacing.hGapSm,
-                  if (onApprove != null)
-                    FilledButton(
-                      onPressed: onApprove,
-                      style:
-                          FilledButton.styleFrom(backgroundColor: _accent),
-                      child: const Text('Approve'),
-                    ),
+                  ),
+                  HoverPopupMenu<String>(
+                    icon: const Icon(Icons.more_vert, size: 22),
+                    itemBuilder: (_) => [
+                      if (onApprove != null)
+                        PopupMenuItem(
+                          value: 'approve',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.check_circle_outline,
+                                color: AppColors.success500),
+                            title: const Text('Approve'),
+                          ),
+                        ),
+                      if (onReject != null)
+                        PopupMenuItem(
+                          value: 'reject',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.cancel_outlined,
+                                color: AppColors.error500),
+                            title: const Text('Reject',
+                                style: TextStyle(color: AppColors.error500)),
+                          ),
+                        ),
+                      const PopupMenuItem(
+                        value: 'view',
+                        child: ListTile(
+                          dense: true,
+                          leading: Icon(Icons.visibility_outlined),
+                          title: Text('View Details'),
+                        ),
+                      ),
+                    ],
+                    onSelected: (v) {
+                      if (v == 'approve') onApprove?.call();
+                      if (v == 'reject') onReject?.call();
+                    },
+                  ),
                 ],
               ),
+              AppSpacing.vGapXs,
+
+              Row(
+                children: [
+                  _Chip(
+                      label: leave.leaveTypeLabel,
+                      color: leave.leaveTypeColor),
+                  AppSpacing.hGapSm,
+                  Text(
+                    '${_fmt(leave.fromDate)} – ${_fmt(leave.toDate)}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                  ),
+                  AppSpacing.hGapSm,
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacing.sm, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: cs.surfaceContainerHighest,
+                      borderRadius: AppRadius.brLg,
+                    ),
+                    child: Text(
+                      '${leave.totalDays} day${leave.totalDays != 1 ? 's' : ''}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Divider(
+                    color: cs.outlineVariant.withValues(alpha: 0.5)),
+              ),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      leave.reason,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                  AppSpacing.hGapSm,
+                  _Chip(
+                    label: leave.statusLabel,
+                    color: leave.statusColor,
+                  ),
+                ],
+              ),
+
+              if (leave.adminRemark != null) ...[
+                AppSpacing.vGapXs,
+                Text(
+                  'Remark: ${leave.adminRemark}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontStyle: FontStyle.italic,
+                      ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

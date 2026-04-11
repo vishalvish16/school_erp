@@ -10,6 +10,7 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/super_admin_service.dart';
 import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../shared/widgets/metric_stat_card.dart';
 
 class SuperAdminInfraScreen extends ConsumerStatefulWidget {
   const SuperAdminInfraScreen({super.key});
@@ -155,30 +156,52 @@ class _SuperAdminInfraScreenState extends ConsumerState<SuperAdminInfraScreen> {
     final responseMs = _status['response_ms'] ?? 45;
     final connections = _status['active_connections'] ?? 0;
     final storagePct = _status['storage_used_pct'] ?? 62;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 600;
-        final cards = [
-          _InfraStatCard(icon: Icons.schedule, value: '$uptime%', label: 'Uptime', color: AppColors.success500),
-          _InfraStatCard(icon: Icons.speed, value: '${responseMs}ms', label: 'Response Time', color: AppColors.secondary500),
-          _InfraStatCard(icon: Icons.link, value: '$connections', label: 'Active Connections', color: Colors.purple),
-          _InfraStatCard(icon: Icons.storage, value: '$storagePct%', label: 'Storage Used', color: AppColors.warning500),
-        ];
-        if (isWide) {
-          return Row(
-            children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.only(right: 12), child: c))).toList(),
+    final useRow = MediaQuery.sizeOf(context).width >= 600;
+    final items = <(IconData, String, String, Color)>[
+      (Icons.schedule, '$uptime%', 'Uptime', AppColors.success500),
+      (Icons.speed, '${responseMs}ms', 'Response Time', AppColors.secondary500),
+      (Icons.link, '$connections', 'Active Connections', Colors.purple),
+      (Icons.storage, '$storagePct%', 'Storage Used', AppColors.warning500),
+    ];
+    if (useRow) {
+      return Row(
+        children: [
+          for (var i = 0; i < items.length; i++) ...[
+            Expanded(
+              child: MetricStatCard(
+                icon: items[i].$1,
+                value: items[i].$2,
+                label: items[i].$3,
+                color: items[i].$4,
+                compact: false,
+              ),
+            ),
+            if (i < items.length - 1) const SizedBox(width: 12),
+          ],
+        ],
+      );
+    }
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: items.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, i) {
+          final e = items[i];
+          return SizedBox(
+            width: 148,
+            child: MetricStatCard(
+              icon: e.$1,
+              value: e.$2,
+              label: e.$3,
+              color: e.$4,
+              compact: true,
+            ),
           );
-        }
-        return GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.4,
-          children: cards,
-        );
-      },
+        },
+      ),
     );
   }
 
@@ -264,34 +287,3 @@ class _SuperAdminInfraScreenState extends ConsumerState<SuperAdminInfraScreen> {
   }
 }
 
-class _InfraStatCard extends StatelessWidget {
-  const _InfraStatCard({required this.icon, required this.value, required this.label, required this.color});
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: AppSpacing.paddingLg,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: AppSpacing.paddingSm,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: AppRadius.brMd),
-              child: Icon(icon, size: 24, color: color),
-            ),
-            AppSpacing.vGapMd,
-            Text(value, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-            AppSpacing.vGapXs,
-            Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-          ],
-        ),
-      ),
-    );
-  }
-}

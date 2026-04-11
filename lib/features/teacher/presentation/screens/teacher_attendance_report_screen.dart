@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/services/teacher_service.dart';
 import '../../../../models/teacher/attendance_model.dart';
 import '../providers/teacher_attendance_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -121,7 +120,7 @@ class _TeacherAttendanceReportScreenState
                     loading: () => const LinearProgressIndicator(),
                     error: (e, _) => Text('Error: $e'),
                     data: (sections) => DropdownButtonFormField<String>(
-                      value: _selectedSection?.sectionId,
+                      initialValue: _selectedSection?.sectionId,
                       decoration: const InputDecoration(
                         labelText: 'Select Section',
                         border: OutlineInputBorder(),
@@ -212,7 +211,7 @@ class _ReportContent extends ConsumerWidget {
     final asyncReport = ref.watch(_attendanceReportProvider(params));
 
     return asyncReport.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -321,7 +320,7 @@ class _ReportContent extends ConsumerWidget {
                                     DataCell(Text('${s.late}')),
                                     DataCell(Text('${s.halfDay}')),
                                     DataCell(Text(
-                                      '${s.attendancePct.toStringAsFixed(1)}',
+                                      s.attendancePct.toStringAsFixed(1),
                                       style: TextStyle(
                                         fontWeight: FontWeight.w600,
                                         color: s.attendancePct >= 90

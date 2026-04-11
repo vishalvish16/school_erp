@@ -3,7 +3,6 @@
 // =============================================================================
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,16 +10,17 @@ import '../../../../models/school_admin/student_model.dart';
 import '../../../../models/school_admin/school_class_model.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../../widgets/common/searchable_dropdown_form_field.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
+import '../../../../shared/widgets/list_pagination_bar.dart';
 import '../../../../shared/widgets/list_table_view.dart';
+import '../../../../shared/widgets/list_screen_mobile_toolbar.dart';
+import '../../../../shared/widgets/mobile_infinite_scroll.dart';
 import '../providers/school_admin_students_provider.dart';
 import '../providers/school_admin_classes_provider.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
-
-const Color _accent = AppColors.success500;
+import '../../../../shared/widgets/app_toast.dart';
 
 class SchoolAdminStudentsScreen extends ConsumerStatefulWidget {
   const SchoolAdminStudentsScreen({super.key});
@@ -86,61 +86,74 @@ class _SchoolAdminStudentsScreenState
   Widget build(BuildContext context) {
     final state = ref.watch(schoolAdminStudentsProvider);
     final classesState = ref.watch(schoolAdminClassesProvider);
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final width = MediaQuery.sizeOf(context).width;
+    final isWide = width >= AppBreakpoints.tablet;
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.read(schoolAdminStudentsProvider.notifier).loadStudents(refresh: true);
       },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  isNarrow ? 16 : 24,
-                  isNarrow ? 16 : 24,
-                  isNarrow ? 16 : 24,
-                  16,
-                ),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      'Students',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () =>
-                          _showAddDialog(context, classesState.classes),
-                      icon: const Icon(Icons.add, size: 20),
-                      label: Text(AppStrings.addStudent),
-                    ),
-                  ],
-                ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isWide) ...[
+            // ── Wide header ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppStrings.students,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'Manage student enrollment and records',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.download_outlined, size: AppIconSize.md),
+                        label: Text(AppStrings.export),
+                      ),
+                      AppSpacing.hGapSm,
+                      FilledButton.icon(
+                        onPressed: () => _showAddDialog(context, classesState.classes),
+                        icon: const Icon(Icons.add, size: AppIconSize.md),
+                        label: Text(AppStrings.addStudent),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-
-              // Search + Filters
-              Center(
+            ),
+            // ── Wide filter card — same max-width as table ──────────────────
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _tableContentWidth + 48),
                 child: Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: isNarrow ? 16 : 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Card(
                     child: Padding(
                       padding: AppSpacing.paddingMd,
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        crossAxisAlignment: WrapCrossAlignment.center,
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           SizedBox(
                             width: 220,
@@ -148,28 +161,24 @@ class _SchoolAdminStudentsScreenState
                               controller: _searchCtrl,
                               decoration: InputDecoration(
                                 hintText: AppStrings.searchByNameAdmNo,
-                                prefixIcon:
-                                    const Icon(Icons.search, size: 20),
+                                prefixIcon: const Icon(Icons.search, size: AppIconSize.md),
                                 suffixIcon: _searchCtrl.text.isNotEmpty
                                     ? IconButton(
-                                        icon: const Icon(Icons.clear,
-                                            size: 18),
-                                        onPressed: () {
-                                          _searchCtrl.clear();
-                                        },
+                                        icon: const Icon(Icons.clear, size: 18),
+                                        onPressed: _searchCtrl.clear,
                                       )
                                     : null,
                                 border: const OutlineInputBorder(),
                                 isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
+                                contentPadding: const EdgeInsets.symmetric(
                                     horizontal: AppSpacing.md, vertical: 10),
                               ),
                             ),
                           ),
+                          const SizedBox(width: 12),
                           SizedBox(
                             width: 140,
-                            child: SearchableDropdownFormField<String?>
-                                .valueItems(
+                            child: SearchableDropdownFormField<String?>.valueItems(
                               value: state.classFilter,
                               valueItems: [
                                 const MapEntry(null, 'All Classes'),
@@ -178,23 +187,20 @@ class _SchoolAdminStudentsScreenState
                               ],
                               decoration: InputDecoration(
                                 labelText: AppStrings.classLabel,
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
+                                border: const OutlineInputBorder(),
+                                contentPadding: const EdgeInsets.symmetric(
                                     horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                                 isDense: true,
                               ),
-                              onChanged: (v) {
-                                ref
-                                    .read(
-                                        schoolAdminStudentsProvider.notifier)
-                                    .setClassFilter(v);
-                              },
+                              onChanged: (v) => ref
+                                  .read(schoolAdminStudentsProvider.notifier)
+                                  .setClassFilter(v),
                             ),
                           ),
+                          const SizedBox(width: 12),
                           SizedBox(
                             width: 140,
-                            child: SearchableDropdownFormField<String?>
-                                .valueItems(
+                            child: SearchableDropdownFormField<String?>.valueItems(
                               value: state.statusFilter,
                               valueItems: const [
                                 MapEntry(null, 'All Status'),
@@ -204,19 +210,17 @@ class _SchoolAdminStudentsScreenState
                               ],
                               decoration: InputDecoration(
                                 labelText: AppStrings.status,
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
+                                border: const OutlineInputBorder(),
+                                contentPadding: const EdgeInsets.symmetric(
                                     horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                                 isDense: true,
                               ),
-                              onChanged: (v) {
-                                ref
-                                    .read(
-                                        schoolAdminStudentsProvider.notifier)
-                                    .setStatusFilter(v);
-                              },
+                              onChanged: (v) => ref
+                                  .read(schoolAdminStudentsProvider.notifier)
+                                  .setStatusFilter(v),
                             ),
                           ),
+                          const Spacer(),
                           TextButton.icon(
                             icon: const Icon(Icons.filter_alt_off, size: 18),
                             label: Text(AppStrings.clearFilters),
@@ -228,26 +232,93 @@ class _SchoolAdminStudentsScreenState
                   ),
                 ),
               ),
-
-              AppSpacing.vGapLg,
-
-              // Content
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      isNarrow ? 16 : 24,
-                      0,
-                      isNarrow ? 16 : 24,
-                      isNarrow ? 16 : 24,
-                    ),
-                    child: _buildContent(state, classesState, isWide),
+            ),
+            AppSpacing.vGapLg,
+          ] else ...[
+            // ── Narrow header ──────────────────────────────────────────────
+            ListScreenMobileHeader(
+              title: AppStrings.students,
+              primaryLabel: AppStrings.addStudent,
+              onPrimary: () => _showAddDialog(context, classesState.classes),
+              onExport: () {},
+            ),
+            // ── Narrow filter strip ────────────────────────────────────────
+            ListScreenMobileFilterStrip(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListScreenMobilePillSearchField(
+                    controller: _searchCtrl,
+                    hintText: AppStrings.searchByNameAdmNo,
+                    onChanged: (v) {
+                      _debounceTimer?.cancel();
+                      _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+                        if (mounted) {
+                          ref
+                              .read(schoolAdminStudentsProvider.notifier)
+                              .setSearch(v);
+                        }
+                      });
+                    },
+                    onClear: () {
+                      _searchCtrl.clear();
+                      ref.read(schoolAdminStudentsProvider.notifier).setSearch('');
+                    },
                   ),
-                ),
+                  AppSpacing.vGapMd,
+                  ListScreenMobileFilterRow(
+                    children: [
+                      SearchableDropdownFormField<String?>.valueItems(
+                        value: state.classFilter,
+                        valueItems: [
+                          const MapEntry(null, 'All Classes'),
+                          ...classesState.classes.map((c) =>
+                              MapEntry<String?, String>(c.id, c.name)),
+                        ],
+                        decoration: listScreenMobileFilterFieldDecoration(context),
+                        onChanged: (v) => ref
+                            .read(schoolAdminStudentsProvider.notifier)
+                            .setClassFilter(v),
+                      ),
+                      SearchableDropdownFormField<String?>.valueItems(
+                        value: state.statusFilter,
+                        valueItems: const [
+                          MapEntry(null, 'All Status'),
+                          MapEntry('ACTIVE', 'Active'),
+                          MapEntry('INACTIVE', 'Inactive'),
+                          MapEntry('TRANSFERRED', 'Transferred'),
+                        ],
+                        decoration: listScreenMobileFilterFieldDecoration(context),
+                        onChanged: (v) => ref
+                            .read(schoolAdminStudentsProvider.notifier)
+                            .setStatusFilter(v),
+                      ),
+                      ListScreenMobileMoreFiltersButton(
+                        onPressed: _clearFilters,
+                        showActiveDot: _searchCtrl.text.isNotEmpty ||
+                            state.classFilter != null ||
+                            state.statusFilter != null,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ],
+
+          // ── Content ──────────────────────────────────────────────────────
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                isWide ? 24 : 16,
+                0,
+                isWide ? 24 : 16,
+                isWide ? 24 : 16,
+              ),
+              child: _buildContent(state, classesState, isWide),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -258,33 +329,36 @@ class _SchoolAdminStudentsScreenState
     bool isWide,
   ) {
     if (state.isLoading && state.students.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      );
+      return AppLoaderScreen();
     }
 
     if (state.errorMessage != null && state.students.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: AppSpacing.paddingXl,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.error),
-              AppSpacing.vGapLg,
-              Text(state.errorMessage!, textAlign: TextAlign.center),
-              AppSpacing.vGapLg,
-              FilledButton(
-                onPressed: () => ref
-                    .read(schoolAdminStudentsProvider.notifier)
-                    .loadStudents(refresh: true),
-                child: Text(AppStrings.retry),
-              ),
-            ],
-          ),
+      final scheme = Theme.of(context).colorScheme;
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: AppIconSize.xl4, color: scheme.error),
+            AppSpacing.vGapLg,
+            Text(AppStrings.genericError,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    )),
+            AppSpacing.vGapSm,
+            Text(state.errorMessage!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                textAlign: TextAlign.center),
+            AppSpacing.vGapXl,
+            FilledButton.icon(
+              onPressed: () => ref
+                  .read(schoolAdminStudentsProvider.notifier)
+                  .loadStudents(refresh: true),
+              icon: const Icon(Icons.refresh),
+              label: Text(AppStrings.retry),
+            ),
+          ],
         ),
       );
     }
@@ -294,31 +368,29 @@ class _SchoolAdminStudentsScreenState
           state.classFilter != null ||
           state.statusFilter != null;
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(48),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.people_outline,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.outline),
-              AppSpacing.vGapLg,
-              Text(
-                _searchCtrl.text.isNotEmpty
-                    ? "No results for '${_searchCtrl.text}'"
-                    : 'No students found',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.people_outline,
+                size: AppIconSize.xl4,
+                color: Theme.of(context).colorScheme.outline),
+            AppSpacing.vGapLg,
+            Text(
+              AppStrings.noStudentsFound,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            if (hasFilters) ...[
+              AppSpacing.vGapSm,
+              TextButton.icon(
+                onPressed: _clearFilters,
+                icon: const Icon(Icons.filter_alt_off, size: AppIconSize.md),
+                label: Text(AppStrings.clearFilters),
               ),
-              if (hasFilters) ...[
-                AppSpacing.vGapSm,
-                TextButton(
-                  onPressed: _clearFilters,
-                  child: Text(AppStrings.clearFilters),
-                ),
-              ],
             ],
-          ),
+          ],
         ),
       );
     }
@@ -327,6 +399,8 @@ class _SchoolAdminStudentsScreenState
   }
 
   static const _columnWidths = [100.0, 200.0, 140.0, 100.0, 140.0, 60.0];
+  static const _tableContentWidth =
+      100.0 + 200.0 + 140.0 + 100.0 + 140.0 + 60.0 + 32;
 
   Widget _buildStudentList(
     StudentsState state,
@@ -334,12 +408,15 @@ class _SchoolAdminStudentsScreenState
     bool isWide,
   ) {
     if (isWide) {
-      return Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: ListTableView(
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: _tableContentWidth),
+          child: Card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ListTableView(
                 columns: const [
                   'Adm.No',
                   'Name',
@@ -357,21 +434,23 @@ class _SchoolAdminStudentsScreenState
             _buildPaginationRow(),
           ],
         ),
+          ),
+        ),
       );
     }
 
-    // Mobile cards
-    return Column(
-      children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.only(bottom: 8),
-            children:
-                state.students.map((s) => _buildMobileCard(s, classesState)).toList(),
-          ),
-        ),
-        if (state.students.isNotEmpty) Card(child: _buildPaginationRow()),
-      ],
+    final hasMore = state.total > 0 &&
+        state.students.length < state.total &&
+        state.currentPage < state.totalPages;
+    return MobileInfiniteScrollList(
+      itemCount: state.students.length,
+      itemBuilder: (context, i) =>
+          _buildMobileCard(state.students[i], classesState),
+      hasMore: hasMore,
+      isLoadingMore: state.isLoadingMore,
+      onLoadMore: () =>
+          ref.read(schoolAdminStudentsProvider.notifier).loadMoreStudents(),
+      loadingLabel: 'Loading more students…',
     );
   }
 
@@ -379,13 +458,13 @@ class _SchoolAdminStudentsScreenState
     final cs = Theme.of(context).colorScheme;
     return DataRow(cells: [
       DataCell(Text(s.admissionNo,
-          style: const TextStyle(fontFamily: 'monospace'))),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'monospace'))),
       DataCell(
         InkWell(
           onTap: () => context.go('/school-admin/students/${s.id}'),
           child: Text(
             s.fullName,
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
               color: cs.primary,
             ),
@@ -398,46 +477,55 @@ class _SchoolAdminStudentsScreenState
       DataCell(Text(s.parentName ?? '-',
           overflow: TextOverflow.ellipsis, maxLines: 1)),
       DataCell(
-        PopupMenuButton<String>(
-          itemBuilder: (ctx) => [
-            const PopupMenuItem(
-                value: 'view',
-                child: ListTile(
-                    dense: true,
-                    leading: Icon(Icons.visibility),
-                    title: Text(AppStrings.view))),
-            PopupMenuItem(
-                value: 'edit',
-                child: ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.edit),
-                    title: Text(AppStrings.edit))),
-            PopupMenuItem(
-                value: 'delete',
-                child: ListTile(
-                    dense: true,
-                    leading:
-                        const Icon(Icons.delete, color: AppColors.error500),
-                    title: Text(AppStrings.delete,
-                        style: const TextStyle(color: AppColors.error500)))),
-          ],
+        HoverPopupMenu<String>(
+          icon: const Icon(Icons.more_vert, size: AppIconSize.md),
+          padding: EdgeInsets.zero,
           onSelected: (v) {
-            if (v == 'view') {
-              context.go('/school-admin/students/${s.id}');
-            }
-            if (v == 'edit') {
-              _showEditDialog(context, s, classesState.classes);
-            }
+            if (v == 'view') context.go('/school-admin/students/${s.id}');
+            if (v == 'edit') _showEditDialog(context, s, classesState.classes);
             if (v == 'delete') _confirmDelete(context, s);
           },
-          child: const Icon(Icons.more_vert, size: 18),
+          itemBuilder: (ctx) => [
+            PopupMenuItem<String>(
+              value: 'view',
+              child: ListTile(
+                dense: true,
+                leading: const Icon(Icons.visibility_outlined, size: AppIconSize.md),
+                title: Text(AppStrings.view),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'edit',
+              child: ListTile(
+                dense: true,
+                leading: const Icon(Icons.edit_outlined, size: AppIconSize.md),
+                title: Text(AppStrings.edit),
+              ),
+            ),
+            PopupMenuItem<String>(
+              value: 'delete',
+              child: ListTile(
+                dense: true,
+                leading: const Icon(Icons.delete_outline,
+                    size: AppIconSize.md, color: AppColors.error500),
+                title: Text(AppStrings.delete,
+                    style: const TextStyle(color: AppColors.error500)),
+              ),
+            ),
+          ],
         ),
       ),
     ]);
   }
 
   Widget _buildMobileCard(StudentModel s, dynamic classesState) {
+    final cs = Theme.of(context).colorScheme;
+    final smallMuted = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: cs.onSurfaceVariant,
+        );
     return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      clipBehavior: Clip.hardEdge,
       child: InkWell(
         onTap: () => context.go('/school-admin/students/${s.id}'),
         borderRadius: AppRadius.brLg,
@@ -447,48 +535,74 @@ class _SchoolAdminStudentsScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    child: Text(
-                      s.fullName.isNotEmpty
-                          ? s.fullName[0].toUpperCase()
-                          : '?',
-                    ),
-                  ),
-                  AppSpacing.hGapMd,
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          s.fullName,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          '${s.admissionNo} · ${s.className ?? '-'} ${s.sectionName ?? ''}'.trim(),
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
+                    child: Text(
+                      s.fullName,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  _StatusBadge(status: s.status),
+                  HoverPopupMenu<String>(
+                    icon: const Icon(Icons.more_vert, size: AppIconSize.lg),
+                    padding: EdgeInsets.zero,
+                    onSelected: (v) {
+                      if (v == 'view') context.go('/school-admin/students/${s.id}');
+                      if (v == 'edit') _showEditDialog(context, s, classesState.classes);
+                      if (v == 'delete') _confirmDelete(context, s);
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.edit_outlined, size: AppIconSize.md),
+                          title: Text(AppStrings.edit),
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.delete_outline,
+                              size: AppIconSize.md, color: AppColors.error500),
+                          title: Text(AppStrings.delete,
+                              style: const TextStyle(color: AppColors.error500)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
-              AppSpacing.vGapSm,
-              Wrap(
-                spacing: 8,
+              SizedBox(height: AppSpacing.xs),
+              Text(
+                '${s.admissionNo} · ${s.className ?? '-'} ${s.sectionName ?? ''}'.trim(),
+                style: smallMuted,
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm + AppSpacing.xs),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 18),
-                    onPressed: () =>
-                        _showEditDialog(context, s, classesState.classes),
-                    tooltip: 'Edit',
+                  Expanded(
+                    child: Text(
+                      s.parentName ?? '-',
+                      style: smallMuted,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 18, color: AppColors.error500),
-                    onPressed: () => _confirmDelete(context, s),
-                    tooltip: 'Delete',
-                  ),
+                  AppSpacing.hGapSm,
+                  _StatusBadge(status: s.status),
                 ],
               ),
             ],
@@ -500,120 +614,14 @@ class _SchoolAdminStudentsScreenState
 
   Widget _buildPaginationRow() {
     final state = ref.watch(schoolAdminStudentsProvider);
-    final cs = Theme.of(context).colorScheme;
-    final page = state.currentPage;
-    final totalPages = state.totalPages;
-    final total = state.total;
-    final pageSize = state.pageSize;
-    final start = total == 0 ? 0 : ((page - 1) * pageSize) + 1;
-    final end = (page * pageSize).clamp(0, total);
-
-    Widget pageButton(String label, {required int page, bool active = false}) {
-      final enabled =
-          page != state.currentPage && page >= 1 && page <= totalPages;
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Material(
-          color: active ? cs.primary : Colors.transparent,
-          borderRadius: AppRadius.brSm,
-          child: InkWell(
-            borderRadius: AppRadius.brSm,
-            onTap: enabled ? () => _goToPage(page) : null,
-            child: Container(
-              constraints:
-                  const BoxConstraints(minWidth: 32, minHeight: 32),
-              alignment: Alignment.center,
-              padding: AppSpacing.paddingHSm,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
-                  color: active
-                      ? cs.onPrimary
-                      : enabled
-                          ? cs.onSurface
-                          : cs.onSurface.withValues(alpha: 0.35),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    List<Widget> pageNumbers() {
-      final pages = <Widget>[];
-      const maxVisible = 5;
-      int rangeStart = (page - (maxVisible ~/ 2)).clamp(1, totalPages);
-      int rangeEnd = (rangeStart + maxVisible - 1).clamp(1, totalPages);
-      if (rangeEnd - rangeStart < maxVisible - 1) {
-        rangeStart = (rangeEnd - maxVisible + 1).clamp(1, totalPages);
-      }
-      for (int i = rangeStart; i <= rangeEnd; i++) {
-        pages.add(pageButton('$i', page: i, active: i == page));
-      }
-      return pages;
-    }
-
-    final textStyle = Theme.of(context).textTheme.bodySmall!;
-    final mutedStyle = textStyle.copyWith(color: cs.onSurfaceVariant);
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.neutral300)),
-      ),
-      padding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text('Showing $start to $end of $total entries',
-              style: mutedStyle),
-          AppSpacing.hGapXl,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text(AppStrings.show, style: mutedStyle),
-              const SizedBox(width: 6),
-              Container(
-                height: 28,
-                padding: AppSpacing.paddingHSm,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.neutral400),
-                  borderRadius: AppRadius.brXs,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: pageSize,
-                    isDense: true,
-                    icon: const Icon(Icons.arrow_drop_down, size: 18),
-                    style: textStyle.copyWith(color: cs.onSurface),
-                    items: _pageSizeOptions
-                        .map((n) => DropdownMenuItem(
-                            value: n, child: Text('$n')))
-                        .toList(),
-                    onChanged: _onPageSizeChanged,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(AppStrings.entries, style: mutedStyle),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              pageButton('First', page: 1),
-              pageButton('Previous', page: page - 1),
-              ...pageNumbers(),
-              pageButton('Next', page: page + 1),
-              pageButton('Last', page: totalPages),
-            ],
-          ),
-        ],
-      ),
+    return ListPaginationBar(
+      currentPage: state.currentPage,
+      totalPages: state.totalPages,
+      totalEntries: state.total,
+      pageSize: state.pageSize,
+      pageSizeOptions: _pageSizeOptions,
+      onPageSizeChanged: _onPageSizeChanged,
+      onGoToPage: _goToPage,
     );
   }
 
@@ -636,7 +644,7 @@ class _SchoolAdminStudentsScreenState
           if (ok && ctx.mounted) {
             Navigator.of(ctx).pop();
             if (context.mounted) {
-              AppSnackbar.success(context, AppStrings.studentAddedSuccess);
+              AppToast.showSuccess(context, AppStrings.studentAddedSuccess);
             }
           }
         },
@@ -664,7 +672,7 @@ class _SchoolAdminStudentsScreenState
           if (ok && ctx.mounted) {
             Navigator.of(ctx).pop();
             if (context.mounted) {
-              AppSnackbar.success(context, AppStrings.studentUpdated);
+              AppToast.showSuccess(context, AppStrings.studentUpdated);
             }
           }
         },
@@ -685,7 +693,7 @@ class _SchoolAdminStudentsScreenState
         .read(schoolAdminStudentsProvider.notifier)
         .deleteStudent(student.id);
     if (context.mounted) {
-      AppSnackbar.success(context, AppStrings.studentDeleted);
+      AppToast.showSuccess(context, AppStrings.studentDeleted);
     }
   }
 }
@@ -713,8 +721,8 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status,
-        style: TextStyle(
-            color: color, fontSize: 11, fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: color, fontWeight: FontWeight.w700, fontSize: 10),
       ),
     );
   }
@@ -977,7 +985,6 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
         ),
         FilledButton(
           onPressed: _isSaving ? null : _submit,
-          style: FilledButton.styleFrom(backgroundColor: _accent),
           child: _isSaving
               ? const SizedBox(
                   width: 16,
@@ -1012,7 +1019,7 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
       child: Text(
         AppStrings.selectClassFirst,
         style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
         ),
       ),
     );
@@ -1041,7 +1048,7 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
     return DropdownButtonFormField<T>(
       decoration: InputDecoration(
           labelText: label, border: const OutlineInputBorder()),
-      value: selected,
+      initialValue: selected,
       items: items
           .map((i) => DropdownMenuItem<T>(value: i, child: Text(itemLabel(i))))
           .toList(),
@@ -1061,7 +1068,7 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
     return DropdownButtonFormField<T?>(
       decoration: InputDecoration(
           labelText: label, border: const OutlineInputBorder()),
-      value: selected,
+      initialValue: selected,
       items: [
         DropdownMenuItem<T?>(value: null, child: Text(noneLabel)),
         ...items.map(
@@ -1091,7 +1098,7 @@ class _StudentFormDialogState extends State<_StudentFormDialog> {
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
-          suffixIcon: const Icon(Icons.calendar_today, size: 20),
+          suffixIcon: const Icon(Icons.calendar_today, size: AppIconSize.md),
         ),
         child: Text(fmt),
       ),

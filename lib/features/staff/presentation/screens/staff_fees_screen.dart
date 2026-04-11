@@ -5,17 +5,16 @@
 // =============================================================================
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../design_system/design_system.dart';
+import '../../../../shared/widgets/list_pagination_bar.dart';
+import '../../../../shared/widgets/mobile_infinite_scroll.dart';
 import '../../../../models/staff/staff_payment_model.dart';
 import '../../../../models/staff/staff_fee_structure_model.dart';
 import '../providers/staff_fees_provider.dart';
 import '../providers/staff_students_provider.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
 
 const Color _accent = AppColors.secondary400;
 const _pageSizeOptions = [10, 15, 25, 50];
@@ -162,7 +161,8 @@ class _CollectFeeTabState extends ConsumerState<_CollectFeeTab> {
   Widget build(BuildContext context) {
     final feesState = ref.watch(staffFeesProvider);
     final studentsState = ref.watch(staffStudentsProvider);
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
+    final isWide =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
 
     return SingleChildScrollView(
       child: Center(
@@ -682,6 +682,8 @@ class _PaymentHistoryTabState extends ConsumerState<_PaymentHistoryTab> {
   Widget build(BuildContext context) {
     final state = ref.watch(staffFeesProvider);
     final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isWide =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
 
     return Column(
       children: [
@@ -750,19 +752,16 @@ class _PaymentHistoryTabState extends ConsumerState<_PaymentHistoryTab> {
           child: Padding(
             padding: EdgeInsets.symmetric(
                 horizontal: isNarrow ? 16 : 24),
-            child: _buildPaymentContent(state),
+            child: _buildPaymentContent(state, isWide),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildPaymentContent(StaffFeesState state) {
+  Widget _buildPaymentContent(StaffFeesState state, bool isWide) {
     if (state.isLoadingPayments && state.payments.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      );
+      return AppLoaderScreen();
     }
 
     if (state.errorMessage != null && state.payments.isEmpty) {
@@ -819,6 +818,22 @@ class _PaymentHistoryTabState extends ConsumerState<_PaymentHistoryTab> {
       );
     }
 
+    if (!isWide) {
+      final hasMore = state.total > 0 &&
+          state.payments.length < state.total &&
+          state.currentPage < state.totalPages;
+      return MobileInfiniteScrollList(
+        itemCount: state.payments.length,
+        itemBuilder: (ctx, i) =>
+            _PaymentCard(payment: state.payments[i]),
+        onLoadMore: () =>
+            ref.read(staffFeesProvider.notifier).loadMorePayments(),
+        hasMore: hasMore,
+        isLoadingMore: state.isLoadingMorePayments,
+        loadingLabel: 'Loading more payments…',
+      );
+    }
+
     return Column(
       children: [
         Expanded(
@@ -836,138 +851,18 @@ class _PaymentHistoryTabState extends ConsumerState<_PaymentHistoryTab> {
   }
 
   Widget _buildPaginationRow(StaffFeesState state) {
-    final cs = Theme.of(context).colorScheme;
-    final pageSize = state.pageSize;
-    final start =
-        state.total == 0 ? 0 : ((state.currentPage - 1) * pageSize) + 1;
-    final end = (state.currentPage * pageSize).clamp(0, state.total);
-
-    Widget pageButton(String label,
-        {required int page, bool active = false}) {
-      final enabled =
-          page != state.currentPage && page >= 1 && page <= state.totalPages;
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Material(
-          color: active ? cs.primary : Colors.transparent,
-          borderRadius: AppRadius.brSm,
-          child: InkWell(
-            borderRadius: AppRadius.brSm,
-            onTap: enabled
-                ? () => ref
-                    .read(staffFeesProvider.notifier)
-                    .goToPage(page)
-                : null,
-            child: Container(
-              constraints:
-                  const BoxConstraints(minWidth: 32, minHeight: 32),
-              alignment: Alignment.center,
-              padding: AppSpacing.paddingHSm,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      active ? FontWeight.w600 : FontWeight.w400,
-                  color: active
-                      ? cs.onPrimary
-                      : enabled
-                          ? cs.onSurface
-                          : cs.onSurface.withValues(alpha: 0.35),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    List<Widget> pageNumbers() {
-      final pages = <Widget>[];
-      const maxVisible = 5;
-      int rangeStart =
-          (state.currentPage - (maxVisible ~/ 2)).clamp(1, state.totalPages);
-      int rangeEnd =
-          (rangeStart + maxVisible - 1).clamp(1, state.totalPages);
-      if (rangeEnd - rangeStart < maxVisible - 1) {
-        rangeStart =
-            (rangeEnd - maxVisible + 1).clamp(1, state.totalPages);
-      }
-      for (int i = rangeStart; i <= rangeEnd; i++) {
-        pages
-            .add(pageButton('$i', page: i, active: i == state.currentPage));
-      }
-      return pages;
-    }
-
-    final textStyle = Theme.of(context).textTheme.bodySmall!;
-    final mutedStyle =
-        textStyle.copyWith(color: cs.onSurfaceVariant);
-
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: AppColors.neutral300)),
-      ),
-      padding:
-          EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text('Showing $start to $end of ${state.total} entries',
-              style: mutedStyle),
-          AppSpacing.hGapXl,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('Show', style: mutedStyle),
-              const SizedBox(width: 6),
-              Container(
-                height: 28,
-                padding: AppSpacing.paddingHSm,
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.neutral400),
-                  borderRadius: AppRadius.brXs,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: pageSize,
-                    isDense: true,
-                    icon: const Icon(Icons.arrow_drop_down,
-                        size: 18),
-                    style:
-                        textStyle.copyWith(color: cs.onSurface),
-                    items: _pageSizeOptions
-                        .map((n) => DropdownMenuItem(
-                            value: n, child: Text('$n')))
-                        .toList(),
-                    onChanged: (v) {
-                      if (v != null) {
-                        ref
-                            .read(staffFeesProvider.notifier)
-                            .setPageSize(v);
-                      }
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text('entries', style: mutedStyle),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              pageButton('First', page: 1),
-              pageButton('Previous', page: state.currentPage - 1),
-              ...pageNumbers(),
-              pageButton('Next', page: state.currentPage + 1),
-              pageButton('Last', page: state.totalPages),
-            ],
-          ),
-        ],
-      ),
+    return ListPaginationBar(
+      currentPage: state.currentPage,
+      totalPages: state.totalPages,
+      totalEntries: state.total,
+      pageSize: state.pageSize,
+      pageSizeOptions: _pageSizeOptions,
+      onPageSizeChanged: (v) {
+        if (v != null) {
+          ref.read(staffFeesProvider.notifier).setPageSize(v);
+        }
+      },
+      onGoToPage: (page) => ref.read(staffFeesProvider.notifier).goToPage(page),
     );
   }
 

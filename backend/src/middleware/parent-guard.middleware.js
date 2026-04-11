@@ -5,10 +5,9 @@
  * Attaches req.parent (the Parent record) — all downstream queries use
  * req.parent.schoolId for tenant isolation.
  */
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/response.js';
 
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 export const requireParent = async (req, res, next) => {
     try {

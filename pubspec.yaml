@@ -46,6 +46,17 @@ dependencies:
   dropdown_search: ^6.0.2
   image_picker: ^1.1.2
   url_launcher: ^6.3.1
+  socket_io_client: ^2.0.3+1
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.2.0
+  geolocator: ^13.0.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  flutter_background_service: ^5.0.5
+  google_maps_flutter: ^2.9.0
+  permission_handler: ^11.3.1
+  http: ^1.2.0
+  flutter_colorpicker: ^1.1.0
 
 dev_dependencies:
   flutter_test:
@@ -88,7 +99,7 @@ flutter:
     - assets/images/logo2.png
     - assets/images/logo.png
     - assets/animations/logo_gif.gif
-    - assets/images/auth_background.jpeg
+    - assets/images/auth_background.jpg
     - assets/images/protect.png
     - assets/images/track.png
     - assets/images/automate.png

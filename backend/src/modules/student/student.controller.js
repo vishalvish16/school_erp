@@ -76,8 +76,10 @@ export const getTimetable = handle(async (req, res) => {
 
 export const getNotices = handle(async (req, res) => {
     const schoolId = req.student.schoolId;
+    const studentId = req.student.id;
     const { page = 1, limit = 20 } = req.query;
     const result = await service.getNotices({
+        studentId,
         schoolId,
         page:  parseInt(page, 10),
         limit: parseInt(limit, 10),
@@ -87,13 +89,36 @@ export const getNotices = handle(async (req, res) => {
 
 export const getNoticeById = handle(async (req, res) => {
     const schoolId = req.student.schoolId;
-    const data = await service.getNoticeById({ id: req.params.id, schoolId });
+    const studentId = req.student.id;
+    const data = await service.getNoticeById({ id: req.params.id, studentId, schoolId });
     return successResponse(res, 200, 'OK', data);
 });
 
+export const registerFcmToken = handle(async (req, res) => {
+    const { id: studentId, schoolId } = req.student;
+    const { fcm_token: fcmToken } = req.body;
+    if (!fcmToken || typeof fcmToken !== 'string') {
+        return res.status(400).json({ success: false, message: 'fcm_token required' });
+    }
+    await service.registerFcmToken({
+        fcmToken: fcmToken.trim(),
+        portalType: 'student',
+        studentId,
+        schoolId,
+    });
+    return successResponse(res, 200, 'FCM token registered');
+});
+
 export const getDocuments = handle(async (req, res) => {
+    const schoolId  = req.student.schoolId;
     const studentId = req.student.id;
-    const data = await service.getDocuments({ studentId });
+    const data = await service.getDocuments({ studentId, schoolId });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const getLiveDrivers = handle(async (req, res) => {
+    const schoolId = req.student.schoolId;
+    const data = await service.getLiveDrivers({ schoolId });
     return successResponse(res, 200, 'OK', data);
 });
 

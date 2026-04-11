@@ -36,9 +36,11 @@ class AutoLockNotifier extends StateNotifier<AutoLockState> {
 
   void resetTimer() {
     if (state.isLocked) return;
-    state = state.copyWith(
-      lastInteraction: DateTime.now().millisecondsSinceEpoch,
-    );
+    final now = DateTime.now().millisecondsSinceEpoch;
+    // Only emit a new state at most once every 10 seconds to avoid
+    // rebuilding the entire widget tree on every pointer hover event.
+    if (now - state.lastInteraction < 10000) return;
+    state = state.copyWith(lastInteraction: now);
   }
 
   void _checkInactivity() {

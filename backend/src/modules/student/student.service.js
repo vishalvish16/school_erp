@@ -73,7 +73,7 @@ export async function getDashboard({ studentId, schoolId, student }) {
         student.classId && student.sectionId
             ? getTodayTimetableSlots(schoolId, student.classId, student.sectionId, today)
             : [],
-        getRecentNotices(schoolId, 5),
+        getRecentNotices(studentId, schoolId, 5),
     ]);
 
     const presentDaysThisMonth = attendanceSummary.present;
@@ -130,8 +130,8 @@ async function getTodayTimetableSlots(schoolId, classId, sectionId, date) {
     }));
 }
 
-async function getRecentNotices(schoolId, limit) {
-    const result = await repo.getNotices(schoolId, 1, limit);
+async function getRecentNotices(studentId, schoolId, limit) {
+    const result = await repo.getNotices(studentId, schoolId, 1, limit);
     return result.data || [];
 }
 
@@ -202,12 +202,12 @@ export async function getTimetable({ studentId, schoolId, student }) {
     return { slots };
 }
 
-export async function getNotices({ schoolId, page, limit }) {
-    return repo.getNotices(schoolId, page, limit);
+export async function getNotices({ studentId, schoolId, page, limit }) {
+    return repo.getNotices(studentId, schoolId, page, limit);
 }
 
-export async function getNoticeById({ id, schoolId }) {
-    const notice = await repo.getNoticeById(id, schoolId);
+export async function getNoticeById({ id, studentId, schoolId }) {
+    const notice = await repo.getNoticeById(id, studentId, schoolId);
     if (!notice) throw new AppError('Notice not found', 404);
     return {
         id: notice.id,
@@ -215,23 +215,49 @@ export async function getNoticeById({ id, schoolId }) {
         body: notice.body,
         publishedAt: notice.publishedAt,
         expiresAt: notice.expiresAt,
-        isPinned: notice.isPinned,
+        isPinned: notice.isPinned ?? false,
+        source: notice.source || 'school',
+        priority: notice.priority || null,
+        sentBy: notice.sentBy || null,
     };
 }
 
-export async function getDocuments({ studentId }) {
-    const docs = await repo.getStudentDocuments(studentId);
+export async function getDocuments({ studentId, schoolId }) {
+    const docs = await repo.getStudentDocuments(studentId, schoolId);
     return {
-        data: docs.map((d) => ({
+        documents: docs.map((d) => ({
             id: d.id,
-            documentType: d.documentType,
-            documentName: d.documentName,
-            fileUrl: d.fileUrl,
-            fileSizeKb: d.fileSizeKb,
+            document_type: d.documentType,
+            document_name: d.documentName,
+            file_url: d.fileUrl,
+            file_size_kb: d.fileSizeKb,
             verified: d.verified,
-            verifiedAt: d.verifiedAt,
+            verified_at: d.verifiedAt != null ? d.verifiedAt.toISOString() : null,
         })),
     };
+}
+
+export async function getLiveDrivers({ schoolId }) {
+    const drivers = await repo.findActiveDrivers(schoolId);
+    return drivers.map((d) => ({
+        driverId: d.id,
+        driverName: `${d.firstName} ${d.lastName}`.trim(),
+        vehicleNo: d.vehicle?.vehicleNo || null,
+        lat: d.lastLat ? Number(d.lastLat) : null,
+        lng: d.lastLng ? Number(d.lastLng) : null,
+        updatedAt: d.lastLocationAt?.toISOString() || null,
+    }));
+}
+
+export async function registerFcmToken({ fcmToken, portalType, studentId, schoolId }) {
+    const { upsertToken } = await import('../fcm/fcm.repository.js');
+    await upsertToken({
+        fcmToken,
+        portalType,
+        parentId: null,
+        studentId,
+        schoolId,
+    });
 }
 
 export async function changePassword({ userId, currentPassword, newPassword }) {

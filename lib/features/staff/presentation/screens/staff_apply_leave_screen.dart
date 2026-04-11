@@ -5,6 +5,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../design_system/tokens/app_colors.dart';
@@ -148,6 +149,10 @@ class _StaffApplyLeaveScreenState
       backgroundColor:
           Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/staff/my-leaves'),
+        ),
         backgroundColor: Theme.of(context).colorScheme.surface,
         title: const Text(AppStrings.applyForLeave),
       ),
@@ -199,7 +204,7 @@ class _StaffApplyLeaveScreenState
 
                   // Leave type
                   DropdownButtonFormField<String>(
-                    value: _leaveType,
+                    initialValue: _leaveType,
                     decoration: const InputDecoration(
                       labelText: AppStrings.leaveTypeRequired,
                       border: OutlineInputBorder(),

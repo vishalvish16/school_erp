@@ -10,7 +10,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 import 'app_spacing.dart';
 import 'app_text_styles.dart';
-import 'app_button_styles.dart';
 import 'app_input_styles.dart';
 import 'app_card_styles.dart';
 
@@ -77,14 +76,16 @@ abstract final class AppTheme {
       textTheme: textTheme,
 
       // ── Scaffold ──────────────────────────────────────────────────────────
+      // Light: #B8CCE4 medium brand blue-grey — white cards pop clearly off it
+      // Dark:  #07111F deep brand navy
       scaffoldBackgroundColor: isDark
-          ? AppColors.darkBackground
-          : AppColors.lightBackground,
+          ? AppColors.darkBackground   // #07111F — deep brand navy
+          : AppColors.lightBackground, // #B8CCE4 — medium brand blue-grey
 
       // ── AppBar ────────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
         backgroundColor: isDark
-            ? AppColors.darkSurface
+            ? AppColors.brandNavy900   // #0A1628 — dark navy topbar
             : AppColors.lightSurface,
         foregroundColor: scheme.onSurface,
         surfaceTintColor: Colors.transparent,
@@ -113,17 +114,64 @@ abstract final class AppTheme {
       ),
 
       // ── ElevatedButton ────────────────────────────────────────────────────
+      // Use scheme.primary so dark mode gets bright blue, light mode gets brand blue
       elevatedButtonTheme: ElevatedButtonThemeData(
-        style: AppButtonStyles.primary(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          disabledBackgroundColor: AppColors.neutral200,
+          disabledForegroundColor: AppColors.neutral400,
+          minimumSize: const Size(64, 44),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          elevation: AppElevation.xs,
+          shadowColor: scheme.primary.withAlpha(60),
+          textStyle: AppTextStyles.buttonLabel(),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.brMd),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith((s) {
+            if (s.contains(WidgetState.hovered)) return Colors.white.withAlpha(25);
+            if (s.contains(WidgetState.pressed)) return Colors.white.withAlpha(40);
+            return null;
+          }),
+        ),
       ),
 
       // ── OutlinedButton ────────────────────────────────────────────────────
       outlinedButtonTheme: OutlinedButtonThemeData(
-        style: AppButtonStyles.outline(),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: scheme.primary,
+          disabledForegroundColor: AppColors.neutral400,
+          minimumSize: const Size(64, 44),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          textStyle: AppTextStyles.buttonLabel(),
+          side: BorderSide(color: scheme.primary, width: 1.5),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.brMd),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith((s) {
+            if (s.contains(WidgetState.hovered)) return scheme.primary.withAlpha(15);
+            if (s.contains(WidgetState.pressed)) return scheme.primary.withAlpha(25);
+            return null;
+          }),
+        ),
       ),
 
       // ── TextButton ────────────────────────────────────────────────────────
-      textButtonTheme: TextButtonThemeData(style: AppButtonStyles.ghost()),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: scheme.primary,
+          disabledForegroundColor: AppColors.neutral400,
+          minimumSize: const Size(64, 44),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+          textStyle: AppTextStyles.buttonLabel(),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.brMd),
+        ).copyWith(
+          overlayColor: WidgetStateProperty.resolveWith((s) {
+            if (s.contains(WidgetState.hovered)) return scheme.primary.withAlpha(12);
+            if (s.contains(WidgetState.pressed)) return scheme.primary.withAlpha(20);
+            return null;
+          }),
+        ),
+      ),
 
       // ── FilledButton (M3) ─────────────────────────────────────────────────
       filledButtonTheme: FilledButtonThemeData(
@@ -342,15 +390,15 @@ abstract final class AppTheme {
       // ── DataTable ─────────────────────────────────────────────────────────
       dataTableTheme: DataTableThemeData(
         headingTextStyle: AppTextStyles.tableHeader(
-          color: scheme.onSurfaceVariant,
+          color: isDark ? AppColors.darkText : AppColors.lightText,
         ),
         dataTextStyle: AppTextStyles.tableCell(color: scheme.onSurface),
         headingRowColor: WidgetStateProperty.all(
-          isDark ? AppColors.darkSurfaceVar : AppColors.neutral50,
+          isDark ? AppColors.brandNavy900 : AppColors.lightSurfaceVar,
         ),
         dataRowColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return scheme.primary.withAlpha(15);
+            return scheme.primary.withAlpha(25);
           }
           return null;
         }),
@@ -475,9 +523,29 @@ class AppLoader extends StatelessWidget {
     child: AppLoader(label: label, color: color),
   );
 
+  // Full-viewport centered loader — use this as a page-level loading state.
+  // Works correctly inside scroll views, columns, and flex layouts.
+  static Widget screen() => const AppLoaderScreen();
+
   // Inline small loader (replaces a button label)
   static Widget inline({Color? color}) =>
       AppLoader(size: 18, strokeWidth: 2, color: color);
+}
+
+// ── AppLoaderScreen — full-viewport centered loader ───────────────────────────
+// Use this as the page-level loading state. Works correctly inside
+// SingleChildScrollView, Column, Expanded, and Scaffold body — on both
+// web (wide) and mobile.
+
+class AppLoaderScreen extends StatelessWidget {
+  const AppLoaderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Center fills its parent's full bounded space.
+    // Always wrap with Expanded (in Column) or use as direct Scaffold body child.
+    return const Center(child: CircularProgressIndicator());
+  }
 }
 
 // ── AppSnackbar — standardized snackbar factory ──────────────────────────────

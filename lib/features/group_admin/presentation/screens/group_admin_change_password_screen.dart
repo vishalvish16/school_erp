@@ -5,12 +5,11 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_auth_constants.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/group_admin_service.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class GroupAdminChangePasswordScreen extends ConsumerStatefulWidget {
   const GroupAdminChangePasswordScreen({super.key});
@@ -188,6 +187,11 @@ class _GroupAdminChangePasswordScreenState
                   children: [
                     Row(
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.go('/group-admin/profile'),
+                        ),
+                        AppSpacing.hGapSm,
                         Icon(Icons.lock_reset,
                             size: 32,
                             color:

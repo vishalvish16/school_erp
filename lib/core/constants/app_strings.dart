@@ -33,6 +33,7 @@ abstract class AppStrings {
   static const String viewAll = 'View All';
   static const String viewAllArrow = 'View All →';
   static const String clearFilters = 'Clear filters';
+  static const String filters = 'Filters';
   static const String noRecordsFound = 'No records found';
   static const String notAvailable   = 'N/A';
   static const String dash           = '—';
@@ -105,6 +106,8 @@ abstract class AppStrings {
   static const String entries = 'entries';
 
   // ── Dashboard Screen ───────────────────────────────────────────────────────
+  static const String platformOverview = 'Platform Overview';
+  static const String unknownError = 'Unknown error';
   static const String dashboardTitle = 'Super Admin Dashboard';
   static const String dashboardSubtitle =
       'Platform metrics and high-level insights across all tenants.';
@@ -283,6 +286,11 @@ abstract class AppStrings {
   // ── School Admin Login ────────────────────────────────────────────────────
   static const String signingInAsSchoolAdmin =
       'Signing in as: School Admin / Principal';
+  static const String schoolAdminPortal = 'School Admin Portal';
+  static const String staffPortal = 'Staff Portal';
+  static const String teacherPortal = 'Teacher Portal';
+  static const String signingInAsTeacher = 'Signing in as: Teacher / Faculty';
+  static const String switchPortal = 'Switch Portal';
 
   // ── Group Admin Login ─────────────────────────────────────────────────────
   static const String groupSlugOrId = 'Group slug or ID';
@@ -607,6 +615,34 @@ abstract class AppStrings {
       'Features enabled per plan — schools inherit unless toggled off globally.';
 
   // ── Super Admin Hardware ──────────────────────────────────────────────────
+  static const String hardwareDevicesTitle = 'Hardware Devices';
+  static const String registerDevice = 'Register Device';
+  static const String allDeviceTypes = 'All Types';
+  static const String hardwareTypeRfid = 'RFID';
+  static const String hardwareTypeGps = 'GPS';
+  static const String hardwareTypeBiometric = 'Biometric';
+  static const String hardwareTypeTablet = 'Tablet';
+  static const String statusOnline = 'Online';
+  static const String statusOffline = 'Offline';
+  static const String unassigned = 'Unassigned';
+  static const String noDevicesRegistered = 'No devices registered';
+  static String noSearchResultsFor(String q) => "No results for '$q'";
+  static const String loadingMoreDevices = 'Loading more devices…';
+  static const String lastPingPrefix = 'Last ping:';
+  static const String rfidReaders = 'RFID Readers';
+  static const String gpsUnits = 'GPS Units';
+  static const String biometricUnits = 'Biometric Units';
+  static const String offlineOrIssues = 'Offline / Issues';
+  static const String deviceColumn = 'Device ID';
+  static const String deviceLabel = 'Device';
+  static const String firmwareLabel = 'Firmware';
+  static const String schoolColumn = 'School';
+  static const String lastPingColumn = 'Last Ping';
+  static const String actionsColumn = 'Actions';
+  static const String configAction = 'Config';
+  static const String pingAction = 'Ping';
+  static const String trackAction = 'Track';
+  static const String alertSchoolAction = 'Alert School';
   static const String deviceResponded = 'Device responded';
   static const String deviceNotResponding = 'Device not responding';
   static const String schoolAdminNotified = 'School admin notified';
@@ -725,6 +761,7 @@ abstract class AppStrings {
   static const String fees = 'Fees';
   static const String timetable = 'Timetable';
   static const String notices = 'Notices';
+  static const String transport = 'Transport';
   static const String nonTeachingStaff = 'Non-Teaching Staff';
   static const String ntAttendance = 'NT Attendance';
   static const String ntLeaves = 'NT Leaves';
@@ -743,6 +780,7 @@ abstract class AppStrings {
   static const String collectFee = 'Collect Fee';
   static const String newNotice = 'New Notice';
   static const String quickActions = 'Quick Actions';
+  static const String recentActivity = 'Recent Activity';
   static String sectionsCount(int count) => '$count sections';
 
   // ── School Admin Classes ──────────────────────────────────────────────────
@@ -932,6 +970,8 @@ abstract class AppStrings {
   static const String currentAcademicYear = '2025–26 (current)';
   static const String dataExport = 'Data Export';
   static const String dataExportSubtitle = 'Export student and fee data';
+  static const String settingsGroupPreferences = 'PREFERENCES';
+  static const String settingsGroupSchool = 'SCHOOL';
   static const String additionalSettingsComingSoon =
       'Additional settings coming soon';
   static String settingComingSoon(String setting) =>
@@ -1017,6 +1057,16 @@ abstract class AppStrings {
       'No attendance records this month';
 
   // ── Staff Shell / Nav ─────────────────────────────────────────────────────
+  static const String feeCollection = 'Fee Collection';
+  static const String myAttendance = 'My Attendance';
+  static const String myLeaves = 'My Leaves';
+  static const String payslip = 'Payslip';
+  static const String staffBadge = 'STAFF';
+  static const String schoolAdminBadge = 'SCHOOL ADMIN';
+  static const String expandSidebar = 'Expand sidebar';
+  static const String collapseSidebar = 'Collapse sidebar';
+  static const String account = 'ACCOUNT';
+  static const String main = 'MAIN';
   static const String signOutConfirmStaff =
       'You will be logged out of the Staff portal.';
 
@@ -1051,6 +1101,7 @@ abstract class AppStrings {
   static const String driverLoginTitle = 'Driver Login';
 
   // ── Parent Portal Module ──────────────────────────────────────────────────
+  static const String parentBadge = 'PARENT';
   static const String signOutConfirmParent =
       'You will be logged out of the Parent portal.';
   static const String parentDashboardTitle = 'Parent Dashboard';
@@ -1095,6 +1146,11 @@ abstract class AppStrings {
   static const String parentColAdmNo = 'Adm. No.';
 
   // ── Staff Dashboard ───────────────────────────────────────────────────────
+  static const String staffDashboardTitle = 'Staff Dashboard';
+  static const String collectedToday = 'Collected Today';
+  static const String thisMonth = 'This Month';
+  static const String findStudent = 'Find Student';
+  static const String recentPayments = 'Recent Payments';
   static String paymentsCount(int count) => '$count payments';
   static const String couldNotLoadDashboard = 'Could not load dashboard';
 
@@ -1208,6 +1264,9 @@ abstract class AppStrings {
   static const String couldNotLoadStudents = 'Could not load student data';
 
   // ── Teacher Shell / Nav ───────────────────────────────────────────────────
+  static const String teacherBadge = 'TEACHER';
+  static const String homework = 'Homework';
+  static const String classDiary = 'Class Diary';
   static const String signOutConfirmTeacher =
       'You will be logged out of the Teacher portal.';
 
@@ -1400,13 +1459,247 @@ abstract class AppStrings {
   static const String rollNo = 'Roll No.';
   static const String parentContact = 'Parent Contact';
   static const String parentName = 'Parent Name';
-  static const String account = 'ACCOUNT';
   static const String enterCurrentPassword = 'Enter current password';
   static const String enterNewPassword = 'Enter new password';
+  static const String confirmYourNewPassword = 'Confirm your new password';
   static const String updatingPassword = 'Updating...';
   static const String updatePassword = 'Update Password';
   static const String changePasswordSubtitle =
       'Update your account password. Use a strong password with uppercase, lowercase, numbers, and special characters.';
   static const String viewReceipt = 'View Receipt';
   static const String openDocument = 'Open';
+
+  // ── Driver Live Location Module ─────────────────────────────────────────
+  static const String driverLiveLocationTitle = 'Live Location';
+  static const String driverLiveLocationSubtitle =
+      'Share your real-time location with students';
+  static const String driverStartTrip = 'Start Trip';
+  static const String driverEndTrip = 'End Trip';
+  static const String driverStartTripDescription =
+      'Tap to share your live location with students';
+  static const String driverTripActive = 'LIVE';
+  static const String driverTripNotActive = 'Trip Not Active';
+  static const String driverCurrentLocation = 'Current Location';
+  static const String driverLatitude = 'Latitude';
+  static const String driverLongitude = 'Longitude';
+  static const String driverLocationStreaming = 'Location is being shared';
+  static const String driverLocationPermissionDenied =
+      'Location permission denied. Please enable it in settings.';
+  static const String driverLocationServiceDisabled =
+      'Location services are disabled. Please enable them.';
+  static const String driverTripStarted = 'Trip started successfully';
+  static const String driverTripEnded = 'Trip ended successfully';
+  static const String driverTripStartFailed = 'Failed to start trip';
+  static const String driverTripEndFailed = 'Failed to end trip';
+  static const String driverEndTripConfirmTitle = 'End Trip?';
+  static const String driverEndTripConfirmMessage =
+      'Students will no longer see your live location.';
+
+  // ── Driver Trip Controls (Dashboard) ────────────────────────────────────
+  static const String driverTodaysTrip = "Today's Trip";
+  static const String driverBgServiceStartFailed =
+      'Could not start background location service';
+
+  // ── Parent Bus Tracking ────────────────────────────────────────────────
+  static const String trackBus = 'Track Bus';
+  static const String trackBusSubtitle = 'View live bus location';
+  static const String trackBusTitle = 'Track Bus';
+  static const String busOnTheWay = 'Bus is on the way';
+  static const String busNotOnTrip = 'Bus is not on a trip';
+  static const String noBusAssigned = 'No bus assigned for this student';
+  static const String busLocationNotAvailable = 'Location not available';
+  static const String busLastUpdated = 'Last updated';
+  static const String schoolBus = 'School Bus';
+
+  // ── Student Transport Module ────────────────────────────────────────────
+  static const String studentTransportTitle = 'Transport';
+  static const String studentTransportSubtitle =
+      'Track school buses in real-time';
+  static const String studentNoActiveDrivers =
+      'No active drivers right now';
+  static const String studentNoActiveDriversHint =
+      'Drivers will appear here when they start their trips.';
+  static const String studentActiveDrivers = 'Active Drivers';
+  static const String studentConnecting = 'Connecting to live feed...';
+  static const String studentConnectionError =
+      'Could not connect to live tracking';
+  static const String studentVehicleNo = 'Vehicle';
+  static const String studentLastUpdated = 'Last updated';
+
+  // ── School Admin — Parent Management (Student Detail) ───────────────────
+  static const String parentsGuardiansTitle = 'Parents / Guardians';
+  static const String addParent = 'Add Parent';
+  static const String addParentGuardian = 'Add Parent / Guardian';
+  static const String noParentsLinked = 'No parents linked yet. Add a parent to get started.';
+  static const String parentLinkedSuccess = 'Parent linked successfully.';
+  static const String parentRemovedSuccess = 'Parent removed.';
+  static const String removeParentTitle = 'Remove Parent';
+  static String removeParentConfirm(String name) =>
+      'Remove $name as a parent of this student?';
+  static const String setAsPrimary = 'Set as Primary';
+  static const String primaryLabel = 'PRIMARY';
+  static const String phoneNumberLabel = 'Phone Number *';
+  static const String searchExistingParentHint = 'Search existing parent by phone';
+  static const String validPhoneRequired = 'Enter valid phone';
+  static const String searchAction = 'Search';
+  static const String parentFoundPrefix = 'Found: ';
+  static String parentFoundDetail(String name, int count) =>
+      'Found: $name ($count child(ren) linked)';
+  static const String noParentFoundCreateNew =
+      'No existing parent found. Fill in details to create new:';
+  static const String firstNameRequired = 'First Name *';
+  static const String lastNameRequired = 'Last Name *';
+  static const String emailOptional = 'Email (optional)';
+  static const String relationToStudent = 'Relation to Student *';
+  static const String linkParent = 'Link Parent';
+  static const String validFieldRequired = 'Required';
+
+  // ── Parent Child Detail Tabs ──────────────────────────────────────────────
+  static const String tabOverview = 'Overview';
+  static const String tabAttendance = 'Attendance';
+  static const String tabFees = 'Fees';
+  static const String tabTimetable = 'Timetable';
+  static const String tabNotices = 'Notices';
+  static const String tabDocuments = 'Documents';
+  static const String tabBus = 'Bus';
+  static const String attendancePercent = 'Attendance %';
+  static const String feeDue = 'Fee Due';
+  static const String recentAttendance = 'Recent Attendance';
+  static const String last7Days = 'Last 7 days';
+  static const String viewTimetable = 'View Timetable';
+  static const String viewNotices = 'View Notices';
+  static const String monthlyAttendance = 'Monthly Attendance';
+  static const String attendanceCalendar = 'Attendance Calendar';
+  static const String holiday = 'Holiday';
+  static const String weekend = 'Weekend';
+  static const String documentType = 'Type';
+  static const String documentName = 'Document Name';
+  static const String fileSize = 'Size';
+  static const String verifiedLabel = 'Verified';
+  static const String unverifiedLabel = 'Unverified';
+  static const String noDocumentsLinked = 'No documents uploaded yet';
+  static const String childrenLinkedCount = 'children linked';
+  static const String childLinkedCount = 'child linked';
+  static const String parentColAction = 'Action';
+  static String viewChildTooltip(String name) => 'View $name';
+  static String childrenLinkedFooter(int count) =>
+      '$count ${count == 1 ? 'child' : 'children'} linked';
+  static const String noTimetableForDay = 'No classes scheduled for this day';
+  static const String roomLabel = 'Room';
+  static const String teacherLabel = 'Teacher';
+  static const String loadingTimetable = 'Loading timetable...';
+  static const String loadingDocuments = 'Loading documents...';
+  static const String loadingAttendance = 'Loading attendance...';
+  static const String loadingFees = 'Loading fees...';
+  static const String loadingNotices = 'Loading notices...';
+  static const String loadingBus = 'Loading bus info...';
+  static const String couldNotLoadData = 'Could not load data';
+
+  // ── Profile Update Requests ─────────────────────────────────────────────
+  static const String profileRequests = 'Profile Requests';
+  static const String profileRequestsSubtitle =
+      'Review and manage student profile update requests';
+  static const String profileRequestDetail = 'Request Detail';
+  static const String requestProfileUpdate = 'Request Profile Update';
+  static const String requestProfileUpdateSubtitle =
+      'Submit changes to your child\'s profile for school approval';
+  static const String myProfileRequests = 'My Requests';
+  static const String myProfileRequestsSubtitle =
+      'Track status of submitted profile update requests';
+  static const String submitRequest = 'Submit Request';
+  static const String submittingRequest = 'Submitting...';
+  static const String requestSubmitted = 'Profile update request submitted successfully';
+  static const String requestApproved = 'Request approved successfully';
+  static const String requestRejected = 'Request rejected';
+  static const String noProfileRequests = 'No profile update requests';
+  static const String noProfileRequestsHint =
+      'Profile update requests from parents will appear here.';
+  static const String noChangesDetected =
+      'No changes detected. Modify at least one field to submit a request.';
+  static const String changesRequested = 'Changes Requested';
+  static const String currentValue = 'Current';
+  static const String newValue = 'New';
+  static const String requestedBy = 'Requested By';
+  static const String requestedOn = 'Requested On';
+  static const String reviewedOn = 'Reviewed On';
+  static const String reviewNote = 'Review Note';
+  static const String approveRequest = 'Approve Request';
+  static const String rejectRequest = 'Reject Request';
+  static const String approveRequestConfirm =
+      'Approve this profile update request? The student record will be updated.';
+  static const String rejectRequestConfirm =
+      'Reject this profile update request?';
+  static const String noteOptional = 'Note (optional)';
+  static const String noteRequired = 'Note is required when rejecting';
+  static const String fieldsChanged = 'fields changed';
+  static const String fieldChanged = 'field changed';
+  static String fieldsChangedCount(int count) =>
+      '$count ${count == 1 ? 'field' : 'fields'} changed';
+  static const String parentPhone = 'Parent Phone';
+  static const String parentEmail = 'Parent Email';
+  static const String loadingProfileRequests = 'Loading profile requests...';
+  static const String statusApproved = 'Approved';
+  static const String statusRejected = 'Rejected';
+  static const String filterAll = 'All';
+
+  // ── Student Detail / Portal Login ─────────────────────────────────────────
+  static const String portalLogin = 'Portal Login';
+  static const String noLogin = 'No Login';
+  static const String portalLoginActiveDesc =
+      'This student can log in to the Student Portal using their phone number and password.';
+  static const String portalLoginInactiveDesc =
+      'No portal login exists. Create one so this student can access the Student Portal.';
+  static const String createStudentLogin = 'Create Student Login';
+  static const String resetStudentPassword = 'Reset Student Password';
+  static const String loginCreatedSuccess = 'Login created successfully';
+  static const String passwordMinLength = 'Minimum 6 characters';
+  static const String nameLabel = 'Name';
+  static const String relationLabel = 'Relation';
+
+  // ── Student Report Module ─────────────────────────────────────────────────
+  static const String studentReportTitle = 'Student Report';
+  static const String tabProfile = 'Profile';
+  static const String tabProgress = 'Progress';
+  static const String totalFeesPaid = 'Total Fees Paid';
+  static const String totalFeesDue = 'Total Fees Due';
+  static const String noticesSent = 'Notices Sent';
+  static const String attendancePercentage = 'Attendance %';
+  static const String annualAttendance = 'Annual Attendance';
+  static const String monthlyBreakdown = 'Monthly Breakdown';
+  static const String feeSummary = 'Fee Summary';
+  static const String amount = 'Amount';
+  static const String reportPaymentsCount = 'Payments Count';
+  static const String progressPlaceholder = 'Exam results will appear here once the Examinations module is active.';
+  static const String noNoticesSent = 'No notices sent to this student yet';
+  static const String sendNotice = 'Send Notice';
+  static const String sendNoticeToStudent = 'Send Notice to Student';
+  static const String noticeSubject = 'Subject';
+  static const String noticeMessage = 'Message';
+  static const String noticePriority = 'Priority';
+  static const String priorityNormal = 'Normal';
+  static const String priorityUrgent = 'Urgent';
+  static const String targetStudent = 'Student';
+  static const String targetParent = 'Parent';
+  static const String sendTo = 'Send To';
+  static const String noticeSentSuccess = 'Notice sent successfully';
+  static const String noticeSubjectRequired = 'Subject is required';
+  static const String noticeMessageRequired = 'Message is required';
+  static const String sentBy = 'Sent by';
+  static const String rupeesSymbol = '\u20B9';
+  static const String loadMore = 'Load More';
+  static const String overallAttendance = 'Overall Attendance';
+
+  // ── Plan Icon Picker ────────────────────────────────────────────────────────
+  static const String selectPlanIcon = 'Select Plan Icon';
+  static const String tapToChangeIcon = 'Tap to change';
+  static const String planIconLabel = 'Plan Icon';
+  static const String planSlugLabel = 'Slug';
+  static const String planPriceLabel = 'Price per student (\u20B9)';
+  static const String planDescriptionLabel = 'Description';
+  static const String planMaxStudentsLabel = 'Max students (optional)';
+  static const String planSupportLevelLabel = 'Support Level';
+  static const String planStatusLabel = 'Status';
+  static const String planIconEmojiLabel = 'Icon emoji';
+  static String planExampleTotal(String price, String total) =>
+      'Example: 500 students \u00D7 \u20B9$price = \u20B9$total/month';
 }

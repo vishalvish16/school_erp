@@ -70,9 +70,10 @@ export const getChildFees = handle(async (req, res) => {
 });
 
 export const getNotices = handle(async (req, res) => {
-    const { schoolId } = req.parent;
+    const { id: parentId, schoolId } = req.parent;
     const { page = 1, limit = 20 } = req.query;
     const data = await service.getNotices({
+        parentId,
         schoolId,
         page: parseInt(page, 10),
         limit: parseInt(limit, 10),
@@ -81,10 +82,105 @@ export const getNotices = handle(async (req, res) => {
 });
 
 export const getNoticeById = handle(async (req, res) => {
-    const { schoolId } = req.parent;
+    const { id: parentId, schoolId } = req.parent;
     const data = await service.getNoticeById({
         id: req.params.id,
+        parentId,
         schoolId,
     });
     return successResponse(res, 200, 'OK', data);
+});
+
+export const getChildAttendanceSummary = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    const { month } = req.query;
+    const data = await service.getChildAttendanceSummary({
+        studentId: req.params.studentId,
+        parentId,
+        schoolId,
+        month,
+    });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const getChildTimetable = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    const data = await service.getChildTimetable({
+        studentId: req.params.studentId,
+        parentId,
+        schoolId,
+    });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const getChildDocuments = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    const data = await service.getChildDocuments({
+        studentId: req.params.studentId,
+        parentId,
+        schoolId,
+    });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const getBusLocation = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    const { studentId } = req.params;
+    const data = await service.getBusForStudent({ parentId, studentId, schoolId });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const registerFcmToken = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    const { fcm_token: fcmToken } = req.body;
+    if (!fcmToken || typeof fcmToken !== 'string') {
+        return res.status(400).json({ success: false, message: 'fcm_token required' });
+    }
+    await service.registerFcmToken({
+        fcmToken: fcmToken.trim(),
+        portalType: 'parent',
+        parentId,
+        schoolId,
+    });
+    return successResponse(res, 200, 'FCM token registered');
+});
+
+export const changePassword = handle(async (req, res) => {
+    const { id: parentId } = req.parent;
+    const userId = req.user.userId || req.user.id;
+    await service.changePassword({
+        userId,
+        parentId,
+        currentPassword: req.body.current_password,
+        newPassword: req.body.new_password,
+    });
+    return successResponse(res, 200, 'Password changed successfully');
+});
+
+export const getNotifications = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    const { page = 1, limit = 20 } = req.query;
+    const data = await service.getNotifications({
+        parentId,
+        schoolId,
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+    });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const getUnreadNotificationCount = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    const data = await service.getUnreadNotificationCount({ parentId, schoolId });
+    return successResponse(res, 200, 'OK', data);
+});
+
+export const markNotificationRead = handle(async (req, res) => {
+    const { id: parentId, schoolId } = req.parent;
+    await service.markNotificationRead({
+        id: req.params.id,
+        parentId,
+        schoolId,
+    });
+    return successResponse(res, 200, 'Notification marked as read');
 });

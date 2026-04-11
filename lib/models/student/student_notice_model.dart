@@ -21,13 +21,15 @@ class StudentNoticeModel {
   });
 
   factory StudentNoticeModel.fromJson(Map<String, dynamic> json) {
+    final publishedAt = json['published_at'] ?? json['publishedAt'];
+    final expiresAt = json['expires_at'] ?? json['expiresAt'];
     return StudentNoticeModel(
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? '',
       body: json['body'] as String? ?? json['content'] as String? ?? '',
-      publishedAt: json['published_at'] as String?,
-      expiresAt: json['expires_at'] as String?,
-      isPinned: json['is_pinned'] as bool? ?? false,
+      publishedAt: publishedAt?.toString(),
+      expiresAt: expiresAt?.toString(),
+      isPinned: json['is_pinned'] as bool? ?? json['isPinned'] as bool? ?? false,
     );
   }
 }

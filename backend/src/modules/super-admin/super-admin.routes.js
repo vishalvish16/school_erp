@@ -48,6 +48,7 @@ router.get('/plans', ctrl.getPlans);
 router.post('/plans', ctrl.createPlan);
 router.put('/plans/:id', ctrl.updatePlan);
 router.put('/plans/:id/status', ctrl.updatePlanStatus);
+router.put('/plans/:id/features', ctrl.updatePlanFeatures);
 
 // Billing
 router.get('/billing/export', ctrl.exportBillingCsv);

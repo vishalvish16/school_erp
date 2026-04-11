@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
+import '../../../../shared/widgets/app_toast.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
@@ -66,11 +67,22 @@ class _SchoolAdminLeaveApplyScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/school-admin/staff/${widget.staffId}'),
+        ),
         title: Text(AppStrings.applyLeave,
-            style: TextStyle(fontWeight: FontWeight.bold)),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton(
+              onPressed: _submitting ? null : _submit,
+              child: const Text('Submit'),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -109,7 +121,7 @@ class _SchoolAdminLeaveApplyScreenState
 
                   // Leave Type
                   DropdownButtonFormField<String>(
-                    value: _leaveType,
+                    initialValue: _leaveType,
                     decoration: const InputDecoration(
                       labelText: AppStrings.leaveTypeRequired,
                       border: OutlineInputBorder(),
@@ -288,9 +300,9 @@ class _SchoolAdminLeaveApplyScreenState
             ),
           ),
           if (_submitting)
-            const ColoredBox(
-              color: AppColors.neutral200,
-              child: Center(child: CircularProgressIndicator()),
+            ColoredBox(
+              color: Theme.of(context).colorScheme.scrim.withValues(alpha: 0.3),
+              child: AppLoaderScreen(),
             ),
         ],
       ),
@@ -302,7 +314,7 @@ class _SchoolAdminLeaveApplyScreenState
     final formValid = _formKey.currentState?.validate() ?? false;
     if (!formValid || _fromDate == null || _toDate == null) {
       if (_fromDate == null || _toDate == null) {
-        AppSnackbar.warning(context, AppStrings.pleaseSelectDates);
+        AppToast.showWarning(context, AppStrings.pleaseSelectDates);
       }
       return;
     }
@@ -319,12 +331,12 @@ class _SchoolAdminLeaveApplyScreenState
         },
       );
       if (mounted) {
-        AppSnackbar.success(context, AppStrings.leaveSubmitted);
+        AppToast.showSuccess(context, AppStrings.leaveSubmitted);
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _submitting = false);

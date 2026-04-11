@@ -32,31 +32,31 @@ class FeeStructureModel {
 
   factory FeeStructureModel.fromJson(Map<String, dynamic> json) {
     // Support both camelCase (API/Prisma) and snake_case
-    String _str(String k1, String k2) =>
+    String str(String k1, String k2) =>
         json[k1] as String? ?? json[k2] as String? ?? '';
-    String? _strOpt(String k1, String k2) =>
+    String? strOpt(String k1, String k2) =>
         json[k1] as String? ?? json[k2] as String?;
     final class_ = json['class_'] as Map<String, dynamic>?;
-    final className = _strOpt('className', 'class_name') ??
+    final className = strOpt('className', 'class_name') ??
         (class_ != null ? class_['name'] as String? : null);
-    DateTime _date(String k1, String k2) {
+    DateTime date(String k1, String k2) {
       final v = json[k1] ?? json[k2];
       if (v == null) return DateTime.now();
       if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
       return DateTime.now();
     }
     return FeeStructureModel(
-      id: _str('id', 'id'),
-      schoolId: _str('schoolId', 'school_id'),
-      classId: _strOpt('classId', 'class_id'),
+      id: str('id', 'id'),
+      schoolId: str('schoolId', 'school_id'),
+      classId: strOpt('classId', 'class_id'),
       className: className,
-      academicYear: _str('academicYear', 'academic_year'),
-      feeHead: _str('feeHead', 'fee_head'),
+      academicYear: str('academicYear', 'academic_year'),
+      feeHead: str('feeHead', 'fee_head'),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      frequency: _str('frequency', 'frequency'),
+      frequency: str('frequency', 'frequency'),
       dueDay: (json['dueDay'] as num?)?.toInt() ?? (json['due_day'] as num?)?.toInt(),
       isActive: json['isActive'] as bool? ?? json['is_active'] as bool? ?? true,
-      createdAt: _date('createdAt', 'created_at'),
+      createdAt: date('createdAt', 'created_at'),
     );
   }
 

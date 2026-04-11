@@ -4,12 +4,11 @@ import { fileURLToPath } from 'url';
 import { groupAdminRepository } from './group-admin.repository.js';
 import { AppError } from '../../utils/response.js';
 import bcrypt from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
 import * as smartRepo from '../auth/smart-login.repository.js';
 import { sendEmail } from '../../config/mailer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 async function sendOtpDelivery(otpCode, phone, email) {
   if (phone) console.log(`[DEV] OTP to ${phone}: ${otpCode}`);

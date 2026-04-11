@@ -10,6 +10,8 @@ class NoticeSummaryModel {
   final bool isPinned;
   final DateTime? publishedAt;
   final DateTime? expiresAt;
+  final String? source;
+  final String? priority;
 
   const NoticeSummaryModel({
     required this.id,
@@ -18,7 +20,11 @@ class NoticeSummaryModel {
     this.isPinned = false,
     this.publishedAt,
     this.expiresAt,
+    this.source,
+    this.priority,
   });
+
+  bool get isUrgent => priority == 'URGENT';
 
   factory NoticeSummaryModel.fromJson(Map<String, dynamic> json) {
     final pub = json['publishedAt'] ?? json['published_at'];
@@ -30,6 +36,8 @@ class NoticeSummaryModel {
       isPinned: json['isPinned'] as bool? ?? json['is_pinned'] as bool? ?? false,
       publishedAt: pub != null ? DateTime.tryParse(pub as String) : null,
       expiresAt: exp != null ? DateTime.tryParse(exp as String) : null,
+      source: json['source'] as String?,
+      priority: json['priority'] as String?,
     );
   }
 }

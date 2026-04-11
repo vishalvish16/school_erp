@@ -7,8 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/parent/notice_detail_model.dart';
 import '../../data/parent_notice_detail_provider.dart';
@@ -28,7 +26,7 @@ class ParentNoticeDetailScreen extends ConsumerWidget {
       body: Padding(
         padding: EdgeInsets.all(padding),
         child: asyncNotice.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => AppLoaderScreen(),
           error: (err, _) => _ErrorView(
             error: err.toString().replaceAll('Exception: ', ''),
             onRetry: () => ref.invalidate(parentNoticeDetailProvider(noticeId)),

@@ -4,8 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/teacher/homework_model.dart';
 import '../providers/teacher_homework_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -114,7 +113,7 @@ class _TeacherHomeworkScreenState
 
               Expanded(
                 child: state.isLoading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? AppLoaderScreen()
                     : state.homework.isEmpty
                         ? Center(
                             child: Column(

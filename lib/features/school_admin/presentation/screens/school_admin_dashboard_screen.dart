@@ -10,8 +10,59 @@ import '../../../../models/school_admin/dashboard_stats_model.dart';
 import '../providers/school_admin_dashboard_provider.dart';
 import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../shared/widgets/metric_stat_card.dart';
 
 const Color _accent = AppColors.success500;
+
+Widget _schoolAdminMetricCard(
+  BuildContext context,
+  DashboardStatsModel stats,
+  int index, {
+  required bool compact,
+}) {
+  switch (index) {
+    case 0:
+      return MetricStatCard(
+        icon: Icons.people,
+        value: '${stats.totalStudents}',
+        label: AppStrings.totalStudents,
+        color: AppColors.secondary500,
+        onTap: () => context.go('/school-admin/students'),
+        compact: compact,
+      );
+    case 1:
+      return MetricStatCard(
+        icon: Icons.person_search,
+        value: '${stats.totalStaff}',
+        label: AppStrings.totalStaff,
+        color: AppColors.primary500,
+        onTap: () => context.go('/school-admin/staff'),
+        compact: compact,
+      );
+    case 2:
+      return MetricStatCard(
+        icon: Icons.class_,
+        value: '${stats.totalClasses}',
+        label: AppStrings.classes,
+        subtitle: AppStrings.sectionsCount(stats.totalSections),
+        subtitleColor: AppColors.neutral400,
+        color: AppColors.info500,
+        onTap: () => context.go('/school-admin/classes'),
+        compact: compact,
+      );
+    case 3:
+      return MetricStatCard(
+        icon: Icons.campaign,
+        value: '${stats.noticesCount}',
+        label: AppStrings.activeNotices,
+        color: AppColors.warning500,
+        onTap: () => context.go('/school-admin/notices'),
+        compact: compact,
+      );
+    default:
+      return const SizedBox.shrink();
+  }
+}
 
 class SchoolAdminDashboardScreen extends ConsumerWidget {
   const SchoolAdminDashboardScreen({super.key});
@@ -19,8 +70,8 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncStats = ref.watch(schoolAdminDashboardProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
-    final padding = isWide ? 24.0 : 16.0;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final padding = isWide ? AppSpacing.xl : AppSpacing.lg;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(schoolAdminDashboardProvider),
@@ -59,7 +110,7 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
               AppSpacing.vGapXl,
 
               // Stat cards grid
-              _buildStatsGrid(context, stats, isWide),
+              _buildStatsGrid(context, stats),
               AppSpacing.vGapXl,
 
               // Attendance highlight
@@ -82,66 +133,37 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsGrid(
-      BuildContext context, DashboardStatsModel stats, bool isWide) {
-    final cards = [
-      _StatCard(
-        icon: Icons.people,
-        value: '${stats.totalStudents}',
-        label: AppStrings.totalStudents,
-        color: AppColors.secondary500,
-        onTap: () => context.go('/school-admin/students'),
-      ),
-      _StatCard(
-        icon: Icons.person_search,
-        value: '${stats.totalStaff}',
-        label: AppStrings.totalStaff,
-        color: Colors.purple,
-        onTap: () => context.go('/school-admin/staff'),
-      ),
-      _StatCard(
-        icon: Icons.class_,
-        value: '${stats.totalClasses}',
-        label: AppStrings.classes,
-        subtitle: '${stats.totalSections} sections',
-        color: Colors.teal,
-        onTap: () => context.go('/school-admin/classes'),
-      ),
-      _StatCard(
-        icon: Icons.campaign,
-        value: '${stats.noticesCount}',
-        label: AppStrings.activeNotices,
-        color: AppColors.warning500,
-        onTap: () => context.go('/school-admin/notices'),
-      ),
-    ];
-
-    if (isWide) {
-      return Row(
-        children: cards
-            .map((c) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: c,
-                  ),
-                ))
-            .toList(),
+  Widget _buildStatsGrid(BuildContext context, DashboardStatsModel stats) {
+    final useRow = MediaQuery.sizeOf(context).width >= 600;
+    if (useRow) {
+      // IntrinsicHeight forces all cards to match the tallest one (e.g. card
+      // with subtitle won't make siblings shorter than it).
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < 4; i++) ...[
+              Expanded(
+                child: _schoolAdminMetricCard(context, stats, i, compact: false),
+              ),
+              if (i < 3) const SizedBox(width: AppSpacing.md),
+            ],
+          ],
+        ),
       );
     }
-    return Column(
-      children: [
-        Row(children: [
-          Expanded(child: cards[0]),
-          AppSpacing.hGapMd,
-          Expanded(child: cards[1]),
-        ]),
-        AppSpacing.vGapMd,
-        Row(children: [
-          Expanded(child: cards[2]),
-          AppSpacing.hGapMd,
-          Expanded(child: cards[3]),
-        ]),
-      ],
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: 4,
+        separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.md),
+        itemBuilder: (ctx, i) => SizedBox(
+          width: 148,
+          child: _schoolAdminMetricCard(context, stats, i, compact: true),
+        ),
+      ),
     );
   }
 
@@ -161,7 +183,7 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
                 color: color.withValues(alpha: 0.12),
                 borderRadius: AppRadius.brLg,
               ),
-              child: Icon(Icons.fact_check, color: color, size: 28),
+              child: Icon(Icons.fact_check, color: color, size: AppIconSize.xl),
             ),
             AppSpacing.hGapLg,
             Expanded(
@@ -177,12 +199,11 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
                   AppSpacing.vGapXs,
                   Text(
                     '${pct.toStringAsFixed(1)}${AppStrings.percentStudentsPresent}',
-                    style: TextStyle(
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18),
+                        fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: AppSpacing.sm),
                   ClipRRect(
                     borderRadius: AppRadius.brXs,
                     child: LinearProgressIndicator(
@@ -223,7 +244,7 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
       _QuickAction(
         icon: Icons.fact_check,
         label: AppStrings.attendance,
-        color: Colors.teal,
+        color: AppColors.info500,
         onTap: () => context.go('/school-admin/attendance'),
       ),
       _QuickAction(
@@ -250,7 +271,7 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
             children: actions
                 .map((a) => Expanded(
                       child: Padding(
-                        padding: const EdgeInsets.only(right: 12),
+                        padding: const EdgeInsets.only(right: AppSpacing.md),
                         child: a,
                       ),
                     ))
@@ -282,7 +303,7 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Recent Activity',
+          AppStrings.recentActivity,
           style: Theme.of(context)
               .textTheme
               .titleMedium
@@ -303,10 +324,10 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
                   radius: 14,
                   backgroundColor: _accent.withValues(alpha: 0.15),
                   child: const Icon(Icons.circle_notifications,
-                      size: 14, color: _accent),
+                      size: AppIconSize.sm, color: _accent),
                 ),
                 title: Text(item.message,
-                    style: const TextStyle(fontSize: 13)),
+                    style: Theme.of(context).textTheme.bodySmall),
                 subtitle: Text(
                   _timeAgo(item.createdAt),
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -339,75 +360,6 @@ class SchoolAdminDashboardScreen extends ConsumerWidget {
   }
 }
 
-// ── Stat Card ────────────────────────────────────────────────────────────────
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-    this.subtitle,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-  final String? subtitle;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 26),
-          AppSpacing.vGapSm,
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (subtitle != null)
-            Text(
-              subtitle!,
-              style: const TextStyle(fontSize: 11, color: AppColors.neutral400),
-              overflow: TextOverflow.ellipsis,
-            ),
-        ],
-      ),
-    );
-    return Card(
-      child: onTap != null
-          ? InkWell(
-              onTap: onTap,
-              borderRadius: AppRadius.brLg,
-              child: content,
-            )
-          : content,
-    );
-  }
-}
-
 // ── Quick Action ─────────────────────────────────────────────────────────────
 
 class _QuickAction extends StatelessWidget {
@@ -430,7 +382,7 @@ class _QuickAction extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppRadius.brLg,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: AppSpacing.paddingMd,
           child: Row(
             children: [
               Container(
@@ -440,15 +392,14 @@ class _QuickAction extends StatelessWidget {
                   color: color.withValues(alpha: 0.12),
                   borderRadius: AppRadius.brMd,
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: AppIconSize.md),
               ),
-              const SizedBox(width: 10),
+              AppSpacing.hGapSm,
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
                   ),
                 ),
               ),
@@ -472,11 +423,11 @@ class _ErrorCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpacing.xl2),
         child: Column(
           children: [
             Icon(Icons.error_outline,
-                size: 48, color: Theme.of(context).colorScheme.error),
+                size: AppIconSize.xl3, color: Theme.of(context).colorScheme.error),
             AppSpacing.vGapLg,
             Text('Could not load dashboard',
                 style: Theme.of(context).textTheme.titleMedium),

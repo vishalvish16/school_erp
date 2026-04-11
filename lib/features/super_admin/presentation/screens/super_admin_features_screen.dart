@@ -12,8 +12,6 @@ import '../../../../core/services/super_admin_service.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
 import '../../../../utils/download_file.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
-import '../../../../design_system/tokens/app_colors.dart';
 
 class SuperAdminFeaturesScreen extends ConsumerStatefulWidget {
   const SuperAdminFeaturesScreen({super.key});
@@ -295,7 +293,8 @@ class _SuperAdminFeaturesScreenState extends ConsumerState<SuperAdminFeaturesScr
             else
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 800;
+                  final isWide =
+                      constraints.maxWidth >= AppBreakpoints.tablet;
                   return isWide
                       ? Row(
                           crossAxisAlignment: CrossAxisAlignment.start,

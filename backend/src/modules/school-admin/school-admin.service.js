@@ -10,6 +10,9 @@ import { AppError } from '../../utils/response.js';
 import { logger } from '../../config/logger.js';
 import * as repo from './school-admin.repository.js';
 import * as auditService from '../audit/audit.service.js';
+import * as fcmRepo from '../fcm/fcm.repository.js';
+import { sendFcmToTokens } from '../fcm/fcm.service.js';
+import { getIO } from '../../socket.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -44,17 +47,18 @@ function toStudentApiFormat(s) {
         email:           s.email,
         address:         s.address,
         photo_url:       s.photoUrl,
-        class_id:        s.classId ?? s.class_?.id,
-        class_name:      s.class_?.name,
-        section_id:      s.sectionId ?? s.section?.id,
-        section_name:    s.section?.name,
+        class_id:        s.classId ?? s.class_?.id ?? null,
+        class_name:      s.class_?.name ?? null,
+        section_id:      s.sectionId ?? s.section?.id ?? null,
+        section_name:    s.section?.name ?? null,
         roll_no:         s.rollNo,
-        status:          s.status,
+        status:          s.status ?? 'ACTIVE',
         admission_date:  s.admissionDate,
         parent_name:     s.parentName,
         parent_phone:    s.parentPhone,
         parent_email:    s.parentEmail,
         parent_relation: s.parentRelation,
+        user_id:         s.userId ?? null,
         created_at:      s.createdAt,
     };
 }
@@ -1215,6 +1219,50 @@ export async function createNotice({ schoolId, userId, data }) {
         entityName: data.title,
     }).catch(() => {});
 
+    // Socket.IO — real-time for foreground clients
+    try {
+        const io = getIO();
+        io.to(`school:${schoolId}`).emit('notice:new', {
+            type:       'school_notice',
+            targetRole: data.targetRole || 'all',
+            notice:     {
+                id:        notice.id,
+                title:     data.title,
+                body:      data.body,
+                createdAt: notice.createdAt?.toISOString?.() || new Date().toISOString(),
+            },
+        });
+    } catch (err) {
+        // Socket emit failure should not fail the request
+    }
+
+    // FCM push — foreground, background, terminated (parents/students on mobile)
+    try {
+        const { parentTokens, studentTokens } = await fcmRepo.getTokensForSchoolNotice({
+            schoolId,
+            targetRole: data.targetRole,
+        });
+        const title = data.title || 'New notice';
+        const body = (data.body || '').slice(0, 100);
+        const baseData = { type: 'notice', noticeId: notice.id };
+        if (parentTokens.length > 0) {
+            await sendFcmToTokens(parentTokens, {
+                title,
+                body,
+                data: { ...baseData, portal: 'parent', route: '/parent/notices' },
+            });
+        }
+        if (studentTokens.length > 0) {
+            await sendFcmToTokens(studentTokens, {
+                title,
+                body,
+                data: { ...baseData, portal: 'student', route: '/student/notices' },
+            });
+        }
+    } catch (err) {
+        // FCM failure should not fail the request
+    }
+
     return notice;
 }
 
@@ -1247,6 +1295,247 @@ export async function deleteNotice({ id, schoolId, userId }) {
         action:     'NOTICE_DELETE',
         entityType: 'school_notices',
         entityId:   id,
+    }).catch(() => {});
+}
+
+// ── Parents ──────────────────────────────────────────────────────────────────
+
+export async function searchParents({ schoolId, page, limit, search }) {
+    const result = await repo.findParents({ schoolId, page, limit, search });
+    const parents = result.data.map((p) => ({
+        id:        p.id,
+        firstName: p.firstName,
+        lastName:  p.lastName,
+        phone:     p.phone,
+        email:     p.email,
+        relation:  p.relation,
+        _count:    { links: p._count?.links ?? 0 },
+    }));
+    return { parents, pagination: result.pagination };
+}
+
+export async function createParent({ schoolId, userId, data }) {
+    const { normalizePhone } = await import('../../utils/phone.js');
+    const phone = normalizePhone(data.phone) || data.phone;
+    if (!phone) throw new AppError('Valid phone number is required', 400);
+
+    // phone must be unique per school
+    const existing = await repo.findParentByPhone(phone, schoolId);
+    if (existing) throw new AppError('A parent with this phone number already exists in this school', 409);
+
+    const parent = await repo.createParent({
+        schoolId,
+        firstName: data.firstName,
+        lastName:  data.lastName,
+        phone,
+        email:     data.email || null,
+        relation:  data.relation || null,
+    });
+
+    auditService.logAudit({
+        actorId:    userId,
+        actorRole:  'school_admin',
+        action:     'PARENT_CREATE',
+        entityType: 'parents',
+        entityId:   parent.id,
+        entityName: `${parent.firstName} ${parent.lastName}`,
+    }).catch(() => {});
+
+    return parent;
+}
+
+export async function getParentById({ id, schoolId }) {
+    const parent = await repo.findParentById(id, schoolId);
+    if (!parent) throw new AppError('Parent not found', 404);
+
+    // Format linked children
+    const linkedChildren = (parent.links || []).map((link) => ({
+        linkId:      link.id,
+        studentId:   link.student.id,
+        firstName:   link.student.firstName,
+        lastName:    link.student.lastName,
+        admissionNo: link.student.admissionNo,
+        className:   link.student.class_?.name ?? null,
+        sectionName: link.student.section?.name ?? null,
+        isPrimary:   link.isPrimary,
+        linkRelation: link.relation,
+    }));
+
+    const { links: _links, ...parentData } = parent;
+    return { ...parentData, linkedChildren };
+}
+
+export async function updateParent({ id, schoolId, userId, data }) {
+    const existing = await repo.findParentById(id, schoolId);
+    if (!existing) throw new AppError('Parent not found', 404);
+
+    // phone NOT changeable
+    const { phone: _drop, ...updateData } = data;
+    const updated = await repo.updateParent(id, schoolId, updateData);
+
+    auditService.logAudit({
+        actorId:    userId,
+        actorRole:  'school_admin',
+        action:     'PARENT_UPDATE',
+        entityType: 'parents',
+        entityId:   id,
+        entityName: `${updated.firstName} ${updated.lastName}`,
+    }).catch(() => {});
+
+    return updated;
+}
+
+export async function getStudentParents({ studentId, schoolId }) {
+    // Verify student exists in school
+    const student = await repo.findStudentById(studentId, schoolId);
+    if (!student) throw new AppError('Student not found', 404);
+
+    const links = await repo.findStudentParentLinks(studentId);
+    return links.map((link) => ({
+        linkId:       link.id,
+        parentId:     link.parent.id,
+        firstName:    link.parent.firstName,
+        lastName:     link.parent.lastName,
+        phone:        link.parent.phone,
+        email:        link.parent.email,
+        relation:     link.parent.relation,
+        isPrimary:    link.isPrimary,
+        linkRelation: link.relation,
+    }));
+}
+
+export async function linkParentToStudent({ studentId, schoolId, userId, data }) {
+    // Verify student exists in school
+    const student = await repo.findStudentById(studentId, schoolId);
+    if (!student) throw new AppError('Student not found', 404);
+
+    let parent;
+
+    if (data.parentId) {
+        // Link existing parent
+        parent = await repo.findParentById(data.parentId, schoolId);
+        if (!parent) throw new AppError('Parent not found in this school', 404);
+    } else if (data.phone) {
+        const { normalizePhone } = await import('../../utils/phone.js');
+        const phone = normalizePhone(data.phone) || data.phone;
+        if (!phone) throw new AppError('Valid phone number is required', 400);
+
+        // Search for existing parent by phone, or create new
+        parent = await repo.findParentByPhone(phone, schoolId);
+        if (!parent) {
+            if (!data.firstName || !data.lastName) {
+                throw new AppError('firstName and lastName are required when creating a new parent', 400);
+            }
+            parent = await repo.createParent({
+                schoolId,
+                firstName: data.firstName,
+                lastName:  data.lastName,
+                phone,
+                email:     data.email || null,
+                relation:  data.relation || null,
+            });
+        }
+    }
+
+    // Check for duplicate link
+    const existingLink = await repo.findStudentParentLink(studentId, parent.id);
+    if (existingLink) throw new AppError('This parent is already linked to this student', 409);
+
+    // If first parent being linked, auto-set isPrimary=true
+    const linkCount = await repo.countStudentParentLinks(studentId);
+    const isPrimary = data.isPrimary ?? (linkCount === 0);
+
+    // If setting isPrimary, clear others first
+    if (isPrimary && linkCount > 0) {
+        await repo.clearPrimaryForStudent(studentId);
+    }
+
+    const link = await repo.createStudentParentLink({
+        studentId,
+        parentId:  parent.id,
+        relation:  data.linkRelation,
+        isPrimary,
+    });
+
+    auditService.logAudit({
+        actorId:    userId,
+        actorRole:  'school_admin',
+        action:     'PARENT_LINK_CREATE',
+        entityType: 'student_parents',
+        entityId:   link.id,
+        extra:      { studentId, parentId: parent.id, relation: data.linkRelation },
+    }).catch(() => {});
+
+    return {
+        linkId:  link.id,
+        parentId: parent.id,
+        student: link.student,
+        parent:  link.parent,
+    };
+}
+
+export async function updateParentLink({ studentId, parentId, schoolId, userId, data }) {
+    // Verify student belongs to school
+    const student = await repo.findStudentById(studentId, schoolId);
+    if (!student) throw new AppError('Student not found', 404);
+
+    const link = await repo.findStudentParentLink(studentId, parentId);
+    if (!link) throw new AppError('Parent-student link not found', 404);
+
+    const updateData = {};
+    if (data.relation !== undefined) updateData.relation = data.relation;
+
+    if (data.isPrimary === true) {
+        // Clear all other primaries for this student first
+        await repo.clearPrimaryForStudent(studentId);
+        updateData.isPrimary = true;
+    } else if (data.isPrimary === false) {
+        updateData.isPrimary = false;
+    }
+
+    const updated = await repo.updateStudentParentLink(link.id, updateData);
+
+    auditService.logAudit({
+        actorId:    userId,
+        actorRole:  'school_admin',
+        action:     'PARENT_LINK_UPDATE',
+        entityType: 'student_parents',
+        entityId:   link.id,
+        extra:      { studentId, parentId },
+    }).catch(() => {});
+
+    return updated;
+}
+
+export async function unlinkParentFromStudent({ studentId, parentId, schoolId, userId }) {
+    // Verify student belongs to school
+    const student = await repo.findStudentById(studentId, schoolId);
+    if (!student) throw new AppError('Student not found', 404);
+
+    const link = await repo.findStudentParentLink(studentId, parentId);
+    if (!link) throw new AppError('Parent-student link not found', 404);
+
+    const wasPrimary = link.isPrimary;
+    await repo.deleteStudentParentLink(link.id);
+
+    // If deleted link was primary and other links exist, set next as primary
+    if (wasPrimary) {
+        const remaining = await repo.countStudentParentLinks(studentId);
+        if (remaining > 0) {
+            const nextLink = await repo.findFirstStudentParentLink(studentId);
+            if (nextLink) {
+                await repo.updateStudentParentLink(nextLink.id, { isPrimary: true });
+            }
+        }
+    }
+
+    auditService.logAudit({
+        actorId:    userId,
+        actorRole:  'school_admin',
+        action:     'PARENT_LINK_DELETE',
+        entityType: 'student_parents',
+        entityId:   link.id,
+        extra:      { studentId, parentId },
     }).catch(() => {});
 }
 

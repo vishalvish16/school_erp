@@ -11,11 +11,58 @@ import '../../../../models/group_admin/group_admin_models.dart';
 import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
+import '../../../../shared/widgets/metric_stat_card.dart';
 
 final _dashboardProvider =
     FutureProvider.autoDispose<GroupAdminDashboardStats>((ref) {
   return ref.read(groupAdminServiceProvider).getDashboardStats();
 });
+
+Widget _groupMetricCard(
+  BuildContext context,
+  GroupAdminDashboardStats stats,
+  int index, {
+  required bool compact,
+}) {
+  switch (index) {
+    case 0:
+      return MetricStatCard(
+        icon: Icons.school,
+        value: '${stats.totalSchools}',
+        label: 'Total Schools',
+        color: AppColors.secondary500,
+        subtitle: '${stats.activeSchools} active',
+        onTap: () => context.go('/group-admin/schools'),
+        compact: compact,
+      );
+    case 1:
+      return MetricStatCard(
+        icon: Icons.people,
+        value: '${stats.totalStudents}',
+        label: 'Total Students',
+        color: AppColors.success500,
+        compact: compact,
+      );
+    case 2:
+      return MetricStatCard(
+        icon: Icons.schedule,
+        value: '${stats.expiringSoon}',
+        label: 'Expiring Soon',
+        color: stats.expiringSoon > 0 ? AppColors.warning500 : AppColors.neutral400,
+        compact: compact,
+      );
+    case 3:
+      return MetricStatCard(
+        icon: Icons.person,
+        value: '${stats.totalTeachers}',
+        label: 'Staff & Teachers',
+        color: AppColors.primary500,
+        compact: compact,
+      );
+    default:
+      return const SizedBox.shrink();
+  }
+}
 
 class GroupAdminDashboardScreen extends ConsumerWidget {
   const GroupAdminDashboardScreen({super.key});
@@ -25,7 +72,7 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
     final asyncStats = ref.watch(_dashboardProvider);
     final isNarrow = MediaQuery.of(context).size.width < 600;
     final isWide = MediaQuery.of(context).size.width >= 768;
-    final padding = isNarrow ? 16.0 : 24.0;
+    final padding = isNarrow ? AppSpacing.lg : AppSpacing.xl;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(_dashboardProvider),
@@ -33,11 +80,9 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: EdgeInsets.all(padding),
         child: asyncStats.when(
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(48),
-              child: CircularProgressIndicator(),
-            ),
+          loading: () => const Padding(
+            padding: EdgeInsets.all(AppSpacing.xl4),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
           ),
           error: (err, _) => _ErrorCard(
             error: err.toString().replaceAll('Exception: ', ''),
@@ -65,7 +110,7 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
               AppSpacing.vGapXl,
 
               // Stat cards
-              _buildStatsGrid(context, stats, isWide),
+              _buildStatsGrid(context, stats),
               AppSpacing.vGapXl,
 
               // Subscription breakdown
@@ -89,66 +134,33 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
   }
 
   Widget _buildStatsGrid(
-      BuildContext context, GroupAdminDashboardStats stats, bool isWide) {
-    final cards = [
-      _StatCard(
-        icon: Icons.school,
-        value: '${stats.totalSchools}',
-        label: 'Total Schools',
-        subtitle: '${stats.activeSchools} active',
-        color: AppColors.secondary500,
-        onTap: () => context.go('/group-admin/schools'),
-      ),
-      _StatCard(
-        icon: Icons.people,
-        value: '${stats.totalStudents}',
-        label: 'Total Students',
-        color: AppColors.success500,
-      ),
-      _StatCard(
-        icon: Icons.schedule,
-        value: '${stats.expiringSoon}',
-        label: 'Expiring Soon',
-        color: stats.expiringSoon > 0 ? Colors.amber : AppColors.neutral400,
-      ),
-      _StatCard(
-        icon: Icons.person,
-        value: '${stats.totalTeachers}',
-        label: 'Staff & Teachers',
-        color: Colors.purple,
-      ),
-    ];
-
-    if (isWide) {
+      BuildContext context, GroupAdminDashboardStats stats) {
+    final useRow = MediaQuery.sizeOf(context).width >= 600;
+    if (useRow) {
       return Row(
-        children: cards
-            .map((c) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: c,
-                  ),
-                ))
-            .toList(),
+        children: [
+          for (var i = 0; i < 4; i++) ...[
+            Expanded(
+              child: _groupMetricCard(context, stats, i, compact: false),
+            ),
+            if (i < 3) const SizedBox(width: AppSpacing.md),
+          ],
+        ],
       );
     }
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: cards[0]),
-            AppSpacing.hGapMd,
-            Expanded(child: cards[1]),
-          ],
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+        itemCount: 4,
+        separatorBuilder: (context, index) => const SizedBox(width: AppSpacing.md),
+        itemBuilder: (ctx, i) => SizedBox(
+          width: 148,
+          child: _groupMetricCard(context, stats, i, compact: true),
         ),
-        AppSpacing.vGapMd,
-        Row(
-          children: [
-            Expanded(child: cards[2]),
-            AppSpacing.hGapMd,
-            Expanded(child: cards[3]),
-          ],
-        ),
-      ],
+      ),
     );
   }
 
@@ -158,7 +170,7 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
 
     final planColors = {
       'PREMIUM': AppColors.secondary500,
-      'STANDARD': Colors.teal,
+      'STANDARD': AppColors.success500,
       'BASIC': AppColors.neutral400,
     };
 
@@ -177,8 +189,8 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
             ),
             AppSpacing.vGapMd,
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: AppSpacing.sm,
+              runSpacing: AppSpacing.sm,
               children: stats.subscriptionBreakdown.entries.map((entry) {
                 final color =
                     planColors[entry.key.toUpperCase()] ?? AppColors.neutral400;
@@ -187,9 +199,8 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
                     backgroundColor: color,
                     child: Text(
                       '${entry.value}',
-                      style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.white,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -209,12 +220,12 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
       BuildContext context, GroupAdminDashboardStats stats) {
     return Card(
       color:
-          Colors.amber.withValues(alpha: 0.10),
+          AppColors.warning500.withValues(alpha: 0.10),
       child: ListTile(
-        leading: const Icon(Icons.warning_amber, color: Colors.amber),
+        leading: Icon(Icons.warning_amber, color: AppColors.warning500, size: AppIconSize.lg),
         title: Text(
           '${stats.expiringSoon} school subscription(s) expiring soon',
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
         subtitle:
             const Text('Review these schools to avoid service disruption.'),
@@ -232,14 +243,14 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
         icon: Icons.analytics,
         label: 'School Analytics',
         subtitle: 'Compare all campuses',
-        color: Colors.indigo,
+        color: AppColors.primary500,
         onTap: () => context.go('/group-admin/analytics'),
       ),
       _QuickAccessCard(
         icon: Icons.bar_chart,
         label: 'Reports',
         subtitle: 'Attendance, Finance & more',
-        color: Colors.teal,
+        color: AppColors.success500,
         onTap: () => context.go('/group-admin/reports'),
       ),
     ];
@@ -284,78 +295,6 @@ class GroupAdminDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-    this.subtitle,
-    this.onTap,
-  });
-
-  final IconData icon;
-  final String value;
-  final String label;
-  final Color color;
-  final String? subtitle;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final child = Padding(
-      padding: AppSpacing.paddingMd,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 24),
-          AppSpacing.vGapSm,
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style:
-                  Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-            ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color:
-                      Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-          if (subtitle != null)
-            Text(
-              subtitle!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.success500,
-                    fontSize: 11,
-                  ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-        ],
-      ),
-    );
-    return Card(
-      child: onTap != null
-          ? InkWell(
-              onTap: onTap,
-              borderRadius: AppRadius.brLg,
-              child: child,
-            )
-          : child,
-    );
-  }
-}
-
 class _QuickAccessCard extends StatelessWidget {
   const _QuickAccessCard({
     required this.icon,
@@ -388,9 +327,9 @@ class _QuickAccessCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.12),
                   borderRadius: AppRadius.brLg,
                 ),
-                child: Icon(icon, color: color, size: 24),
+                child: Icon(icon, color: color, size: AppIconSize.lg),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: AppSpacing.lg),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,7 +341,7 @@ class _QuickAccessCard extends StatelessWidget {
                           .titleSmall
                           ?.copyWith(fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: AppSpacing.xs),
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -416,7 +355,7 @@ class _QuickAccessCard extends StatelessWidget {
               ),
               Icon(
                 Icons.arrow_forward_ios,
-                size: 14,
+                size: AppIconSize.sm,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ],
@@ -441,7 +380,7 @@ class _ErrorCard extends StatelessWidget {
         child: Column(
           children: [
             Icon(Icons.error_outline,
-                size: 48, color: Theme.of(context).colorScheme.error),
+                size: AppIconSize.xl3, color: Theme.of(context).colorScheme.error),
             AppSpacing.vGapLg,
             Text(
               'Could not load dashboard',

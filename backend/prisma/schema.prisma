@@ -11,7 +11,7 @@ datasource db {
 
 model Role {
   id          Int       @id @default(autoincrement())
-  name        String    @db.VarChar(255)
+  name        String    @unique @db.VarChar(255)
   description String?   @db.VarChar(500)
   scope       RoleScope
   createdAt   DateTime  @default(now()) @map("created_at")
@@ -51,6 +51,21 @@ enum StudentsStatus {
   @@map("students_status_enum")
 }
 
+enum ProfileUpdateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("profile_update_status_enum")
+}
+
+enum NoticePriority {
+  NORMAL
+  URGENT
+
+  @@map("notice_priority_enum")
+}
+
 // ─── Platform Plans ──────────────────────────────────────────────────────────
 
 model PlatformPlan {
@@ -61,10 +76,25 @@ model PlatformPlan {
   maxBranches Int      @default(1) @map("max_branches")
   maxUsers    Int      @default(50) @map("max_users")
   isActive    Boolean? @default(true) @map("is_active")
+  iconEmoji   String?  @default("📦") @map("icon_emoji") @db.VarChar(10)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  planFeatures PlanFeature[]
+
   @@map("platform_plans")
+}
+
+model PlanFeature {
+  id         Int      @id @default(autoincrement())
+  planId     BigInt   @map("plan_id")
+  featureKey String   @map("feature_key") @db.VarChar(100)
+  isEnabled  Boolean  @default(true) @map("is_enabled")
+
+  plan PlatformPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, featureKey])
+  @@map("plan_features")
 }
 
 // ─── School Groups ───────────────────────────────────────────────────────────
@@ -164,6 +194,7 @@ model School {
   subscriptionPlan        SubscriptionPlan         @map("subscription_plan")
   subscriptionStart       DateTime?                @map("subscription_start") @db.Date
   subscriptionEnd         DateTime?                @map("subscription_end") @db.Date
+  studentLimit            Int                      @default(500) @map("student_limit")
   groupId                 String?                  @map("group_id") @db.Uuid
   createdAt               DateTime                 @default(now()) @map("created_at")
   updatedAt               DateTime                 @default(now()) @updatedAt @map("updated_at")
@@ -199,12 +230,21 @@ model School {
   parents Parent[]
 
   // Driver/Transport Module relations
-  drivers         Driver[]
-  vehicles        Vehicle[]
-  transportRoutes TransportRoute[]
+  drivers                Driver[]
+  vehicles               Vehicle[]
+  transportRoutes        TransportRoute[]
+  driverTrips            DriverTrip[]
+  driverLocations        DriverLocation[]
+  driverLocationsCurrent DriverLocationCurrent[]
 
   // Student Module relations
-  studentDocuments StudentDocument[]
+  studentDocuments      StudentDocument[]
+  profileUpdateRequests StudentProfileUpdateRequest[]
+  studentNotices        StudentNotice[]
+
+  // Transport Student relations
+  studentVehicleAssignments StudentVehicleAssignment[] @relation("SchoolStudentVehicleAssignments")
+  studentTripEvents         StudentTripEvent[]         @relation("SchoolStudentTripEvents")
 
   @@map("schools")
 }
@@ -278,8 +318,10 @@ model User {
 
   // Student Portal relation
   studentProfile       Student?           @relation("StudentUser")
-  uploadedStudentDocs  StudentDocument[]  @relation("StudentDocUploader")
-  verifiedStudentDocs  StudentDocument[]  @relation("StudentDocVerifier")
+  uploadedStudentDocs  StudentDocument[]             @relation("StudentDocUploader")
+  verifiedStudentDocs  StudentDocument[]             @relation("StudentDocVerifier")
+  profileUpdateReviews StudentProfileUpdateRequest[] @relation("ProfileUpdateReviewer")
+  sentStudentNotices   StudentNotice[]               @relation("StudentNoticeSender")
 
   @@map("users")
 }
@@ -415,8 +457,12 @@ model Student {
   attendances Attendance[]
   feePayments FeePayment[]
   user        User?        @relation("StudentUser", fields: [userId], references: [id], onDelete: SetNull)
-  documents   StudentDocument[]
-  parentLinks StudentParent[]
+  documents             StudentDocument[]
+  parentLinks           StudentParent[]
+  profileUpdateRequests StudentProfileUpdateRequest[]
+  targetedNotices       StudentNotice[]               @relation("StudentTargetedNotices")
+  vehicleAssignment     StudentVehicleAssignment?     @relation("StudentVehicleAssignments")
+  tripEvents            StudentTripEvent[]            @relation("StudentTripEvents")
 
   @@unique([schoolId, admissionNo])
   @@index([schoolId])
@@ -441,8 +487,9 @@ model Parent {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  school School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  links  StudentParent[]
+  school                School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  links                 StudentParent[]
+  profileUpdateRequests StudentProfileUpdateRequest[] @relation("ParentProfileRequests")
 
   @@unique([schoolId, phone])
   @@index([schoolId])
@@ -979,13 +1026,20 @@ model Driver {
   emergencyContactName   String?   @map("emergency_contact_name") @db.VarChar(100)
   emergencyContactPhone  String?   @map("emergency_contact_phone") @db.VarChar(20)
   isActive               Boolean   @default(true) @map("is_active")
+  lastLat                Decimal?  @map("last_lat") @db.Decimal(10, 7)
+  lastLng                Decimal?  @map("last_lng") @db.Decimal(10, 7)
+  lastLocationAt         DateTime? @map("last_location_at") @db.Timestamptz(6)
+  tripActive             Boolean   @default(false) @map("trip_active")
   deletedAt              DateTime? @map("deleted_at") @db.Timestamptz(6)
   createdAt              DateTime  @default(now()) @map("created_at")
   updatedAt              DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  school   School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  user     User?    @relation("DriverUser", fields: [userId], references: [id], onDelete: SetNull)
-  vehicle  Vehicle? @relation("DriverVehicle")
+  school          School                 @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  user            User?                  @relation("DriverUser", fields: [userId], references: [id], onDelete: SetNull)
+  vehicles        Vehicle[]              @relation("DriverVehicle")
+  trips           DriverTrip[]           @relation("DriverTrips")
+  locations       DriverLocation[]       @relation("DriverLocations")
+  locationCurrent DriverLocationCurrent? @relation("DriverLocationCurrent")
 
   @@unique([schoolId, employeeNo])
   @@index([schoolId])
@@ -994,20 +1048,32 @@ model Driver {
 }
 
 model Vehicle {
-  id          String    @id @default(uuid()) @db.Uuid
-  schoolId    String    @map("school_id") @db.Uuid
-  driverId    String?   @unique @map("driver_id") @db.Uuid
-  vehicleNo   String    @map("vehicle_no") @db.VarChar(50)
-  capacity    Int       @default(30)
-  gpsDeviceId String?   @map("gps_device_id") @db.VarChar(100)
-  isActive    Boolean   @default(true) @map("is_active")
-  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  id              String    @id @default(uuid()) @db.Uuid
+  schoolId        String    @map("school_id") @db.Uuid
+  driverId        String?   @map("driver_id") @db.Uuid
+  vehicleNo       String    @map("vehicle_no") @db.VarChar(50)
+  capacity        Int       @default(30)
+  gpsDeviceId     String?   @map("gps_device_id") @db.VarChar(100)
+  vehicleType     String?   @map("vehicle_type") @db.VarChar(20)
+  make            String?   @db.VarChar(50)
+  model           String?   @db.VarChar(50)
+  year            Int?
+  color           String?   @db.VarChar(30)
+  rcNumber        String?   @map("rc_number") @db.VarChar(50)
+  insuranceExpiry DateTime? @map("insurance_expiry") @db.Date
+  fitnessExpiry   DateTime? @map("fitness_expiry") @db.Date
+  isActive        Boolean   @default(true) @map("is_active")
+  deletedAt       DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  school  School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  driver  Driver?         @relation("DriverVehicle", fields: [driverId], references: [id], onDelete: SetNull)
-  route   TransportRoute? @relation("VehicleRoute")
+  school              School                       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  driver              Driver?                      @relation("DriverVehicle", fields: [driverId], references: [id], onDelete: SetNull)
+  route               TransportRoute?              @relation("VehicleRoute")
+  trips               DriverTrip[]                 @relation("VehicleTrips")
+  locations           DriverLocation[]             @relation("VehicleLocations")
+  locationCurrent     DriverLocationCurrent?       @relation("VehicleLocationCurrent")
+  studentAssignments  StudentVehicleAssignment[]   @relation("VehicleStudentAssignments")
 
   @@unique([schoolId, vehicleNo])
   @@index([schoolId])
@@ -1026,9 +1092,10 @@ model TransportRoute {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  school School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
-  vehicle Vehicle? @relation("VehicleRoute", fields: [vehicleId], references: [id], onDelete: SetNull)
-  stops  RouteStop[]
+  school  School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  vehicle Vehicle?    @relation("VehicleRoute", fields: [vehicleId], references: [id], onDelete: SetNull)
+  stops   RouteStop[]
+  trips   DriverTrip[] @relation("RouteTrips")
 
   @@index([schoolId])
   @@index([vehicleId])
@@ -1052,4 +1119,213 @@ model RouteStop {
   @@unique([routeId, sequence])
   @@index([routeId])
   @@map("route_stops")
+}
+
+model DriverTrip {
+  id        String    @id @default(uuid()) @db.Uuid
+  schoolId  String    @map("school_id") @db.Uuid
+  driverId  String    @map("driver_id") @db.Uuid
+  vehicleId String?   @map("vehicle_id") @db.Uuid
+  routeId   String?   @map("route_id") @db.Uuid
+  status    String    @default("NOT_STARTED") @db.VarChar(20)
+  startedAt DateTime? @map("started_at") @db.Timestamptz(6)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(6)
+  notes     String?   @db.Text
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school        School             @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  driver        Driver             @relation("DriverTrips", fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle       Vehicle?           @relation("VehicleTrips", fields: [vehicleId], references: [id], onDelete: SetNull)
+  route         TransportRoute?    @relation("RouteTrips", fields: [routeId], references: [id], onDelete: SetNull)
+  studentEvents StudentTripEvent[] @relation("TripStudentEvents")
+
+  @@index([schoolId, status])
+  @@index([driverId, status])
+  @@index([vehicleId, status])
+  @@index([createdAt])
+  @@map("driver_trips")
+}
+
+model DriverLocation {
+  id         String   @id @default(uuid()) @db.Uuid
+  tripId     String?  @map("trip_id") @db.Uuid
+  driverId   String   @map("driver_id") @db.Uuid
+  vehicleId  String?  @map("vehicle_id") @db.Uuid
+  schoolId   String   @map("school_id") @db.Uuid
+  lat        Decimal  @db.Decimal(10, 7)
+  lng        Decimal  @db.Decimal(10, 7)
+  speed      Float?
+  heading    Float?
+  accuracy   Float?
+  recordedAt DateTime @map("recorded_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  driver  Driver   @relation("DriverLocations", fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation("VehicleLocations", fields: [vehicleId], references: [id], onDelete: SetNull)
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([driverId, recordedAt])
+  @@index([vehicleId, recordedAt])
+  @@index([schoolId, recordedAt])
+  @@map("driver_locations")
+}
+
+model DriverLocationCurrent {
+  driverId  String   @id @map("driver_id") @db.Uuid
+  vehicleId String?  @unique @map("vehicle_id") @db.Uuid
+  schoolId  String   @map("school_id") @db.Uuid
+  lat       Decimal  @db.Decimal(10, 7)
+  lng       Decimal  @db.Decimal(10, 7)
+  speed     Float?
+  heading   Float?
+  accuracy  Float?
+  tripId    String?  @map("trip_id") @db.Uuid
+  updatedAt DateTime @map("updated_at")
+
+  driver  Driver   @relation("DriverLocationCurrent", fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation("VehicleLocationCurrent", fields: [vehicleId], references: [id], onDelete: SetNull)
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+  @@map("driver_location_current")
+}
+
+// ─── Student Profile Update Requests ────────────────────────────────────────
+
+model StudentProfileUpdateRequest {
+  id                  String              @id @default(uuid()) @db.Uuid
+  schoolId            String              @map("school_id") @db.Uuid
+  studentId           String              @map("student_id") @db.Uuid
+  requestedByParentId String              @map("requested_by_parent_id") @db.Uuid
+  status              ProfileUpdateStatus @default(PENDING)
+  requestedChanges    Json                @map("requested_changes")
+  currentValues       Json                @map("current_values")
+  reviewNote          String?             @map("review_note") @db.Text
+  reviewedByUserId    String?             @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt          DateTime?           @map("reviewed_at") @db.Timestamptz(6)
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  school            School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student           Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  requestedByParent Parent  @relation("ParentProfileRequests", fields: [requestedByParentId], references: [id], onDelete: Cascade)
+  reviewedByUser    User?   @relation("ProfileUpdateReviewer", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([schoolId, status])
+  @@index([studentId])
+  @@index([requestedByParentId])
+  @@map("student_profile_update_requests")
+}
+
+// ─── Student Targeted Notices ────────────────────────────────────────────────
+
+model StudentNotice {
+  id            String         @id @default(uuid()) @db.Uuid
+  schoolId      String         @map("school_id") @db.Uuid
+  studentId     String         @map("student_id") @db.Uuid
+  sentByUserId  String         @map("sent_by_user_id") @db.Uuid
+  targetStudent Boolean        @default(true) @map("target_student")
+  targetParent  Boolean        @default(false) @map("target_parent")
+  subject       String         @db.VarChar(255)
+  message       String         @db.Text
+  priority      NoticePriority @default(NORMAL)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  school   School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student @relation("StudentTargetedNotices", fields: [studentId], references: [id], onDelete: Cascade)
+  sentBy   User    @relation("StudentNoticeSender", fields: [sentByUserId], references: [id], onDelete: Restrict)
+
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([schoolId, studentId])
+  @@map("student_notices")
+}
+
+// ─── FCM Tokens (push notifications) ────────────────────────────────────────
+
+model FcmToken {
+  id         String   @id @default(uuid()) @db.Uuid
+  fcmToken   String   @unique @map("fcm_token") @db.Text
+  portalType String   @map("portal_type") @db.VarChar(20)
+  parentId   String?  @map("parent_id") @db.Uuid
+  studentId  String?  @map("student_id") @db.Uuid
+  schoolId   String   @map("school_id") @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([parentId])
+  @@index([studentId])
+  @@index([schoolId])
+  @@map("fcm_tokens")
+}
+
+// ─── Transport: Student Vehicle Assignments ───────────────────────────────────
+
+model StudentVehicleAssignment {
+  id             String    @id @default(uuid()) @db.Uuid
+  schoolId       String    @map("school_id") @db.Uuid
+  studentId      String    @map("student_id") @db.Uuid
+  vehicleId      String    @map("vehicle_id") @db.Uuid
+  pickupStopName String?   @map("pickup_stop_name") @db.VarChar(100)
+  pickupLat      Decimal?  @map("pickup_lat") @db.Decimal(10, 7)
+  pickupLng      Decimal?  @map("pickup_lng") @db.Decimal(10, 7)
+  dropStopName   String?   @map("drop_stop_name") @db.VarChar(100)
+  dropLat        Decimal?  @map("drop_lat") @db.Decimal(10, 7)
+  dropLng        Decimal?  @map("drop_lng") @db.Decimal(10, 7)
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  school  School  @relation("SchoolStudentVehicleAssignments", fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation("StudentVehicleAssignments", fields: [studentId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation("VehicleStudentAssignments", fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId], map: "student_vehicle_assignments_student_unique")
+  @@index([schoolId])
+  @@index([vehicleId])
+  @@index([studentId, isActive])
+  @@map("student_vehicle_assignments")
+}
+
+// ─── Transport: Student Trip Events ──────────────────────────────────────────
+
+model StudentTripEvent {
+  id         String   @id @default(uuid()) @db.Uuid
+  tripId     String   @map("trip_id") @db.Uuid
+  studentId  String   @map("student_id") @db.Uuid
+  schoolId   String   @map("school_id") @db.Uuid
+  eventType  String   @map("event_type") @db.VarChar(10)
+  lat        Decimal? @db.Decimal(10, 7)
+  lng        Decimal? @db.Decimal(10, 7)
+  photoUrl   String?  @map("photo_url") @db.Text
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  trip    DriverTrip @relation("TripStudentEvents", fields: [tripId], references: [id], onDelete: Cascade)
+  student Student    @relation("StudentTripEvents", fields: [studentId], references: [id], onDelete: Cascade)
+  school  School     @relation("SchoolStudentTripEvents", fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([studentId, occurredAt])
+  @@index([schoolId])
+  @@map("student_trip_events")
+}
+
+// ─── Theme Configuration ──────────────────────────────────────────────────────
+
+model ThemeConfig {
+  id          String   @id @default(uuid())
+  role        String   @db.VarChar(50)
+  lightTokens Json     @map("light_tokens")
+  darkTokens  Json     @map("dark_tokens")
+  presetName  String?  @default("Default") @map("preset_name") @db.VarChar(100)
+  updatedBy   String?  @map("updated_by") @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([role])
+  @@map("theme_configs")
 }

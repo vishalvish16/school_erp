@@ -5,8 +5,6 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/teacher/homework_model.dart';
 import '../providers/teacher_homework_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -25,7 +23,7 @@ class TeacherHomeworkDetailScreen extends ConsumerWidget {
       body: Padding(
         padding: EdgeInsets.all(padding),
         child: asyncHw.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => AppLoaderScreen(),
           error: (err, _) => Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,

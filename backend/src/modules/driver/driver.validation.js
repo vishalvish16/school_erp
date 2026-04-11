@@ -16,6 +16,19 @@ export const changePasswordSchema = Joi.object({
   newPassword: Joi.string().min(8).required(),
 });
 
+export const updateLocationSchema = Joi.object({
+  lat: Joi.number().min(-90).max(90).required(),
+  lng: Joi.number().min(-180).max(180).required(),
+  speed: Joi.number().min(0).optional(),
+  heading: Joi.number().min(0).max(360).optional(),
+  accuracy: Joi.number().min(0).optional(),
+  recordedAt: Joi.string().isoDate().optional(),
+});
+
+export const endTripSchema = Joi.object({
+  notes: Joi.string().max(500).optional().allow(null, ''),
+});
+
 export const validate = (schema) => (req, res, next) => {
   const { error, value } = schema.validate(req.body, { abortEarly: false, stripUnknown: true });
   if (error) {

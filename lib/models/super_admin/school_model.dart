@@ -24,6 +24,8 @@ class SuperAdminSchoolModel {
   final SuperAdminPlanModel? plan;
   final int studentLimit;
   final int studentCount;
+  /// Teaching/faculty staff rows (`staff` table).
+  final int teacherCount;
   final int overdueDays;
   final DateTime? subscriptionEnd;
   final Map<String, bool> features;
@@ -48,6 +50,7 @@ class SuperAdminSchoolModel {
     this.plan,
     this.studentLimit = 500,
     this.studentCount = 0,
+    this.teacherCount = 0,
     this.overdueDays = 0,
     this.subscriptionEnd,
     this.features = const {},
@@ -92,6 +95,7 @@ class SuperAdminSchoolModel {
           : null,
       studentLimit: json['student_limit'] ?? json['studentLimit'] ?? 500,
       studentCount: json['student_count'] ?? json['studentCount'] ?? 0,
+      teacherCount: json['teacher_count'] ?? json['teacherCount'] ?? 0,
       overdueDays: json['overdue_days'] ?? json['overdueDays'] ?? 0,
       subscriptionEnd: json['subscription_end'] != null
           ? DateTime.tryParse(json['subscription_end'].toString())
@@ -123,6 +127,7 @@ class SuperAdminSchoolModel {
         'group_id': groupId,
         'student_limit': studentLimit,
         'student_count': studentCount,
+        'teacher_count': teacherCount,
         'overdue_days': overdueDays,
         if (subscriptionEnd != null) 'subscription_end': subscriptionEnd!.toIso8601String(),
       };

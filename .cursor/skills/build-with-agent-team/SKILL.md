@@ -232,6 +232,183 @@ Track progress and facilitate communication when agents need to coordinate.
 9. **Per-chunk storage**: Backend stores each streamed text chunk as a separate DB row → Frontend renders N bubbles on reload. Accumulate chunks into single rows
 10. **Hidden UI elements**: CSS `opacity-0` on interactive elements → Invisible to automation. Add aria-labels, ensure keyboard/focus visibility
 
+## List screens & mobile cards (Flutter — this repo)
+
+When the build or review touches **list / table screens** under `lib/features/**` (schools, staff, billing, super admin lists, etc.):
+
+1. **Read** the Cursor rule **`.cursor/rules/list-screen-ui-patterns.mdc`** (search + filters, mobile card structure, pagination, breakpoints, metric KPI tiles). It is the single source of truth for list UI in this ERP.
+1b. **Super Admin** (`lib/features/super_admin/**`): enforce the **“Super Admin module”** section in that rule on **all** screens in the folder (not only one list page).
+2. **Reference implementation** for mobile list cards: `_buildMobileCard` in `lib/features/super_admin/presentation/screens/super_admin_schools_screen.dart`; aligned example: `lib/features/schools/presentation/views/schools_screen.dart`.
+3. **Before spawning the frontend agent**, paste into their prompt the **“Code review checklist (mobile list cards)”** section from that rule (or instruct them to read the file and confirm each item).
+4. **On code review**, reject work that reintroduces anti-patterns called out in the rule: e.g. **`kIsWeb`**-only desktop layout, bottom **row of `IconButton`s** on mobile instead of **⋮**, duplicate primary action in menu when **card tap** already navigates, missing **Divider**/chip zone for plan+status, unbounded lists without pagination.
+
+### Lead checklist (quick)
+
+- [ ] Wide vs narrow uses **`AppBreakpoints.tablet`** (not `kIsWeb`).
+- [ ] Mobile uses **`MobileInfiniteScrollList`** + **`HoverPopupMenu`** for row actions where applicable.
+- [ ] Entity counts and labels match backend domain (e.g. `Student`/`Staff` vs user roles).
+
+### Search & filter row (list screens)
+
+When the plan includes **search**, **status/plan dropdowns**, or a **Filters** control:
+
+1. Follow **`## Search + Filters`** in **`.cursor/rules/list-screen-ui-patterns.mdc`** — **`SearchableDropdownFormField`** (`lib/widgets/common/searchable_dropdown_form_field.dart`), not raw **`DropdownButton`** for searchable / multi-option filters.
+2. **`< AppBreakpoints.formMaxWidth` (600px):** dropdown options open in a **modal bottom sheet** by default; use **`useBottomSheet: true`** only when forcing that on wide layouts.
+3. **Mobile filter strip (canonical — plans do not need to re-describe this):** For **narrow** list layouts, use **`lib/shared/widgets/list_screen_mobile_toolbar.dart`**: **`ListScreenMobileFilterStrip`** (tinted strip) → **`ListScreenMobilePillSearchField`** (full-width pill, search icon) → **`ListScreenMobileFilterRow`** (equal **`Expanded`** slots, 8px gap) with **`SearchableDropdownFormField`** + **`listScreenMobileFilterFieldDecoration`**, and **`ListScreenMobileMoreFiltersButton`** (**`Icons.tune`** + “Filters” + chevron → **`showModalBottomSheet`** for overflow filters). **Reference:** `_buildMobileSearchFilters` in **`super_admin_schools_screen.dart`**. Do not substitute a generic `Card` + `Wrap` unless it matches this strip visually.
+4. **Wide:** filter **Card** with `Wrap` (search ~220px, filters ~140px) per the rule file.
+5. On code review, use the **“Code review checklist (search + filters)”** in that rule file.
+
+### Metric / KPI tiles (dashboards, billing, summary strips)
+
+When the plan includes **stats cards**, **MRR/ARR**, or **KPI rows** on mobile:
+
+1. Use **`MetricStatCard`** (`lib/shared/widgets/metric_stat_card.dart`) — same pattern as **Super Admin → Billing** (`_buildBillingStats` in `super_admin_billing_screen.dart`): white card, tinted rounded icon box, bold value, single-line label (`maxLines: 1`).
+2. **`< 600px` width:** horizontal **`ListView`** of fixed-width tiles (`~148px`), not a 2×2 grid of cramped cards. **`≥ 600px`:** `Row` of `Expanded` cards.
+3. Enforce the **”Metric / KPI stat cards”** and **”Code review checklist (metric cards)”** sections in **`list-screen-ui-patterns.mdc`**.
+
+### Toast / feedback notifications
+
+For **user-facing notifications** (save success, API errors, warnings) in Flutter screens:
+
+1. Use **`AppToast`** (`lib/shared/widgets/app_toast.dart`) — centered top-of-screen overlay with slide-in animation and typed accent strip (success / error / warning / info).
+2. **Do NOT** call `ScaffoldMessenger.showSnackBar` directly on new screens — renders at bottom-left and is easy to miss.
+3. API: `AppToast.showSuccess(context, msg)` / `.showError` / `.showWarning` / `.showInfo`.
+4. **`AppFeedback`** remains the API for confirmation dialogs, loading overlays, and status chips — do not replace those.
+
+### Table row alternating colors (AppThemeTokens)
+
+All table widgets must read **`AppThemeTokens`** for row colors so Super Admin theme settings take effect immediately:
+
+- `t?.tableRowEvenBg` / `t?.tableRowOddBg` — alternating row backgrounds
+- `t?.tableHoverBg` — hover / selected state
+- Read via `Theme.of(context).extension<AppThemeTokens>()`
+- Reference: `lib/shared/widgets/list_table_view.dart` (`_buildDataRow`) and `lib/shared/widgets/reusable_data_table.dart` (`themedRows` generator)
+- **Never** leave non-selected row color as `null` — always resolve from tokens.
+
+### Compact mobile list cards (billing / subscription-style screens)
+
+For screens that show **dense lists of entities** (billing, subscriptions, any module where cards would feel heavy):
+
+1. **Card = single tappable tile** (~60–70px tall). Wrap the card's `child` in `InkWell(onTap: () => _showDetailSheet(item))` with `clipBehavior: Clip.hardEdge` on the `Card` so the ripple stays inside the border radius.
+2. **Two-line layout only:**
+   - **Row 1:** entity name (`fontSize: 14, fontWeight: w600`, `maxLines: 1, overflow: ellipsis`) + status badge (small `Container` pill, `fontSize: 10, fontWeight: w700`).
+   - **Row 2:** metadata joined with ` · ` separators (`fontSize: 12`, `color: onSurfaceVariant`), e.g. `Plan · ₹99/mo · 22 Mar 26`.
+3. **No bottom button row.** Remove `Manage` / `View` / `Edit` buttons — the card tap is the primary action; `PopupMenuButton` (`Icons.more_vert`, `size: 18`) handles mutating actions.
+4. **Card margin:** `const EdgeInsets.only(bottom: 8)` (was 12 on large cards).
+5. **Reference implementation:** `_buildMobileCard` in `lib/features/super_admin/presentation/screens/super_admin_billing_screen.dart`.
+
+**Anti-pattern to reject:**
+```dart
+// ❌ Large card with big headlineSmall price + icon rows + two full-width bottom buttons
+Text('₹99', style: textTheme.headlineSmall)
+Row([OutlinedButton('Manage'), FilledButton('View')])
+
+// ✅ Compact tappable tile — card tap = detail, ⋮ menu = actions
+InkWell(onTap: () => _showDetailSheet(s), child: Padding(…two-line layout…))
+PopupMenuButton(icon: Icon(Icons.more_vert, size: 18), …)
+```
+
+### Design system imports — always explicit
+
+**`AppColors`** is NOT automatically available just because `design_system.dart` is imported. Always add the explicit import wherever `AppColors` is used:
+
+```dart
+// ✅ Always add this alongside any other design_system import
+import 'package:school_erp_admin/design_system/tokens/app_colors.dart';
+
+// ❌ Don't assume app_colors is re-exported — it causes "isn't defined" compile errors
+import 'package:school_erp_admin/design_system/tokens/app_spacing.dart'; // alone is not enough
+```
+
+This applies to every file that calls `AppColors.success500`, `AppColors.error500`, `AppColors.warning500`, etc.
+
+### Mobile dialogs / bottom sheets with TabBar
+
+When `showAdaptiveModal` is used for a dialog that contains a drag handle or TabBar:
+
+1. **SafeArea**: The helper uses `SafeArea(top: false, ...)` so drag handles at the top of the content are not obscured. Keep this — do not change to `SafeArea(top: true)`.
+2. **TabBar with 4+ tabs on mobile (`< 600px`)**: Use `isScrollable: false` with **icon-only** tabs; add `Tooltip(message: 'Label', child: Tab(icon: ...))` for each. On desktop use `isScrollable: true` with icon + text.
+3. Detect: `final isMobile = MediaQuery.sizeOf(context).width < 600;`
+
+### Theme preview screens (ConsumerWidget — not props)
+
+Any widget that renders a **live theme preview** must be a `ConsumerWidget` watching the theme provider directly — not a `StatelessWidget` receiving tokens as props. `TabBarView`'s `PageView` skips rebuilds for off-screen tabs, so prop-passing silently breaks live updates. Use a stable `ValueKey` per tab child.
+
+## Portal UI Consistency (ALL 8 Portals — MANDATORY)
+
+> **One design system. Eight portals. Zero exceptions.**
+> Every portal — Super Admin, Group Admin, School Admin, Staff, Teacher, Parent, Student, Driver — renders the **same Vidyron glassmorphism identity** and uses the **same shared widgets**. Agents building ANY portal must enforce every rule below.
+
+| Portal | Feature folder | Shell reference |
+|--------|---------------|-----------------|
+| Super Admin | `lib/features/super_admin/` | `super_admin_shell.dart` |
+| Group Admin | `lib/features/group_admin/` | `group_admin_shell.dart` |
+| School Admin | `lib/features/school_admin/` | `school_admin_shell.dart` |
+| Staff/Clerk | `lib/features/staff/` | `staff_shell.dart` |
+| Teacher | `lib/features/teacher/` | `teacher_shell.dart` |
+| Parent | `lib/features/parent/` | `parent_shell.dart` |
+| Student | `lib/features/student/` | `student_shell.dart` |
+| Driver | `lib/features/driver/` | `driver_shell.dart` |
+
+### Rules enforced in every portal — with exact code references
+
+**1. Shell layout** — Every `{portal}_shell.dart` copies `super_admin_shell.dart` skeleton:
+- Wide: `AnimatedContainer(72/214) > ClipRect > BackdropFilter(sigmaX:24) > Container(glass)` sidebar + `ClipRect > BackdropFilter > Container(height:60)` topbar
+- Narrow: `AppBar` + `BottomNavigationBar(fixed, last item = More → openDrawer)` + `Drawer(transparent) > ClipRect > BackdropFilter(sigmaX:28) > Container(glass)`
+- `_NavItem`: active bg from `t?.navItemActiveBg` + 3px left bar `t?.navItemActiveIcon` + LayoutBuilder collapse (`< 100` = icon only + Tooltip)
+- `_NavGroup`: section label `fontSize:10, w700, letterSpacing:1.2`, collapsible chevron
+
+**2. List screens** — every portal list screen follows `super_admin_schools_screen.dart`:
+- Mobile (`< 600px`): `ListScreenMobileFilterStrip > Column([ListScreenMobilePillSearchField, ListScreenMobileFilterRow([SearchableDropdownFormField×N, ListScreenMobileMoreFiltersButton])])`
+- Wide (`≥ 600px`): `Card > Padding > Wrap > [SizedBox(220) TextField, SizedBox(140) SearchableDropdownFormField×N, TextButton clear]`
+- State: `_loading`, `_loadingMore`, `_error`, `_items`, `_page=1`, `_totalPages=1`, `_total=0`, `_pageSize=15`, `_pageSizeOptions=[10,15,25,50]`, search debounce `400ms`
+
+**3. Mobile cards** (`_buildMobileCard` pattern):
+```
+Card(margin:bottom:8) > InkWell(onTap:detail, borderRadius:brLg) > Padding(paddingLg) > Column([
+  Row(Expanded(Text name w600/16) + HoverPopupMenu(more_vert/22, omitManage:true)),
+  SizedBox(4), Text(subtitle smallMuted),
+  Padding(v:10) Divider(outlineVariant.0.5),
+  Row(Expanded leftCol[location?, ID, stats] + SizedBox(8) + Column rightCol[Wrap chips, SizedBox(8), date]),
+])
+```
+Status chip colors: `AppColors.success500.0.20` active · `AppColors.error500.0.20` suspended · `AppColors.warning500.0.20` expiring · `AppColors.secondary500.0.20` trial.
+
+**4. Desktop table**: `Center > ConstrainedBox(maxWidth) > Card > Column([Expanded(ListTableView(showSrNo:false)), ListPaginationBar])` — pagination inside same Card.
+
+**5. Mobile list**: `MobileInfiniteScrollList(itemCount, itemBuilder, hasMore, isLoadingMore, onLoadMore)` — no `ListPaginationBar` on mobile.
+
+**6. Dashboard KPIs**: `_buildStatsRow()` — `width >= 600` → `Row(Expanded MetricStatCard×N, SizedBox(12) gaps)` / `< 600` → `SizedBox(height:118) > ListView.separated(horizontal, SizedBox(width:148) MetricStatCard(compact:true))`.
+
+**7. Toasts**: `AppToast.showSuccess/Error/Warning/Info(context, msg)`. `showSnackBar` forbidden.
+
+**8. Table row colors**: `t?.tableRowEvenBg` / `t?.tableRowOddBg` from `AppThemeTokens`. Never `null` or hardcoded.
+
+**9. Dialogs**: `showAdaptiveModal(context, widget, maxWidth: ...)`. Never `showModalBottomSheet` with opaque container (secondary filters sheet uses `showModalBottomSheet` with glass-shaped container — that is the only exception).
+
+**10. Strings / breakpoints**: All text from `AppStrings`. Wide/narrow uses `MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet` (768). Never `kIsWeb`.
+
+### Prompt instruction — include for every Flutter agent spawn
+
+When spawning the Flutter agent for ANY portal module, include this in their prompt:
+
+> "You are building the **[PORTAL NAME]** portal. Read RULE 5 (Glassmorphism), RULE 6 (All Portals), and RULE 7 (Shell Layout) in `.claude/agents/erp-flutter-dev.md`. Also read `.cursor/rules/list-screen-ui-patterns.mdc` completely. Copy `lib/features/super_admin/presentation/super_admin_shell.dart` as the shell skeleton and `lib/features/super_admin/presentation/screens/super_admin_schools_screen.dart` as the list screen skeleton. Every screen you produce must be visually identical in design-system usage to the Super Admin portal."
+
+### Cross-portal code review checklist
+
+When reviewing ANY portal screen, fail on:
+
+- [ ] Shell: non-glass sidebar or topbar (missing `BackdropFilter`) → **reject**
+- [ ] Shell: `_NavItem` missing active indicator bar or using hardcoded colors → **reject**
+- [ ] Shell: mobile `Drawer` not transparent + BackdropFilter → **reject**
+- [ ] List: mobile filter uses plain `TextField` or `Card` instead of `ListScreenMobileFilterStrip` → **reject**
+- [ ] List: mobile card has bottom `IconButton` rows instead of `HoverPopupMenu` → **reject**
+- [ ] List: status chip uses hardcoded `Color(0xFF...)` instead of `AppColors.*500.withValues(0.20)` → **reject**
+- [ ] List: `ListPaginationBar` shown on mobile instead of `MobileInfiniteScrollList` → **reject**
+- [ ] Dashboard: KPI tiles use raw `Icon + Text` instead of `MetricStatCard` → **reject**
+- [ ] Any portal: `showSnackBar` used on new screens → **reject**
+- [ ] Any portal: `kIsWeb` used for breakpoint → **reject**
+
 ## Definition of Done
 
 The build is complete when:

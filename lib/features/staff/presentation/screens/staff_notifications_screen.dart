@@ -4,10 +4,12 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../design_system/design_system.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../providers/staff_notifications_provider.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
 
 class StaffNotificationsScreen extends ConsumerStatefulWidget {
   const StaffNotificationsScreen({super.key});
@@ -52,6 +54,11 @@ class _StaffNotificationsScreenState
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back),
+                          onPressed: () => context.go('/staff/dashboard'),
+                        ),
+                        AppSpacing.hGapSm,
                         Text(
                           'Notifications',
                           style: Theme.of(context)
@@ -94,10 +101,7 @@ class _StaffNotificationsScreenState
               AppSpacing.vGapLg,
               if (state.isLoading)
                 Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: padding),
-                    child: const ShimmerListLoadingWidget(itemCount: 8),
-                  ),
+                  child: AppLoaderScreen(),
                 )
               else if (state.errorMessage != null)
                 Expanded(

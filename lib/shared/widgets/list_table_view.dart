@@ -6,8 +6,8 @@
 
 import 'package:flutter/material.dart';
 import '../../core/constants/app_strings.dart';
-import '../../design_system/tokens/app_colors.dart';
-import '../../design_system/tokens/app_spacing.dart';
+import '../../core/theme/app_theme_tokens.dart';
+import '../../design_system/design_system.dart';
 
 /// A listing table view with:
 /// - Sr. No column
@@ -67,68 +67,80 @@ class ListTableView extends StatelessWidget {
     final count = _rowCount;
 
     if (isLoading && count == 0) {
-      return const Center(child: CircularProgressIndicator());
+      return AppLoaderScreen();
     }
 
     if (count == 0) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Text(
+          padding: const EdgeInsets.all(32.0),
+          child: Builder(builder: (context) => Text(
             AppStrings.noRecordsFound,
-            style: TextStyle(color: AppColors.neutral400, fontSize: 16),
-          ),
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontSize: 16,
+            ),
+          )),
         ),
       );
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Fixed header row (with horizontal scroll if needed)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _buildHeaderRow(context, effectiveColumns, effectiveWidths),
+        final totalWidth = _totalWidth;
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minWidth: constraints.maxWidth,
+              maxWidth: totalWidth > constraints.maxWidth ? totalWidth : constraints.maxWidth,
+              minHeight: constraints.maxHeight,
+              maxHeight: constraints.maxHeight,
             ),
-            // Header row separator
-            Divider(height: 1, thickness: 1, color: AppColors.neutral300),
-            // Scrollable body
-            Expanded(
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  if (notification is ScrollEndNotification &&
-                      hasMore &&
-                      onLoadMore != null &&
-                      notification.metrics.pixels >=
-                          notification.metrics.maxScrollExtent - 100) {
-                    onLoadMore!();
-                  }
-                  return false;
-                },
-                child: ListView.builder(
-                  addAutomaticKeepAlives: false,
-                  addRepaintBoundaries: true,
-                  cacheExtent: 400,
-                  itemCount: count + (hasMore ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index >= count) {
-                      return const Padding(
-                        padding: AppSpacing.paddingLg,
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    final row = _rowAt(index);
-                    if (row == null) return const SizedBox.shrink();
-                    return RepaintBoundary(
-                      child: _buildDataRow(context, index, row, effectiveWidths),
-                    );
-                  },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Fixed header row
+                _buildHeaderRow(context, effectiveColumns, effectiveWidths),
+                // Header row separator
+                Divider(height: 1, thickness: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                // Scrollable body
+                Expanded(
+                  child: NotificationListener<ScrollNotification>(
+                    onNotification: (notification) {
+                      if (notification is ScrollEndNotification &&
+                          hasMore &&
+                          onLoadMore != null &&
+                          notification.metrics.pixels >=
+                              notification.metrics.maxScrollExtent - 100) {
+                        onLoadMore!();
+                      }
+                      return false;
+                    },
+                    child: ListView.builder(
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
+                      cacheExtent: 400,
+                      itemCount: count + (hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        if (index >= count) {
+                          return const Padding(
+                            padding: AppSpacing.paddingLg,
+                            child: Center(child: SizedBox.square(dimension: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                          );
+                        }
+                        final row = _rowAt(index);
+                        if (row == null) return const SizedBox.shrink();
+                        return RepaintBoundary(
+                          child: _buildDataRow(context, index, row, effectiveWidths),
+                        );
+                      },
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -144,47 +156,63 @@ class ListTableView extends StatelessWidget {
     List<String> cols,
     List<double> widths,
   ) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = scheme.brightness == Brightness.dark;
+    final t = Theme.of(context).extension<AppThemeTokens>();
+    final headerBg = t?.tableHeaderBg ?? (isDark ? AppColors.brandNavy900 : AppColors.lightSurfaceVar);
+    final headerText = t?.tableHeaderText ?? (isDark ? AppColors.darkText : AppColors.lightText);
+    final sortIconActive = t?.primary ?? (isDark ? AppColors.brandBlueLight : AppColors.brandBlue);
+    final sortIconInactive = scheme.onSurfaceVariant;
+
     return ConstrainedBox(
       constraints: BoxConstraints(minWidth: _totalWidth),
       child: Container(
-        color: AppColors.neutral100,
+        color: headerBg,
         padding: EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.lg),
         child: Row(
-        children: List.generate(cols.length, (i) {
-          final dataColIndex = showSrNo ? i - 1 : i;
-          final isSortable = sortableColumns != null &&
-              dataColIndex >= 0 &&
-              sortableColumns!.contains(dataColIndex) &&
-              onSort != null;
-          final effectiveSortIndex = showSrNo && sortColumnIndex != null
-              ? sortColumnIndex! + 1
-              : sortColumnIndex;
-          final isSorted = effectiveSortIndex == i;
-          final label = Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(cols[i], style: const TextStyle(fontWeight: FontWeight.bold)),
-              if (isSortable)
-                GestureDetector(
-                  onTap: () {
-                    final col = showSrNo ? i - 1 : i;
-                    onSort!(col, isSorted ? !sortAscending : true);
-                  },
-                  child: Icon(
-                    isSorted
-                        ? (sortAscending ? Icons.arrow_drop_up : Icons.arrow_drop_down)
-                        : Icons.unfold_more,
-                    size: 18,
-                    color: isSorted ? AppColors.secondary500 : AppColors.neutral400,
+          children: List.generate(cols.length, (i) {
+            final dataColIndex = showSrNo ? i - 1 : i;
+            final isSortable = sortableColumns != null &&
+                dataColIndex >= 0 &&
+                sortableColumns!.contains(dataColIndex) &&
+                onSort != null;
+            final effectiveSortIndex = showSrNo && sortColumnIndex != null
+                ? sortColumnIndex! + 1
+                : sortColumnIndex;
+            final isSorted = effectiveSortIndex == i;
+            final label = Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  cols[i],
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: headerText,
+                    letterSpacing: 0.3,
                   ),
                 ),
-            ],
-          );
-          return SizedBox(
-            width: widths[i],
-            child: Align(alignment: Alignment.centerLeft, child: label),
-          );
-        }),
+                if (isSortable)
+                  GestureDetector(
+                    onTap: () {
+                      final col = showSrNo ? i - 1 : i;
+                      onSort!(col, isSorted ? !sortAscending : true);
+                    },
+                    child: Icon(
+                      isSorted
+                          ? (sortAscending ? Icons.arrow_drop_up : Icons.arrow_drop_down)
+                          : Icons.unfold_more,
+                      size: 18,
+                      color: isSorted ? sortIconActive : sortIconInactive,
+                    ),
+                  ),
+              ],
+            );
+            return SizedBox(
+              width: widths[i],
+              child: Align(alignment: Alignment.centerLeft, child: label),
+            );
+          }),
         ),
       ),
     );
@@ -218,31 +246,37 @@ class ListTableView extends StatelessWidget {
           : null,
       child: Container(
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.secondary50 : null,
-          border: Border(bottom: BorderSide(color: AppColors.neutral200)),
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.12)
+              : (index.isEven
+                  ? (Theme.of(context).extension<AppThemeTokens>()?.tableRowEvenBg)
+                  : (Theme.of(context).extension<AppThemeTokens>()?.tableRowOddBg)),
+          border: Border(
+            bottom: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              width: 1,
+            ),
+          ),
         ),
         padding: EdgeInsets.symmetric(vertical: AppSpacing.md, horizontal: AppSpacing.lg),
-        child: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              if (showSrNo) ...[
-                SizedBox(
-                  width: widths[0],
-                  child: Align(alignment: Alignment.centerLeft, child: Text('${index + 1}')),
-                ),
-              ],
-              ...List.generate(row.cells.length, (i) {
-                final w = showSrNo ? widths[i + 1] : widths[i];
-                return SizedBox(
-                  width: w,
-                  child: ClipRect(
-                    child: Align(alignment: Alignment.centerLeft, child: row.cells[i].child),
-                  ),
-                );
-              }),
+        child: Row(
+          children: [
+            if (showSrNo) ...[
+              SizedBox(
+                width: widths[0],
+                child: Align(alignment: Alignment.centerLeft, child: Text('${index + 1}')),
+              ),
             ],
-          ),
+            ...List.generate(row.cells.length, (i) {
+              final w = showSrNo ? widths[i + 1] : widths[i];
+              return SizedBox(
+                width: w,
+                child: ClipRect(
+                  child: Align(alignment: Alignment.centerLeft, child: row.cells[i].child),
+                ),
+              );
+            }),
+          ],
         ),
       ),
     );

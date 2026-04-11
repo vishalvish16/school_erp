@@ -10,8 +10,6 @@ import '../../../../widgets/common/address_location_picker.dart';
 import '../../domain/models/school_model.dart';
 import '../../data/providers/schools_providers.dart';
 import '../viewmodels/schools_viewmodel.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class AddEditSchoolScreen extends ConsumerStatefulWidget {
   final SchoolModel? school;

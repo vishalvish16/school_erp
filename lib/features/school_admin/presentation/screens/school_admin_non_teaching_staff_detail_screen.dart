@@ -6,14 +6,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
+import '../../../../shared/widgets/app_toast.dart';
 import '../../../../models/school_admin/non_teaching_staff_model.dart';
 import '../../../../models/school_admin/non_teaching_qualification_model.dart';
 import '../../../../models/school_admin/non_teaching_leave_model.dart';
 import '../providers/school_admin_non_teaching_roles_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -65,30 +65,46 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
   Widget build(BuildContext context) {
     final asyncStaff = ref.watch(_ntStaffDetailProv(widget.staffId));
 
+    final scheme = Theme.of(context).colorScheme;
     return asyncStaff.when(
-      loading: () => const Scaffold(
-          body: Center(child: CircularProgressIndicator())),
+      loading: () => Scaffold(
+        appBar: AppBar(
+          leading: BackButton(
+            onPressed: () => context.go('/school-admin/non-teaching-staff'),
+          ),
+          title: const Text('Non-Teaching Staff'),
+        ),
+        body: const AppLoaderScreen(),
+      ),
       error: (e, _) => Scaffold(
         appBar: AppBar(
-          title: const Text('Non-Teaching Staff'),
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back),
-            onPressed: () =>
-                context.go('/school-admin/non-teaching-staff'),
+          leading: BackButton(
+            onPressed: () => context.go('/school-admin/non-teaching-staff'),
           ),
+          title: const Text('Non-Teaching Staff'),
         ),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: AppColors.error500),
-              AppSpacing.vGapMd,
-              Text(e.toString().replaceAll('Exception: ', '')),
-              AppSpacing.vGapMd,
-              FilledButton(
+              Icon(Icons.error_outline, size: AppIconSize.xl4, color: scheme.error),
+              AppSpacing.vGapLg,
+              Text(AppStrings.genericError,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      )),
+              AppSpacing.vGapSm,
+              Text(e.toString().replaceAll('Exception: ', ''),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                  textAlign: TextAlign.center),
+              AppSpacing.vGapXl,
+              FilledButton.icon(
                 onPressed: () =>
                     ref.invalidate(_ntStaffDetailProv(widget.staffId)),
-                child: const Text('Retry'),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
               ),
             ],
           ),
@@ -100,12 +116,10 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
 
   Widget _buildScaffold(BuildContext context, NonTeachingStaffModel staff) {
     final categoryColor = staff.role?.categoryColor ?? _accent;
+    final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        leading: BackButton(
           onPressed: () => context.go('/school-admin/non-teaching-staff'),
         ),
         title: Text(staff.fullName),
@@ -122,8 +136,9 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
                 value: 'toggle',
                 child: ListTile(
                   dense: true,
-                  leading: Icon(
-                      staff.isActive ? Icons.block : Icons.check_circle),
+                  leading: Icon(staff.isActive
+                      ? Icons.block_outlined
+                      : Icons.check_circle_outline),
                   title: Text(staff.isActive ? 'Deactivate' : 'Activate'),
                 ),
               ),
@@ -145,13 +160,14 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
                     title: Text('Reset Password'),
                   ),
                 ),
-              const PopupMenuItem(
+              PopupMenuItem(
                 value: 'delete',
                 child: ListTile(
                   dense: true,
-                  leading: Icon(Icons.delete, color: AppColors.error500),
-                  title:
-                      Text('Delete', style: TextStyle(color: AppColors.error500)),
+                  leading: Icon(Icons.delete_outline,
+                      color: scheme.error),
+                  title: Text('Delete',
+                      style: TextStyle(color: scheme.error)),
                 ),
               ),
             ],
@@ -161,8 +177,9 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
         bottom: TabBar(
           controller: _tab,
           tabs: _tabs,
-          labelColor: _accent,
-          indicatorColor: _accent,
+          labelColor: scheme.primary,
+          unselectedLabelColor: scheme.onSurfaceVariant,
+          indicatorColor: scheme.primary,
           isScrollable: true,
         ),
       ),
@@ -204,11 +221,11 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
             await svc.updateNonTeachingStaffStatus(staff.id, !staff.isActive);
             ref.invalidate(_ntStaffDetailProv(staff.id));
             if (context.mounted) {
-              AppSnackbar.success(context, 'Status updated');
+              AppToast.showSuccess(context, 'Status updated');
             }
           } catch (e) {
             if (context.mounted) {
-              AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+              AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
             }
           }
         }
@@ -231,7 +248,7 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
             }
           } catch (e) {
             if (context.mounted) {
-              AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+              AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
             }
           }
         }
@@ -319,21 +336,21 @@ class _State extends ConsumerState<SchoolAdminNonTeachingStaffDetailScreen>
                         ref.invalidate(_ntStaffDetailProv(staffId));
                         if (ctx.mounted) Navigator.of(ctx).pop();
                         if (context.mounted) {
-                          AppSnackbar.success(context, isCreate ? 'Login created' : 'Password reset');
+                          AppToast.showSuccess(context, isCreate ? 'Login created' : 'Password reset');
                         }
                       } catch (e) {
                         setS(() => saving = false);
                         if (ctx.mounted) {
-                          AppSnackbar.error(ctx, e.toString().replaceAll('Exception: ', ''));
+                          AppToast.showError(ctx, e.toString().replaceAll('Exception: ', ''));
                         }
                       }
                     },
               child: saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2, color: Theme.of(ctx).colorScheme.onPrimary))
                   : Text(isCreate ? 'Create' : 'Reset'),
             ),
           ],
@@ -353,8 +370,10 @@ class _StaffHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
     return Container(
-      color: Theme.of(context).colorScheme.surface,
+      color: scheme.surface,
       padding: AppSpacing.paddingLg,
       child: Row(
         children: [
@@ -363,10 +382,9 @@ class _StaffHeader extends StatelessWidget {
             backgroundColor: categoryColor.withValues(alpha: 0.2),
             child: Text(
               staff.initials,
-              style: TextStyle(
+              style: textTheme.titleMedium?.copyWith(
                   color: categoryColor,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20),
+                  fontWeight: FontWeight.bold),
             ),
           ),
           AppSpacing.hGapLg,
@@ -375,15 +393,12 @@ class _StaffHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(staff.fullName,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge
+                    style: textTheme.titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 Text(staff.employeeNo,
-                    style: const TextStyle(
+                    style: textTheme.bodySmall?.copyWith(
                         fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: AppColors.neutral400)),
+                        color: scheme.onSurfaceVariant)),
                 AppSpacing.vGapXs,
                 Row(
                   children: [
@@ -422,9 +437,8 @@ class _Chip extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Text(label,
-          style: TextStyle(
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
               color: color,
-              fontSize: 11,
               fontWeight: FontWeight.w600)),
     );
   }
@@ -438,7 +452,7 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 768;
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
     return SingleChildScrollView(
       padding: AppSpacing.paddingLg,
       child: isWide
@@ -519,42 +533,45 @@ class _OverviewTab extends StatelessWidget {
       ];
 
   Widget _infoCard(String title, List<_InfoRow> rows) {
-    return Card(
-      child: Padding(
-        padding: AppSpacing.paddingLg,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 14)),
-            AppSpacing.vGapSm,
-            const Divider(),
-            for (final r in rows)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      width: 140,
-                      child: Text(r.label,
-                          style: const TextStyle(
-                              color: AppColors.neutral400, fontSize: 13)),
-                    ),
-                    Expanded(
-                      child: Text(r.value,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                              fontSize: 13)),
-                    ),
-                  ],
+    return Builder(builder: (context) {
+      final textTheme = Theme.of(context).textTheme;
+      final scheme = Theme.of(context).colorScheme;
+      return Card(
+        child: Padding(
+          padding: AppSpacing.paddingLg,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold)),
+              AppSpacing.vGapSm,
+              const Divider(),
+              for (final r in rows)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 140,
+                        child: Text(r.label,
+                            style: textTheme.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant)),
+                      ),
+                      Expanded(
+                        child: Text(r.value,
+                            style: textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w500)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    });
   }
 
   String _fmtDate(DateTime d) =>
@@ -578,7 +595,7 @@ class _QualificationsTab extends ConsumerWidget {
     final async = ref.watch(nonTeachingQualificationsProvider(staffId));
     return async.when(
       loading: () =>
-          const Center(child: CircularProgressIndicator()),
+          AppLoaderScreen(),
       error: (e, _) => _retryView(
           e.toString().replaceAll('Exception: ', ''),
           () => ref.invalidate(nonTeachingQualificationsProvider(staffId))),
@@ -590,12 +607,12 @@ class _QualificationsTab extends ConsumerWidget {
               itemBuilder: (ctx, i) {
                 final q = quals[i];
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
+                  margin: const EdgeInsets.only(bottom: AppSpacing.sm),
                   child: ListTile(
-                    leading: const CircleAvatar(
-                        child: Icon(Icons.school, size: 18)),
+                    leading: CircleAvatar(
+                        child: Icon(Icons.school, size: AppIconSize.md)),
                     title: Text(q.degree,
-                        style: const TextStyle(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600)),
                     subtitle: Text(
                         '${q.institution}${q.yearOfPassing != null ? ' · ${q.yearOfPassing}' : ''}${q.gradeOrPercentage != null ? ' · ${q.gradeOrPercentage}' : ''}'),
@@ -604,14 +621,14 @@ class _QualificationsTab extends ConsumerWidget {
                       children: [
                         IconButton(
                           icon:
-                              const Icon(Icons.edit_outlined, size: 18),
+                              const Icon(Icons.edit_outlined, size: AppIconSize.md),
                           onPressed: () => _showQualDialog(
                               context, ref, staffId,
                               existing: q),
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline,
-                              size: 18, color: AppColors.error500),
+                              size: AppIconSize.md, color: AppColors.error500),
                           onPressed: () =>
                               _deleteQual(context, ref, staffId, q.id),
                         ),
@@ -725,16 +742,16 @@ class _QualificationsTab extends ConsumerWidget {
                       } catch (e) {
                         setS(() => saving = false);
                         if (ctx.mounted) {
-                          AppSnackbar.error(ctx, e.toString().replaceAll('Exception: ', ''));
+                          AppToast.showError(ctx, e.toString().replaceAll('Exception: ', ''));
                         }
                       }
                     },
               child: saving
-                  ? const SizedBox(
+                  ? SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
+                          strokeWidth: 2, color: Theme.of(ctx).colorScheme.onPrimary))
                   : Text(existing == null ? 'Add' : 'Update'),
             ),
           ],
@@ -760,7 +777,7 @@ class _QualificationsTab extends ConsumerWidget {
       ref.invalidate(nonTeachingQualificationsProvider(staffId));
     } catch (e) {
       if (context.mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     }
   }
@@ -777,7 +794,7 @@ class _DocumentsTab extends ConsumerWidget {
     final async = ref.watch(nonTeachingDocumentsProvider(staffId));
     return async.when(
       loading: () =>
-          const Center(child: CircularProgressIndicator()),
+          AppLoaderScreen(),
       error: (e, _) => _retryView(
           e.toString().replaceAll('Exception: ', ''),
           () => ref.invalidate(nonTeachingDocumentsProvider(staffId))),
@@ -838,7 +855,7 @@ class _DocumentsTab extends ConsumerWidget {
       ref.invalidate(nonTeachingDocumentsProvider(staffId));
     } catch (e) {
       if (context.mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     }
   }
@@ -860,7 +877,7 @@ class _DocumentsTab extends ConsumerWidget {
       ref.invalidate(nonTeachingDocumentsProvider(staffId));
     } catch (e) {
       if (context.mounted) {
-        AppSnackbar.error(context, e.toString().replaceAll('Exception: ', ''));
+        AppToast.showError(context, e.toString().replaceAll('Exception: ', ''));
       }
     }
   }
@@ -946,8 +963,8 @@ class _AttendanceTabState extends ConsumerState<_AttendanceTab> {
                   icon: const Icon(Icons.chevron_left)),
               Text(
                 '${months[_month.month - 1]} ${_month.year}',
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold),
               ),
               IconButton(
                   onPressed: _nextMonth,
@@ -957,7 +974,7 @@ class _AttendanceTabState extends ConsumerState<_AttendanceTab> {
         ),
         if (_loading)
           const Expanded(
-              child: Center(child: CircularProgressIndicator()))
+              child: AppLoaderScreen())
         else if (_error != null)
           Expanded(
               child: _retryView(_error!, _loadReport))
@@ -1024,11 +1041,11 @@ class _SummaryBox extends StatelessWidget {
       child: Column(
         children: [
           Text('$count',
-              style: const TextStyle(
-                  fontWeight: FontWeight.bold, fontSize: 18)),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold)),
           Text(label,
-              style:
-                  const TextStyle(fontSize: 11, color: AppColors.neutral400)),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
         ],
       ),
     );
@@ -1054,39 +1071,43 @@ class _AttendanceRow extends StatelessWidget {
         borderRadius: AppRadius.brSm,
         border: Border(left: BorderSide(color: color, width: 3)),
       ),
-      child: Row(
-        children: [
-          Expanded(child: Text(date, style: const TextStyle(fontSize: 13))),
-          Container(
-            padding:
-                EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius: AppRadius.brLg,
+      child: Builder(builder: (context) {
+        final tt = Theme.of(context).textTheme;
+        final cs = Theme.of(context).colorScheme;
+        return Row(
+          children: [
+            Expanded(child: Text(date, style: tt.bodySmall)),
+            Container(
+              padding:
+                  EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: AppRadius.brLg,
+              ),
+              child: Text(_statusLabel(status),
+                  style: tt.labelSmall?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600)),
             ),
-            child: Text(_statusLabel(status),
-                style: TextStyle(
-                    color: color,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600)),
-          ),
-          if (checkIn != null) ...[
-            AppSpacing.hGapSm,
-            Text('$checkIn',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.neutral400)),
+            if (checkIn != null) ...[
+              AppSpacing.hGapSm,
+              Text('$checkIn',
+                  style: tt.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant)),
+            ],
+            if (checkOut != null) ...[
+              AppSpacing.hGapXs,
+              Text('–',
+                  style: tt.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant)),
+              AppSpacing.hGapXs,
+              Text('$checkOut',
+                  style: tt.labelSmall?.copyWith(
+                      color: cs.onSurfaceVariant)),
+            ],
           ],
-          if (checkOut != null) ...[
-            AppSpacing.hGapXs,
-            const Text('–',
-                style: TextStyle(fontSize: 11, color: AppColors.neutral400)),
-            AppSpacing.hGapXs,
-            Text('$checkOut',
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.neutral400)),
-          ],
-        ],
-      ),
+        );
+      }),
     );
   }
 }
@@ -1102,7 +1123,7 @@ class _LeavesTab extends ConsumerWidget {
     final async = ref.watch(nonTeachingStaffLeavesProvider(staffId));
     return async.when(
       loading: () =>
-          const Center(child: CircularProgressIndicator()),
+          AppLoaderScreen(),
       error: (e, _) => _retryView(
           e.toString().replaceAll('Exception: ', ''),
           () => ref.invalidate(nonTeachingStaffLeavesProvider(staffId))),
@@ -1147,7 +1168,7 @@ class _LeaveCard extends StatelessWidget {
             AppSpacing.vGapSm,
             Text(
               '${_fmt(leave.fromDate)} – ${_fmt(leave.toDate)} (${leave.totalDays} day${leave.totalDays != 1 ? 's' : ''})',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
             AppSpacing.vGapXs,
             Text(leave.reason,
@@ -1155,8 +1176,8 @@ class _LeaveCard extends StatelessWidget {
             if (leave.adminRemark != null) ...[
               AppSpacing.vGapXs,
               Text('Remark: ${leave.adminRemark}',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.neutral400),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis),
             ],
@@ -1173,35 +1194,39 @@ class _LeaveCard extends StatelessWidget {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 Widget _emptyTab(IconData icon, String message) {
-  return Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 48, color: AppColors.neutral400),
-        AppSpacing.vGapMd,
-        Text(message,
-            style:
-                const TextStyle(color: AppColors.neutral400, fontSize: 14)),
-      ],
-    ),
-  );
+  return Builder(builder: (context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: AppIconSize.xl4, color: Theme.of(context).colorScheme.outline),
+          AppSpacing.vGapMd,
+          Text(message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        ],
+      ),
+    );
+  });
 }
 
 Widget _retryView(String message, VoidCallback onRetry) {
-  return Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.error_outline, size: 40, color: AppColors.error500),
-        AppSpacing.vGapSm,
-        Text(message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13)),
-        AppSpacing.vGapMd,
-        FilledButton(onPressed: onRetry, child: const Text('Retry')),
-      ],
-    ),
-  );
+  return Builder(builder: (context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.error_outline, size: AppIconSize.xl3, color: Theme.of(context).colorScheme.error),
+          AppSpacing.vGapSm,
+          Text(message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall),
+          AppSpacing.vGapMd,
+          FilledButton(onPressed: onRetry, child: const Text('Retry')),
+        ],
+      ),
+    );
+  });
 }
 
 Color _statusColor(String status) {

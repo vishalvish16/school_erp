@@ -220,18 +220,17 @@ class _EditGroupDialogState extends ConsumerState<EditGroupDialog> {
             ),
             AppSpacing.vGapXl,
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                TextButton(
+                AppOutlineButton(
                   onPressed: _submitting ? null : () => Navigator.of(context).pop(),
                   child: const Text('Cancel'),
                 ),
                 AppSpacing.hGapSm,
-                FilledButton(
+                AppPrimaryButton(
                   onPressed: (_submitting || !_slugAvailable) ? null : _submit,
-                  child: _submitting
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Save'),
+                  isLoading: _submitting,
+                  child: const Text('Save'),
                 ),
               ],
             ),

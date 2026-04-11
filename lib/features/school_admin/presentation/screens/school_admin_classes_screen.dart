@@ -3,18 +3,15 @@
 // =============================================================================
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/school_admin/school_class_model.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../providers/school_admin_classes_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../shared/widgets/app_toast.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
 
-const Color _accent = AppColors.success500;
+import '../providers/school_admin_classes_provider.dart';
 
 class SchoolAdminClassesScreen extends ConsumerStatefulWidget {
   const SchoolAdminClassesScreen({super.key});
@@ -38,7 +35,8 @@ class _SchoolAdminClassesScreenState
   Widget build(BuildContext context) {
     final state = ref.watch(schoolAdminClassesProvider);
     final cs = Theme.of(context).colorScheme;
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
 
     return RefreshIndicator(
       onRefresh: () =>
@@ -47,61 +45,101 @@ class _SchoolAdminClassesScreenState
         builder: (context, constraints) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header ──
+            // ── Header ────────────────────────────────────────────────────
             Padding(
               padding: EdgeInsets.all(isNarrow ? 16.0 : 24.0),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
-                    AppStrings.classes,
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          AppStrings.classes,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        AppSpacing.vGapXs,
+                        Text(
+                          '${state.classes.length} class${state.classes.length == 1 ? '' : 'es'} configured',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
                   ),
                   FilledButton.icon(
                     onPressed: () => _showAddClassDialog(context),
-                    icon: const Icon(Icons.add, size: 18),
+                    icon: const Icon(Icons.add, size: AppIconSize.md),
                     label: Text(AppStrings.addClass),
-                    style: FilledButton.styleFrom(backgroundColor: _accent),
                   ),
                 ],
               ),
             ),
 
-            // ── Content ──
+            // ── Content ───────────────────────────────────────────────────
             Expanded(
               child: state.isLoading
-                  ? const ShimmerListLoadingWidget(itemCount: 8)
+                  ? AppLoaderScreen()
                   : state.errorMessage != null
                       ? _buildErrorState(context, cs, state.errorMessage!)
                       : state.classes.isEmpty
                           ? _buildEmptyState(context, cs)
-                          : ListView.builder(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: isNarrow ? 16.0 : 24.0,
-                              ),
-                              itemCount: state.classes.length,
-                              itemBuilder: (context, i) => _ClassCard(
-                                schoolClass: state.classes[i],
-                                onEditClass: () => _showEditClassDialog(
-                                    context, state.classes[i]),
-                                onDeleteClass: () => _confirmDeleteClass(
-                                    context, state.classes[i]),
-                                onAddSection: () => _showAddSectionDialog(
-                                    context, state.classes[i]),
-                                onDeleteSection: (sectionId) =>
-                                    _confirmDeleteSection(context, sectionId),
-                              ),
-                            ),
+                          : isWide
+                              ? _buildWideLayout(context, state)
+                              : _buildNarrowLayout(context, state, isNarrow),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Wide: card-based list (same card design, better padding) ─────────────
+
+  Widget _buildWideLayout(
+      BuildContext context, ClassesState state) {
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      itemCount: state.classes.length,
+      itemBuilder: (context, i) => _ClassCard(
+        schoolClass: state.classes[i],
+        onEditClass: () =>
+            _showEditClassDialog(context, state.classes[i]),
+        onDeleteClass: () =>
+            _confirmDeleteClass(context, state.classes[i]),
+        onAddSection: () =>
+            _showAddSectionDialog(context, state.classes[i]),
+        onDeleteSection: (sectionId) =>
+            _confirmDeleteSection(context, sectionId),
+      ),
+    );
+  }
+
+  Widget _buildNarrowLayout(BuildContext context,
+      ClassesState state, bool isNarrow) {
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.symmetric(
+        horizontal: isNarrow ? 16.0 : 24.0,
+      ),
+      itemCount: state.classes.length,
+      itemBuilder: (context, i) => _ClassCard(
+        schoolClass: state.classes[i],
+        onEditClass: () =>
+            _showEditClassDialog(context, state.classes[i]),
+        onDeleteClass: () =>
+            _confirmDeleteClass(context, state.classes[i]),
+        onAddSection: () =>
+            _showAddSectionDialog(context, state.classes[i]),
+        onDeleteSection: (sectionId) =>
+            _confirmDeleteSection(context, sectionId),
       ),
     );
   }
@@ -111,16 +149,24 @@ class _SchoolAdminClassesScreenState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.class_outlined, size: 64, color: cs.outline),
+          Icon(Icons.class_outlined,
+              size: AppIconSize.xl4, color: cs.outline),
           AppSpacing.vGapLg,
           Text(AppStrings.noClassesFound,
               style: Theme.of(context).textTheme.titleMedium),
           AppSpacing.vGapSm,
+          Text(
+            'Add your first class to get started.',
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          AppSpacing.vGapLg,
           FilledButton.icon(
             onPressed: () => _showAddClassDialog(context),
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add, size: AppIconSize.md),
             label: Text(AppStrings.addFirstClass),
-            style: FilledButton.styleFrom(backgroundColor: _accent),
           ),
         ],
       ),
@@ -137,7 +183,8 @@ class _SchoolAdminClassesScreenState
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.error_outline, size: 48, color: cs.error),
+              Icon(Icons.error_outline,
+                  size: AppIconSize.xl3, color: cs.error),
               AppSpacing.vGapMd,
               Text(message, textAlign: TextAlign.center),
               AppSpacing.vGapLg,
@@ -168,14 +215,16 @@ class _SchoolAdminClassesScreenState
               controller: nameCtrl,
               decoration: InputDecoration(
                   labelText: AppStrings.classNameHint,
-                  border: const OutlineInputBorder()),
+                  border: OutlineInputBorder(
+                      borderRadius: AppRadius.brMd)),
             ),
             AppSpacing.vGapMd,
             TextField(
               controller: numericCtrl,
               decoration: InputDecoration(
                   labelText: AppStrings.sortOrderHint,
-                  border: const OutlineInputBorder()),
+                  border: OutlineInputBorder(
+                      borderRadius: AppRadius.brMd)),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -187,18 +236,20 @@ class _SchoolAdminClassesScreenState
           FilledButton(
             onPressed: () async {
               if (nameCtrl.text.trim().isEmpty) return;
-              final numeric = int.tryParse(numericCtrl.text.trim());
+              final numeric =
+                  int.tryParse(numericCtrl.text.trim());
               final ok = await ref
                   .read(schoolAdminClassesProvider.notifier)
-                  .createClass(nameCtrl.text.trim(), numeric: numeric);
+                  .createClass(nameCtrl.text.trim(),
+                      numeric: numeric);
               if (ok && ctx.mounted) {
                 Navigator.of(ctx).pop();
                 if (context.mounted) {
-                  AppSnackbar.success(context, AppStrings.classCreated);
+                  AppToast.showSuccess(
+                      context, AppStrings.classCreated);
                 }
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: _accent),
             child: Text(AppStrings.create),
           ),
         ],
@@ -209,8 +260,8 @@ class _SchoolAdminClassesScreenState
   Future<void> _showEditClassDialog(
       BuildContext context, SchoolClassModel cls) async {
     final nameCtrl = TextEditingController(text: cls.name);
-    final numericCtrl =
-        TextEditingController(text: cls.numeric?.toString() ?? '');
+    final numericCtrl = TextEditingController(
+        text: cls.numeric?.toString() ?? '');
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -221,13 +272,17 @@ class _SchoolAdminClassesScreenState
             TextField(
               controller: nameCtrl,
               decoration: InputDecoration(
-                  labelText: AppStrings.className, border: const OutlineInputBorder()),
+                  labelText: AppStrings.className,
+                  border: OutlineInputBorder(
+                      borderRadius: AppRadius.brMd)),
             ),
             AppSpacing.vGapMd,
             TextField(
               controller: numericCtrl,
               decoration: InputDecoration(
-                  labelText: AppStrings.sortOrder, border: const OutlineInputBorder()),
+                  labelText: AppStrings.sortOrder,
+                  border: OutlineInputBorder(
+                      borderRadius: AppRadius.brMd)),
               keyboardType: TextInputType.number,
             ),
           ],
@@ -239,15 +294,16 @@ class _SchoolAdminClassesScreenState
           FilledButton(
             onPressed: () async {
               if (nameCtrl.text.trim().isEmpty) return;
-              final numeric = int.tryParse(numericCtrl.text.trim());
+              final numeric =
+                  int.tryParse(numericCtrl.text.trim());
               final ok = await ref
                   .read(schoolAdminClassesProvider.notifier)
-                  .updateClass(cls.id, nameCtrl.text.trim(), numeric: numeric);
+                  .updateClass(cls.id, nameCtrl.text.trim(),
+                      numeric: numeric);
               if (ok && ctx.mounted) {
                 Navigator.of(ctx).pop();
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: _accent),
             child: Text(AppStrings.update),
           ),
         ],
@@ -260,7 +316,8 @@ class _SchoolAdminClassesScreenState
     final confirmed = await AppDialogs.confirm(
       context,
       title: AppStrings.deleteClassQuestion,
-      message: 'Delete "${cls.name}"? All sections and students in this class will be affected.',
+      message:
+          'Delete "${cls.name}"? All sections and students in this class will be affected.',
       confirmLabel: AppStrings.delete,
       isDestructive: true,
     );
@@ -281,7 +338,8 @@ class _SchoolAdminClassesScreenState
           controller: nameCtrl,
           decoration: InputDecoration(
               labelText: AppStrings.sectionNameHint,
-              border: const OutlineInputBorder()),
+              border: OutlineInputBorder(
+                  borderRadius: AppRadius.brMd)),
           textCapitalization: TextCapitalization.characters,
         ),
         actions: [
@@ -293,15 +351,16 @@ class _SchoolAdminClassesScreenState
               if (nameCtrl.text.trim().isEmpty) return;
               final ok = await ref
                   .read(schoolAdminClassesProvider.notifier)
-                  .createSection(cls.id, nameCtrl.text.trim().toUpperCase());
+                  .createSection(
+                      cls.id, nameCtrl.text.trim().toUpperCase());
               if (ok && ctx.mounted) {
                 Navigator.of(ctx).pop();
                 if (context.mounted) {
-                  AppSnackbar.success(context, AppStrings.sectionCreated);
+                  AppToast.showSuccess(
+                      context, AppStrings.sectionCreated);
                 }
               }
             },
-            style: FilledButton.styleFrom(backgroundColor: _accent),
             child: Text(AppStrings.add),
           ),
         ],
@@ -350,50 +409,71 @@ class _ClassCardState extends State<_ClassCard> {
   @override
   Widget build(BuildContext context) {
     final cls = widget.schoolClass;
+    final scheme = Theme.of(context).colorScheme;
+    final totalStudents =
+        cls.sections.fold(0, (sum, s) => sum + s.studentCount);
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Column(
         children: [
           ListTile(
             leading: CircleAvatar(
-              backgroundColor: _accent.withValues(alpha: 0.15),
+              backgroundColor:
+                  AppColors.primary500.withValues(alpha: 0.15),
               child: Text(
                 cls.numeric?.toString() ?? cls.name.substring(0, 1),
                 style: const TextStyle(
-                    color: _accent, fontWeight: FontWeight.bold),
+                    color: AppColors.primary500,
+                    fontWeight: FontWeight.bold),
               ),
             ),
             title: Text(cls.name,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(
-              '${cls.sections.length} section(s)  •  '
-              '${cls.sections.fold(0, (sum, s) => sum + s.studentCount)} students',
-              style: Theme.of(context).textTheme.bodySmall,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600)),
+            subtitle: Row(
+              children: [
+                _InfoChip(
+                  label:
+                      '${cls.sections.length} section${cls.sections.length == 1 ? '' : 's'}',
+                  color: AppColors.primary500,
+                ),
+                AppSpacing.hGapXs,
+                _InfoChip(
+                  label: '$totalStudents students',
+                  color: AppColors.secondary500,
+                ),
+              ],
             ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   onPressed: widget.onAddSection,
-                  icon: const Icon(Icons.add_circle_outline, size: 20),
+                  icon: const Icon(Icons.add_circle_outline,
+                      size: AppIconSize.md),
                   tooltip: AppStrings.addSection,
-                  color: _accent,
+                  color: scheme.primary,
                 ),
-                PopupMenuButton<String>(
+                HoverPopupMenu<String>(
                   itemBuilder: (ctx) => [
                     PopupMenuItem(
                         value: 'edit',
                         child: ListTile(
                             dense: true,
-                            leading: const Icon(Icons.edit),
+                            leading: const Icon(Icons.edit,
+                                size: AppIconSize.md),
                             title: Text(AppStrings.editClass))),
                     PopupMenuItem(
                         value: 'delete',
                         child: ListTile(
                             dense: true,
-                            leading: const Icon(Icons.delete, color: AppColors.error500),
+                            leading: const Icon(Icons.delete,
+                                color: AppColors.error500,
+                                size: AppIconSize.md),
                             title: Text(AppStrings.deleteClass,
-                                style: const TextStyle(color: AppColors.error500)))),
+                                style: const TextStyle(
+                                    color: AppColors.error500)))),
                   ],
                   onSelected: (v) {
                     if (v == 'edit') widget.onEditClass();
@@ -401,12 +481,13 @@ class _ClassCardState extends State<_ClassCard> {
                   },
                 ),
                 IconButton(
-                  onPressed: () => setState(() => _expanded = !_expanded),
+                  onPressed: () =>
+                      setState(() => _expanded = !_expanded),
                   icon: Icon(
                     _expanded
                         ? Icons.keyboard_arrow_up
                         : Icons.keyboard_arrow_down,
-                    size: 20,
+                    size: AppIconSize.md,
                   ),
                 ),
               ],
@@ -415,23 +496,32 @@ class _ClassCardState extends State<_ClassCard> {
           if (_expanded && cls.sections.isNotEmpty) ...[
             const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                  AppSpacing.lg,
+                  AppSpacing.sm),
               child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
                 children: cls.sections
                     .map((sec) => Chip(
                           label: Text(
                             '${sec.name}  (${sec.studentCount})',
                             style: const TextStyle(fontSize: 12),
                           ),
-                          deleteIcon: const Icon(Icons.close, size: 14),
+                          deleteIcon: const Icon(Icons.close,
+                              size: AppIconSize.xs),
                           onDeleted: () =>
                               widget.onDeleteSection(sec.id),
-                          backgroundColor:
-                              _accent.withValues(alpha: 0.1),
+                          backgroundColor: AppColors.primary500
+                              .withValues(alpha: 0.1),
                           side: BorderSide(
-                              color: _accent.withValues(alpha: 0.3)),
+                              color: AppColors.primary500
+                                  .withValues(alpha: 0.3)),
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: AppRadius.brFull,
+                          ),
                         ))
                     .toList(),
               ),
@@ -439,15 +529,43 @@ class _ClassCardState extends State<_ClassCard> {
           ],
           if (_expanded && cls.sections.isEmpty) ...[
             const Divider(height: 1),
-            const Padding(
+            Padding(
               padding: AppSpacing.paddingMd,
               child: Text(
                 'No sections yet. Tap + to add one.',
-                style: TextStyle(color: AppColors.neutral400),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
               ),
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  const _InfoChip({required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: AppRadius.brFull,
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: color),
       ),
     );
   }

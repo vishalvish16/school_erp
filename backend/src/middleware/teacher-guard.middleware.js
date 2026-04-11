@@ -10,10 +10,9 @@
  *
  * All downstream queries MUST use req.teacher.schoolId for tenant isolation.
  */
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/response.js';
 
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 const TEACHING_DESIGNATIONS = ['TEACHER', 'PRINCIPAL', 'VICE_PRINCIPAL', 'HOD'];
 

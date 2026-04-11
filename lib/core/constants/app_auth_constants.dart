@@ -315,7 +315,7 @@ abstract final class AuthTextStyles {
 abstract final class AuthAssets {
   AuthAssets._();
 
-  static const String background = 'assets/images/auth_background.jpeg';
+  static const String background = 'assets/images/auth_background.jpg';
   static const String logo = 'assets/images/logo2.png';
   static const String protect = 'assets/images/protect.png';
   static const String track = 'assets/images/track.png';

@@ -53,8 +53,12 @@ class _GroupAdminEditProfileScreenState
     _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    for (final c in _otpControllers) c.dispose();
-    for (final f in _otpFocusNodes) f.dispose();
+    for (final c in _otpControllers) {
+      c.dispose();
+    }
+    for (final f in _otpFocusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -217,7 +221,7 @@ class _GroupAdminEditProfileScreenState
         ),
       ),
       body: asyncProfile.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => AppLoaderScreen(),
         error: (e, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

@@ -16,6 +16,7 @@ class StaffFeesState {
   final Map<String, dynamic> summary;
   final bool isLoading;
   final bool isLoadingPayments;
+  final bool isLoadingMorePayments;
   final bool isCollecting;
   final String? errorMessage;
   final int currentPage;
@@ -32,6 +33,7 @@ class StaffFeesState {
     this.summary = const {},
     this.isLoading = false,
     this.isLoadingPayments = false,
+    this.isLoadingMorePayments = false,
     this.isCollecting = false,
     this.errorMessage,
     this.currentPage = 1,
@@ -49,6 +51,7 @@ class StaffFeesState {
     Map<String, dynamic>? summary,
     bool? isLoading,
     bool? isLoadingPayments,
+    bool? isLoadingMorePayments,
     bool? isCollecting,
     String? errorMessage,
     int? currentPage,
@@ -69,6 +72,8 @@ class StaffFeesState {
         summary: summary ?? this.summary,
         isLoading: isLoading ?? this.isLoading,
         isLoadingPayments: isLoadingPayments ?? this.isLoadingPayments,
+        isLoadingMorePayments:
+            isLoadingMorePayments ?? this.isLoadingMorePayments,
         isCollecting: isCollecting ?? this.isCollecting,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         currentPage: currentPage ?? this.currentPage,
@@ -118,10 +123,15 @@ class StaffFeesNotifier extends StateNotifier<StaffFeesState> {
     String? month,
     String? academicYear,
   }) async {
-    state = state.copyWith(isLoadingPayments: true, clearError: true);
+    state = state.copyWith(
+      isLoadingPayments: true,
+      isLoadingMorePayments: false,
+      clearError: true,
+    );
     try {
       final response = await _service.getFeePayments(
         page: page,
+        limit: state.pageSize,
         studentId: studentId ?? state.filterStudentId,
         month: month ?? state.filterMonth,
         academicYear: academicYear ?? state.filterAcademicYear,
@@ -143,6 +153,7 @@ class StaffFeesNotifier extends StateNotifier<StaffFeesState> {
       state = state.copyWith(
         payments: payments,
         isLoadingPayments: false,
+        isLoadingMorePayments: false,
         currentPage: (pagination['page'] as num?)?.toInt() ?? page,
         totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
         total: (pagination['total'] as num?)?.toInt() ?? payments.length,
@@ -150,6 +161,55 @@ class StaffFeesNotifier extends StateNotifier<StaffFeesState> {
     } catch (e) {
       state = state.copyWith(
         isLoadingPayments: false,
+        isLoadingMorePayments: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  Future<void> loadMorePayments() async {
+    if (state.isLoadingPayments || state.isLoadingMorePayments) return;
+    if (state.payments.isEmpty) return;
+    if (state.payments.length >= state.total && state.total > 0) return;
+    final nextPage = state.currentPage + 1;
+    if (nextPage > state.totalPages) return;
+    state = state.copyWith(isLoadingMorePayments: true, clearError: true);
+    try {
+      final response = await _service.getFeePayments(
+        page: nextPage,
+        limit: state.pageSize,
+        studentId: state.filterStudentId,
+        month: state.filterMonth,
+        academicYear: state.filterAcademicYear,
+      );
+      final dataWrapper = response['data'];
+      List<dynamic> rawList = [];
+      Map<String, dynamic> pagination = {};
+      if (dataWrapper is Map) {
+        rawList = (dataWrapper['data'] as List?) ?? [];
+        pagination =
+            (dataWrapper['pagination'] as Map<String, dynamic>?) ?? {};
+      } else if (dataWrapper is List) {
+        rawList = dataWrapper;
+      }
+      final newPayments = rawList
+          .map((e) =>
+              StaffPaymentModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final seen = <String>{};
+      final merged = [...state.payments, ...newPayments]
+          .where((p) => seen.add(p.id))
+          .toList();
+      state = state.copyWith(
+        payments: merged,
+        isLoadingMorePayments: false,
+        currentPage: (pagination['page'] as num?)?.toInt() ?? nextPage,
+        totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
+        total: (pagination['total'] as num?)?.toInt() ?? merged.length,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingMorePayments: false,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
     }

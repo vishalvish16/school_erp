@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../models/school_admin/non_teaching_attendance_model.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
+
 
 class StaffMyAttendanceScreen extends ConsumerStatefulWidget {
   const StaffMyAttendanceScreen({super.key});
@@ -76,7 +76,7 @@ class _StaffMyAttendanceScreenState
     final records = _data['records'] as List? ?? [];
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _loadAttendance,
         child: CustomScrollView(
@@ -113,9 +113,8 @@ class _StaffMyAttendanceScreenState
                             AppSpacing.hGapSm,
                             Text(
                               '${monthNames[_month.month - 1]} ${_month.year}',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             AppSpacing.hGapSm,
                             IconButton(
@@ -159,8 +158,8 @@ class _StaffMyAttendanceScreenState
             ),
 
             if (_loading)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator()),
+              SliverFillRemaining(
+                child: AppLoaderScreen(),
               )
             else if (_error != null)
               SliverFillRemaining(
@@ -192,7 +191,7 @@ class _StaffMyAttendanceScreenState
                           size: 56, color: AppColors.neutral400),
                       AppSpacing.vGapMd,
                       Text('No attendance records this month',
-                          style: TextStyle(color: AppColors.neutral400)),
+                          style: TextStyle(color: AppColors.neutral500)),
                     ],
                   ),
                 ),
@@ -237,22 +236,18 @@ class _StaffMyAttendanceScreenState
                                     CrossAxisAlignment.start,
                                 children: [
                                   Text(date,
-                                      style: const TextStyle(
-                                          fontWeight:
-                                              FontWeight.w500,
-                                          fontSize: 13)),
+                                      style: Theme.of(ctx).textTheme.bodyMedium
+                                          ?.copyWith(fontWeight: FontWeight.w500)),
                                   if (checkIn != null)
                                     Text(
                                       'In: $checkIn${checkOut != null ? '  Out: $checkOut' : ''}',
-                                      style: const TextStyle(
-                                          fontSize: 11,
-                                          color: AppColors.neutral400),
+                                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                          color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                                     ),
                                   if (remarks != null)
                                     Text(remarks,
-                                        style: const TextStyle(
-                                            fontSize: 11,
-                                            color: AppColors.neutral400)),
+                                        style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                                            color: Theme.of(ctx).colorScheme.onSurfaceVariant)),
                                 ],
                               ),
                             ),
@@ -270,9 +265,8 @@ class _StaffMyAttendanceScreenState
                               child: Text(
                                 NonTeachingAttendanceModel
                                     .labelForStatus(status),
-                                style: TextStyle(
+                                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                                   color: color,
-                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -308,7 +302,7 @@ class _SummaryBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding:
-          EdgeInsets.symmetric(horizontal: 14, vertical: AppSpacing.sm),
+          EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: AppRadius.brMd,
@@ -317,12 +311,11 @@ class _SummaryBox extends StatelessWidget {
       child: Column(
         children: [
           Text('$count',
-              style: TextStyle(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  fontSize: 18,
                   color: color)),
           Text(label,
-              style: TextStyle(fontSize: 11, color: color)),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color)),
         ],
       ),
     );

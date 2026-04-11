@@ -18,8 +18,6 @@ import '../../core/services/local_storage_service.dart';
 import 'auth_guard_provider.dart';
 import 'auto_lock_provider.dart';
 import 'auth_screen_layout.dart';
-import '../../design_system/tokens/app_colors.dart';
-import '../../design_system/tokens/app_spacing.dart';
 
 class DeviceVerificationScreen extends ConsumerStatefulWidget {
   const DeviceVerificationScreen({

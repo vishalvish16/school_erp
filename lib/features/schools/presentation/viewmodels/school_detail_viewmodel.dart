@@ -41,7 +41,7 @@ class SchoolDetailViewModel extends StateNotifier<AsyncValue<SchoolModel>> {
       await _repository.assignPlan(_id, {
         'plan_id': planId,
         'billing_cycle': billingCycle,
-        if (durationMonths != null) 'duration_months': durationMonths,
+        'duration_months': ?durationMonths,
       });
       await fetchSchool(); // Refresh data
     } catch (e) {

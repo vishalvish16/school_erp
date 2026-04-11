@@ -157,7 +157,7 @@ class _TeacherDiaryFormScreenState
 
     if (widget.isEditing && !_loaded) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: AppLoaderScreen(),
       );
     }
 
@@ -201,7 +201,7 @@ class _TeacherDiaryFormScreenState
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             DropdownButtonFormField<String>(
-                              value: _selectedSectionId,
+                              initialValue: _selectedSectionId,
                               decoration: const InputDecoration(
                                 labelText: 'Class - Section *',
                                 border: OutlineInputBorder(),
@@ -228,7 +228,7 @@ class _TeacherDiaryFormScreenState
                             AppSpacing.vGapLg,
                             if (_selectedSectionId != null)
                               DropdownButtonFormField<String>(
-                                value: _selectedSubject,
+                                initialValue: _selectedSubject,
                                 decoration: const InputDecoration(
                                   labelText: 'Subject *',
                                   border: OutlineInputBorder(),
@@ -273,7 +273,7 @@ class _TeacherDiaryFormScreenState
                           SizedBox(
                             width: 120,
                             child: DropdownButtonFormField<int>(
-                              value: _periodNo,
+                              initialValue: _periodNo,
                               decoration: const InputDecoration(
                                 labelText: 'Period',
                                 border: OutlineInputBorder(),

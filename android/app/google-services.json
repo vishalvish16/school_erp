@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "551095455768",
+    "project_id": "school-erp-ai",
+    "storage_bucket": "school-erp-ai.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:551095455768:android:d5231bc488e1fc0aee736d",
+        "android_client_info": {
+          "package_name": "com.schoolerp.school_erp_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaVw4b5m66arG1VU-OKZqKpoFLEJ4SQXE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

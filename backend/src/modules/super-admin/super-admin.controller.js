@@ -397,6 +397,23 @@ export const updatePlanStatus = handle(async (req, res) => {
     return successResponse(res, 200, 'Plan status updated', plan);
 });
 
+export const updatePlanFeatures = handle(async (req, res) => {
+    const { features } = req.body || {};
+    if (!features || typeof features !== 'object') throw new AppError('features object is required', 400);
+    const data = await service.updatePlanFeatures(req.params.id, features);
+    auditService.logAudit({
+        actorId: req.user?.userId,
+        actorName: req.user?.first_name ? `${req.user.first_name} ${req.user.last_name || ''}`.trim() : req.user?.email,
+        actorRole: req.user?.role || 'super_admin',
+        action: 'UPDATE_PLAN_FEATURES',
+        entityType: 'plans',
+        entityId: req.params.id,
+        ipAddress: req.ip || req.connection?.remoteAddress,
+        extra: { entity_id: req.params.id, features: data },
+    }).catch(() => {});
+    return successResponse(res, 200, 'Plan features updated', { features: data });
+});
+
 // ── Billing ────────────────────────────────────────────────────────────────
 export const getSubscriptions = handle(async (req, res) => {
     const { status, expiring_days, search, page, limit } = req.query;

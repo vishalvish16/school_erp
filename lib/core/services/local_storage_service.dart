@@ -170,4 +170,14 @@ class LocalStorageService {
     final p = await _instance;
     return p.getString(KEY_USER_PHONE);
   }
+
+  /// Clears school, session, portal, and parent phone so splash opens [SchoolSetupScreen].
+  /// Used by the hidden logo long-press on login screens.
+  Future<void> resetToSchoolSetupEntry() async {
+    await clearSchool();
+    await clearSession();
+    final p = await _instance;
+    await p.remove(KEY_USER_PHONE);
+    await p.remove('parent_login_phone');
+  }
 }

@@ -11,8 +11,6 @@ import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
 import '../providers/school_admin_profile_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -25,7 +23,6 @@ class SchoolAdminProfileScreen extends ConsumerWidget {
     final isWide = MediaQuery.of(context).size.width >= 768;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       body: Padding(
         padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
         child: Column(
@@ -54,7 +51,7 @@ class SchoolAdminProfileScreen extends ConsumerWidget {
             Expanded(
               child: asyncProfile.when(
                 loading: () =>
-                    const Center(child: CircularProgressIndicator()),
+                    AppLoaderScreen(),
                 error: (err, _) => Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -178,6 +175,7 @@ class SchoolAdminProfileScreen extends ConsumerWidget {
 
     await showDialog(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
           title: Text(AppStrings.editPersonalInfo),
@@ -316,6 +314,7 @@ class SchoolAdminProfileScreen extends ConsumerWidget {
 
     await showDialog(
       context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => AlertDialog(
           title: Text(AppStrings.editSchoolInfo),
@@ -415,7 +414,7 @@ class _UserInfoCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: AppSpacing.paddingXl,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -497,7 +496,7 @@ class _SchoolInfoCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: AppSpacing.paddingXl,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

@@ -21,6 +21,7 @@ class SchoolsViewModel
   Timer? _debounceTimer;
 
   int _currentPage = 1;
+  bool _loadMoreInFlight = false;
   final int _limit = 15;
   String _searchQuery = '';
   String _statusFilter = 'ALL';
@@ -126,9 +127,14 @@ class SchoolsViewModel
   }
 
   Future<void> loadMore() async {
-    if (!hasMorePages) return;
-    _currentPage++;
-    await fetchSchools(page: _currentPage, append: true);
+    if (!hasMorePages || _loadMoreInFlight) return;
+    _loadMoreInFlight = true;
+    try {
+      _currentPage++;
+      await fetchSchools(page: _currentPage, append: true);
+    } finally {
+      _loadMoreInFlight = false;
+    }
   }
 
   Future<void> suspendSchool(String id) async {

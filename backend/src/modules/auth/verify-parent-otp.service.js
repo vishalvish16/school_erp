@@ -1,14 +1,13 @@
 /**
  * Verify Parent OTP — validate OTP session, fetch Parent, issue JWT
  */
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../../utils/response.js';
 import * as jwtUtils from '../../utils/jwt.js';
 import * as parentOtpStore from './parent-otp.store.js';
 import { normalizePhone } from './resolve-parent-by-phone.repository.js';
 import * as auditService from '../audit/audit.service.js';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 export async function verifyParentOtp({ otp_session_id, otp, phone, school_id }) {
     const sess = parentOtpStore.get(otp_session_id);
@@ -57,7 +56,7 @@ export async function verifyParentOtp({ otp_session_id, otp, phone, school_id })
     const accessToken = jwtUtils.generateParentAccessToken(payload);
 
     auditService.logAudit({
-        actorId: parent.id,
+        actorId: null,
         actorRole: 'parent',
         action: 'PARENT_LOGIN',
         entityType: 'parent',

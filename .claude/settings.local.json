@@ -6,7 +6,19 @@
       "Bash(node --input-type=module:*)",
       "Bash(ls -la \"e:\\\\School_ERP_AI\\\\erp-new-logic\\\\backend\\\\src\\\\modules\\\\auth\"\" | grep -i \"portal-auth \")",
       "Bash(head -20 grep -n \"assign.*admin\\\\|group.*admin\\\\|admin.*assign\" \"e:/School_ERP_AI/erp-new-logic/lib/features/super_admin/presentation/screens/super_admin_groups_screen.dart\")",
-      "Bash(head -20 grep -n \"assignGroupAdmin\\\\|resetGroupAdmin\" \"e:/School_ERP_AI/erp-new-logic/lib/core/services/super_admin_service.dart\")"
+      "Bash(head -20 grep -n \"assignGroupAdmin\\\\|resetGroupAdmin\" \"e:/School_ERP_AI/erp-new-logic/lib/core/services/super_admin_service.dart\")",
+      "Bash(node fix-prisma-singleton.mjs)",
+      "Bash(mkdir -p \"e:/School_ERP_AI/erp-new-logic/backend/prisma/migrations/20260322120000_add_theme_configs\")",
+      "Bash(mkdir -p \"e:/School_ERP_AI/erp-new-logic/backend/src/modules/theme\")",
+      "Bash(ls e:/School_ERP_AI/erp-new-logic/lib/features/super_admin/presentation/screens/super_admin_theme*)",
+      "Bash(taskkill /f /im node.exe)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(Get-Process node:*)",
+      "Bash(Stop-Process -Force)",
+      "Bash(Write-Host \"All node processes stopped\")",
+      "Bash(powershell.exe -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Done''\")",
+      "Bash(npx prisma:*)",
+      "Bash(flutter analyze:*)"
     ]
   }
 }

@@ -11,9 +11,8 @@ import '../../../../features/auth/auth_guard_provider.dart';
 import '../../../../models/super_admin/super_admin_models.dart';
 import '../../../../widgets/super_admin/dialogs/add_admin_dialog.dart';
 import '../../../../widgets/super_admin/super_admin_dialogs.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
-import '../../../../design_system/tokens/app_colors.dart';
 
 class SuperAdminAdminsScreen extends ConsumerStatefulWidget {
   const SuperAdminAdminsScreen({super.key});
@@ -60,119 +59,141 @@ class _SuperAdminAdminsScreenState extends ConsumerState<SuperAdminAdminsScreen>
     }
   }
 
+  void _onAdminMenu(SuperAdminUserModel a, String value) {
+    switch (value) {
+      case 'reset':
+        _resetPassword(a);
+        break;
+      case 'edit':
+        showAdaptiveModal(
+          context,
+          AddAdminDialog(
+            existing: a,
+            onUpdate: (id, body) async {
+              await ref.read(superAdminServiceProvider).updateSuperAdmin(id, body);
+              if (mounted) _load();
+            },
+          ),
+        );
+        break;
+      case 'remove':
+        _removeAdmin(a);
+        break;
+    }
+  }
+
   Widget _buildAdminCard(SuperAdminUserModel a) {
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final cs = Theme.of(context).colorScheme;
+    final smallMuted = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: cs.onSurfaceVariant,
+        );
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: AppSpacing.paddingMd,
+        padding: AppSpacing.paddingLg,
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
                   child: Text(a.name.isNotEmpty ? a.name[0].toUpperCase() : '?'),
                 ),
-                AppSpacing.hGapMd,
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(a.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        a.name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Text(
                         a.email,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: smallMuted,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                      ),
-                      AppSpacing.vGapXs,
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
-                          if (a.totpEnabled)
-                            Icon(Icons.security, size: 14, color: Theme.of(context).colorScheme.primary),
-                          Chip(
-                            label: Text(a.isActive ? AppStrings.statusActive : AppStrings.statusInactive, style: const TextStyle(fontSize: 11)),
-                            padding: EdgeInsets.zero,
-                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            backgroundColor: a.isActive
-                                ? AppColors.success500.withValues(alpha: 0.2)
-                                : AppColors.neutral400.withValues(alpha: 0.2),
-                          ),
-                        ],
                       ),
                     ],
                   ),
                 ),
-                if (!isNarrow)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.lock_reset, size: 20),
-                        onPressed: () => _resetPassword(a),
-                        tooltip: AppStrings.resetPassword,
+                HoverPopupMenu<String>(
+                  icon: const Icon(Icons.more_vert, size: 22),
+                  padding: EdgeInsets.zero,
+                  onSelected: (v) => _onAdminMenu(a, v),
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem<String>(
+                      value: 'reset',
+                      child: ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.lock_reset, size: 20),
+                        title: const Text(AppStrings.resetPassword),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 20),
-                        onPressed: () {
-                          showAdaptiveModal(
-                            context,
-                            AddAdminDialog(
-                              existing: a,
-                              onUpdate: (id, body) async {
-                                await ref.read(superAdminServiceProvider).updateSuperAdmin(id, body);
-                                if (mounted) _load();
-                              },
-                            ),
-                          );
-                        },
-                        tooltip: AppStrings.edit,
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'edit',
+                      child: ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.edit_outlined, size: 20),
+                        title: const Text(AppStrings.edit),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.person_remove, size: 20),
-                        onPressed: () => _removeAdmin(a),
-                        tooltip: AppStrings.remove,
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'remove',
+                      child: ListTile(
+                        dense: true,
+                        leading: Icon(Icons.person_remove, size: 20, color: AppColors.error500),
+                        title: Text(
+                          AppStrings.remove,
+                          style: const TextStyle(color: AppColors.error500),
+                        ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            if (isNarrow) ...[
-              AppSpacing.vGapMd,
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton.icon(
-                    icon: const Icon(Icons.lock_reset, size: 18),
-                    label: const Text(AppStrings.resetPassword),
-                    onPressed: () => _resetPassword(a),
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text(AppStrings.edit),
-                    onPressed: () {
-                      showAdaptiveModal(
-                        context,
-                        AddAdminDialog(
-                          existing: a,
-                          onUpdate: (id, body) async {
-                            await ref.read(superAdminServiceProvider).updateSuperAdmin(id, body);
-                            if (mounted) _load();
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.person_remove, size: 18),
-                    label: const Text(AppStrings.remove),
-                    onPressed: () => _removeAdmin(a),
-                  ),
-                ],
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Divider(
+                height: 1,
+                thickness: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.5),
               ),
-            ],
+            ),
+            Row(
+              children: [
+                if (a.totpEnabled) ...[
+                  Icon(Icons.security, size: 16, color: cs.primary),
+                  const SizedBox(width: 6),
+                ],
+                Expanded(
+                  child: Text(
+                    a.totpEnabled ? '2FA enabled' : '2FA off',
+                    style: smallMuted,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Chip(
+                  label: Text(
+                    a.isActive ? AppStrings.statusActive : AppStrings.statusInactive,
+                    style: const TextStyle(fontSize: 11),
+                  ),
+                  padding: EdgeInsets.zero,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
+                  backgroundColor: a.isActive
+                      ? AppColors.success500.withValues(alpha: 0.2)
+                      : AppColors.neutral400.withValues(alpha: 0.2),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -311,7 +332,8 @@ class _SuperAdminAdminsScreenState extends ConsumerState<SuperAdminAdminsScreen>
             else
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final isWide = constraints.maxWidth >= 800;
+                  final isWide =
+                      constraints.maxWidth >= AppBreakpoints.tablet;
                   final adminCards = _admins.map((a) => _buildAdminCard(a)).toList();
                   return isWide
                       ? Row(

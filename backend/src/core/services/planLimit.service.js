@@ -1,6 +1,5 @@
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 /**
  * Reusable service to enforce plan limits before creating entities (Student, Teacher, Branch).

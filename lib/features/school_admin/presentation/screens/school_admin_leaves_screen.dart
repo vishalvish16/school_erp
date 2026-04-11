@@ -4,16 +4,16 @@
 // =============================================================================
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../models/school_admin/staff_leave_model.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+import '../../../../shared/widgets/app_toast.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
+
 import '../../../../core/constants/app_strings.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -124,7 +124,7 @@ class _SchoolAdminLeavesScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
 
     return RefreshIndicator(
       onRefresh: _refreshAll,
@@ -141,6 +141,10 @@ class _SchoolAdminLeavesScreenState
                 alignment: WrapAlignment.spaceBetween,
                 crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => context.go('/school-admin/staff'),
+                  ),
                   Text(
                     'Leave Requests',
                     style: Theme.of(context)
@@ -160,10 +164,6 @@ class _SchoolAdminLeavesScreenState
             // ── Tab bar ──
             TabBar(
               controller: _tab,
-              labelColor: _accent,
-              unselectedLabelColor:
-                  Theme.of(context).colorScheme.onSurfaceVariant,
-              indicatorColor: _accent,
               tabs: const [
                 Tab(text: 'Pending'),
                 Tab(text: 'All Requests'),
@@ -200,7 +200,7 @@ class _PendingTab extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
 
     return async.when(
-      loading: () => const ShimmerListLoadingWidget(itemCount: 8),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => Center(
         child: Card(
           margin: AppSpacing.paddingXl,
@@ -271,73 +271,102 @@ class _PendingLeaveCardState extends ConsumerState<_PendingLeaveCard> {
   @override
   Widget build(BuildContext context) {
     final l = widget.leave;
+    final cs = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: AppSpacing.paddingLg,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    l.staffName ?? 'Unknown Staff',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
-                  ),
-                ),
-                _LeaveStatusChip(status: l.status),
-              ],
-            ),
-            AppSpacing.vGapXs,
-            Text(l.leaveType,
-                style: const TextStyle(
-                    color: _accent, fontWeight: FontWeight.w600)),
-            AppSpacing.vGapXs,
-            Row(
-              children: [
-                const Icon(Icons.date_range, size: 14, color: AppColors.neutral400),
-                AppSpacing.hGapXs,
-                Text(
-                  '${_fmtDate(l.fromDate)} — ${_fmtDate(l.toDate)} (${l.totalDays} day${l.totalDays == 1 ? '' : 's'})',
-                  style: const TextStyle(fontSize: 13, color: AppColors.neutral400),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(l.reason,
-                style: const TextStyle(fontSize: 13),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis),
-            AppSpacing.vGapMd,
-            if (_loading)
-              const Center(child: CircularProgressIndicator())
-            else
+      clipBehavior: Clip.hardEdge,
+      child: InkWell(
+        onTap: () {},
+        child: Padding(
+          padding: AppSpacing.paddingLg,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton(
-                      onPressed: () => _review('APPROVED'),
-                      style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.success500),
-                      child: Text(AppStrings.approve),
+                    child: Text(
+                      l.staffName ?? 'Unknown Staff',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 16),
                     ),
                   ),
-                  AppSpacing.hGapMd,
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => _showRejectDialog(),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.error500,
-                        side: const BorderSide(color: AppColors.error500),
-                      ),
-                      child: Text(AppStrings.reject),
+                  if (_loading)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    HoverPopupMenu<String>(
+                      icon: const Icon(Icons.more_vert, size: 22),
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: 'approve',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.check_circle_outline,
+                                color: AppColors.success500),
+                            title: Text(AppStrings.approve),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'reject',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.cancel_outlined,
+                                color: AppColors.error500),
+                            title: Text(AppStrings.reject,
+                                style: const TextStyle(
+                                    color: AppColors.error500)),
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'view',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.visibility_outlined),
+                            title: const Text('View Details'),
+                          ),
+                        ),
+                      ],
+                      onSelected: (v) {
+                        if (v == 'approve') _review('APPROVED');
+                        if (v == 'reject') _showRejectDialog();
+                      },
                     ),
-                  ),
                 ],
               ),
-          ],
+              AppSpacing.vGapXs,
+              Text(
+                '${l.leaveType} · ${_fmtDate(l.fromDate)} - ${_fmtDate(l.toDate)} (${l.totalDays} day${l.totalDays == 1 ? '' : 's'})',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: cs.onSurfaceVariant,
+                    ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                child: Divider(
+                    color: cs.outlineVariant.withValues(alpha: 0.5)),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      l.reason,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: cs.onSurfaceVariant,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  AppSpacing.hGapSm,
+                  _LeaveStatusChip(status: l.status),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -351,11 +380,11 @@ class _PendingLeaveCardState extends ConsumerState<_PendingLeaveCard> {
           .reviewLeave(widget.leave.id, status, adminRemark: remark);
       widget.onReviewed();
       if (mounted) {
-        AppSnackbar.success(context, status == 'APPROVED' ? 'Leave approved' : 'Leave rejected');
+        AppToast.showSuccess(context, status == 'APPROVED' ? 'Leave approved' : 'Leave rejected');
       }
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, _safeErrorMessage(e));
+        AppToast.showError(context, _safeErrorMessage(e));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -533,7 +562,7 @@ class _AllRequestsTabState extends ConsumerState<_AllRequestsTab> {
         const Divider(height: 1),
         Expanded(
           child: async.when(
-            loading: () => const ShimmerListLoadingWidget(itemCount: 8),
+            loading: () => AppLoaderScreen(),
             error: (err, _) => Center(
               child: Card(
                 margin: AppSpacing.paddingXl,
@@ -652,7 +681,7 @@ class _SummaryTab extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
 
     return async.when(
-      loading: () => const ShimmerListLoadingWidget(itemCount: 8),
+      loading: () => AppLoaderScreen(),
       error: (err, _) => Center(
         child: Card(
           margin: AppSpacing.paddingXl,
@@ -690,7 +719,7 @@ class _SummaryTab extends ConsumerWidget {
               AppSpacing.vGapMd,
               GridView.count(
                 crossAxisCount:
-                    MediaQuery.of(context).size.width >= 600 ? 3 : 2,
+                    MediaQuery.sizeOf(context).width >= 600 ? 3 : 2,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 12,
@@ -700,7 +729,7 @@ class _SummaryTab extends ConsumerWidget {
                   _StatCard(
                     label: AppStrings.total,
                     value: '${summary['total'] ?? 0}',
-                    color: Colors.blueGrey,
+                    color: AppColors.info500,
                     icon: Icons.summarize,
                   ),
                   _StatCard(

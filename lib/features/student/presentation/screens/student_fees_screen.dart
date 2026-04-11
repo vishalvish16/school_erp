@@ -223,7 +223,7 @@ class _ReceiptDialog extends ConsumerWidget {
     return AlertDialog(
       title: Text('${AppStrings.viewReceipt} - $receiptNo'),
       content: asyncReceipt.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => AppLoaderScreen(),
         error: (e, _) => Text(e.toString()),
         data: (r) => Column(
           mainAxisSize: MainAxisSize.min,

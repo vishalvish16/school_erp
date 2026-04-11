@@ -15,6 +15,7 @@ const envSchema = z.object({
     SMTP_SECURE: z.string().optional(),
     SMTP_USER: z.string().optional(),
     SMTP_PASS: z.string().optional(),
+    FIREBASE_SERVICE_ACCOUNT_PATH: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

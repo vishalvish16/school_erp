@@ -28,8 +28,8 @@ class ParentChildFeesScreen extends ConsumerWidget {
     final asyncFees = ref.watch(
       parentChildFeesProvider((studentId: studentId, academicYear: null)),
     );
-    final isWide = MediaQuery.of(context).size.width >= 768;
-    final padding = isWide ? 24.0 : 16.0;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final padding = isWide ? AppSpacing.xl : AppSpacing.lg;
 
     return Scaffold(
       body: Padding(
@@ -48,7 +48,7 @@ class ParentChildFeesScreen extends ConsumerWidget {
                 Expanded(
                   child: asyncChild.when(
                     loading: () => const Text(AppStrings.childFees),
-                    error: (_, __) => const Text(AppStrings.childFees),
+                    error: (_, _) => const Text(AppStrings.childFees),
                     data: (c) => Text(
                       c != null
                           ? '${AppStrings.childFees} — ${c.fullName}'
@@ -73,7 +73,7 @@ class ParentChildFeesScreen extends ConsumerWidget {
                 ),
                 child: asyncFees.when(
                   loading: () =>
-                      const Center(child: CircularProgressIndicator()),
+                      AppLoaderScreen(),
                   error: (err, _) => _ErrorView(
                     error: err.toString().replaceAll('Exception: ', ''),
                     onRetry: () => ref.invalidate(
@@ -104,7 +104,7 @@ class ParentChildFeesScreen extends ConsumerWidget {
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: structure.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, _) => const Divider(height: 1),
                                 itemBuilder: (_, i) {
                                   final s = structure[i];
                                   return ListTile(
@@ -153,7 +153,7 @@ class ParentChildFeesScreen extends ConsumerWidget {
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: payments.length,
-                                separatorBuilder: (_, __) => const Divider(height: 1),
+                                separatorBuilder: (_, _) => const Divider(height: 1),
                                 itemBuilder: (_, i) {
                                   final p = payments[i];
                                   return ListTile(

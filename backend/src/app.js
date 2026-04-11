@@ -25,6 +25,10 @@ import studentRoutes from './modules/student/student.routes.js';
 import nonTeachingStaffRoutes from './modules/non-teaching-staff/non-teaching-staff.routes.js';
 import driverRoutes from './modules/driver/driver.routes.js';
 import parentRoutes from './modules/parent/parent.routes.js';
+import transportRoutes from './modules/transport/transport.routes.js';
+import studentProfileRequestsSchoolRoutes, { studentPhotoRouter } from './modules/student-profile-requests/student-profile-requests.routes.js';
+import studentProfileRequestsParentRoutes from './modules/student-profile-requests/student-profile-requests-parent.routes.js';
+import { superAdminThemeRouter, schoolThemeRouter, parentThemeRouter } from './modules/theme/theme.routes.js';
 
 const app = express();
 
@@ -75,6 +79,15 @@ app.use(`${API_PREFIX}/group-admin`, groupAdminRoutes);
 // Non-Teaching Staff module — mounted BEFORE generic /api/school to avoid prefix conflict
 app.use('/api/school/non-teaching', nonTeachingStaffRoutes);
 
+// Transport — school admin live vehicle tracking (mounted BEFORE generic /api/school)
+app.use('/api/school/transport', transportRoutes);
+
+// Student Profile Update Requests — mounted BEFORE generic /api/school to avoid prefix conflict
+app.use('/api/school/student-profile-requests', studentProfileRequestsSchoolRoutes);
+
+// Student profile photo upload (school admin) — mounted before generic /api/school
+app.use('/api/school/students/:id/profile-photo', studentPhotoRouter);
+
 // School Admin portal — full CRUD for students, staff, classes, attendance, fees, timetable, notices
 app.use('/api/school', schoolAdminRoutes);
 
@@ -89,6 +102,14 @@ app.use('/api/student', studentRoutes);
 
 // Driver portal — dashboard, profile, change password
 app.use('/api/driver', driverRoutes);
+
+// Theme — dynamic color tokens for all portals (mounted BEFORE generic portal routes)
+app.use(`${API_PREFIX}/theme`, superAdminThemeRouter);
+app.use('/api/school/theme', schoolThemeRouter);
+app.use('/api/parent/theme', parentThemeRouter);
+
+// Parent — profile update requests (mounted BEFORE generic /api/parent to avoid prefix conflict)
+app.use('/api/parent/student-profile-requests', studentProfileRequestsParentRoutes);
 
 // Parent portal — profile, children, attendance, fees, notices
 app.use('/api/parent', parentRoutes);

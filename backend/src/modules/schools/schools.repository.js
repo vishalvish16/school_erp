@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../../utils/response.js';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 const convertBigInts = (obj) => {
     return JSON.parse(
@@ -24,6 +23,7 @@ export const createSchool = async (data) => {
         subscriptionPlan: ['BASIC', 'STANDARD', 'PREMIUM'].includes(data.subscriptionPlan) ? data.subscriptionPlan : 'BASIC',
         subscriptionStart: data.subscriptionStart || new Date(),
         subscriptionEnd: data.subscriptionEnd || null,
+        studentLimit: data.studentLimit !== undefined ? data.studentLimit : 500,
         board: data.board || null,
         address: data.address || null,
         city: data.city || null,
@@ -82,42 +82,45 @@ export const getSchools = async (where, skip, take, sortBy = 'createdAt', sortOr
     }
 
     const schoolIds = schools.map(s => s.id);
-    const userRoleCounts = await prisma.user.groupBy({
-        by: ['schoolId', 'roleId'],
-        where: { schoolId: { in: schoolIds } },
-        _count: { id: true }
-    });
-
-    const roleIds = [...new Set(userRoleCounts.map(u => u.roleId))];
-    const roles = await prisma.role.findMany({
-        where: { id: { in: roleIds }, name: { in: ['STUDENT', 'TEACHER'] } },
-        select: { id: true, name: true }
-    });
-
-    const roleMap = new Map(roles.map(r => [r.id.toString(), r.name]));
-
+    // Actual enrollment: Student + Staff rows (User role counts miss portal-only records
+    // and role name casing like 'teacher' vs 'TEACHER').
     const countsMap = new Map();
-    schoolIds.forEach(id => {
+    schoolIds.forEach((id) => {
         countsMap.set(id.toString(), { studentCount: 0, teacherCount: 0 });
     });
-
-    for (const record of userRoleCounts) {
-        const sId = record.schoolId?.toString();
-        if (!sId) continue;
-        const roleName = roleMap.get(record.roleId.toString());
-        if (roleName === 'STUDENT') {
-            countsMap.get(sId).studentCount += record._count.id;
-        } else if (roleName === 'TEACHER') {
-            countsMap.get(sId).teacherCount += record._count.id;
+    if (schoolIds.length) {
+        const [studentGroups, staffGroups] = await Promise.all([
+            prisma.student.groupBy({
+                by: ['schoolId'],
+                where: { schoolId: { in: schoolIds }, deletedAt: null },
+                _count: { id: true },
+            }),
+            prisma.staff.groupBy({
+                by: ['schoolId'],
+                where: { schoolId: { in: schoolIds }, deletedAt: null },
+                _count: { id: true },
+            }),
+        ]);
+        for (const row of studentGroups) {
+            const sId = row.schoolId?.toString();
+            if (sId && countsMap.has(sId)) {
+                countsMap.get(sId).studentCount = row._count.id;
+            }
+        }
+        for (const row of staffGroups) {
+            const sId = row.schoolId?.toString();
+            if (sId && countsMap.has(sId)) {
+                countsMap.get(sId).teacherCount = row._count.id;
+            }
         }
     }
 
-    const enrichedSchools = schools.map(school => ({
+    const enrichedSchools = schools.map((school) => ({
         ...school,
         schoolCode: school.code,
         status: school.status || 'ACTIVE',
         studentCount: countsMap.get(school.id.toString())?.studentCount ?? 0,
-        teacherCount: countsMap.get(school.id.toString())?.teacherCount ?? 0
+        teacherCount: countsMap.get(school.id.toString())?.teacherCount ?? 0,
     }));
 
     return {
@@ -135,29 +138,10 @@ export const getSchoolById = async (id) => {
 
     if (!school) return null;
 
-    const userRoleCounts = await prisma.user.groupBy({
-        by: ['roleId'],
-        where: { schoolId: String(id) },
-        _count: { id: true }
-    });
-
-    let studentCount = 0;
-    let teacherCount = 0;
-
-    if (userRoleCounts.length > 0) {
-        const roleIds = userRoleCounts.map(u => u.roleId);
-        const roles = await prisma.role.findMany({
-            where: { id: { in: roleIds }, name: { in: ['STUDENT', 'TEACHER'] } },
-            select: { id: true, name: true }
-        });
-        const roleMap = new Map(roles.map(r => [r.id.toString(), r.name]));
-
-        for (const record of userRoleCounts) {
-            const roleName = roleMap.get(record.roleId.toString());
-            if (roleName === 'STUDENT') studentCount += record._count.id;
-            else if (roleName === 'TEACHER') teacherCount += record._count.id;
-        }
-    }
+    const [studentCount, teacherCount] = await Promise.all([
+        prisma.student.count({ where: { schoolId: String(id), deletedAt: null } }),
+        prisma.staff.count({ where: { schoolId: String(id), deletedAt: null } }),
+    ]);
 
     return convertBigInts({
         ...school,
@@ -200,6 +184,7 @@ export const updateSchool = async (id, data) => {
     if (data.pinCode !== undefined) mappedData.pinCode = data.pinCode || null;
     if (data.group_id !== undefined) mappedData.groupId = data.group_id || null;
     if (data.groupId !== undefined) mappedData.groupId = data.groupId || null;
+    if (data.studentLimit !== undefined) mappedData.studentLimit = data.studentLimit;
 
     if (Object.keys(mappedData).length === 0) {
         throw new AppError('No valid fields to update. Ensure at least one field is provided.', 400);

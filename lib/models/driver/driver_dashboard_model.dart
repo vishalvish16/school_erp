@@ -98,6 +98,7 @@ class DriverDashboardModel {
     this.route,
     this.studentCount = 0,
     this.tripStatus = 'NOT_STARTED',
+    this.activeTripId,
   });
 
   final DriverSummary driver;
@@ -106,6 +107,7 @@ class DriverDashboardModel {
   final RouteSummary? route;
   final int studentCount;
   final String tripStatus;
+  final String? activeTripId;
 
   factory DriverDashboardModel.fromJson(Map<String, dynamic> json) {
     return DriverDashboardModel(
@@ -131,6 +133,8 @@ class DriverDashboardModel {
       tripStatus: json['trip_status'] as String? ??
           json['tripStatus'] as String? ??
           'NOT_STARTED',
+      activeTripId: json['activeTripId'] as String? ??
+          json['active_trip_id'] as String?,
     );
   }
 }

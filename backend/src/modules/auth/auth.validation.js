@@ -95,6 +95,15 @@ export const verifyParentOtpSchema = z.object({
     })
 });
 
+export const verifyStudentOtpSchema = z.object({
+    body: z.object({
+        otp_session_id: z.string().uuid('Invalid OTP session'),
+        otp: z.string().length(6, 'OTP must be 6 digits'),
+        phone: z.string().min(10, 'Phone required'),
+        school_id: z.string().uuid('School ID required')
+    })
+});
+
 export const groupAdminForgotPasswordSchema = z.object({
     body: z.object({
         email: z.string().email('Valid email required'),

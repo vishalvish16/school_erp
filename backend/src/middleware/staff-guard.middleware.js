@@ -9,10 +9,9 @@
  * - If found as teaching staff:     req.staff, req.isNonTeaching = false
  * - If found as non-teaching staff: req.staff, req.ntStaff, req.isNonTeaching = true
  */
-import { PrismaClient } from '@prisma/client';
 import { AppError } from '../utils/response.js';
 
-const prisma = new PrismaClient();
+import prisma from '../config/prisma.js';
 
 export const requireStaff = async (req, res, next) => {
     try {

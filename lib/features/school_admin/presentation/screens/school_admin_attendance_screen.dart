@@ -11,10 +11,7 @@ import '../providers/school_admin_classes_provider.dart';
 import '../providers/school_admin_students_provider.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../core/constants/app_strings.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
-
-const Color _accent = AppColors.success500;
+import '../../../../shared/widgets/app_toast.dart';
 
 class SchoolAdminAttendanceScreen extends ConsumerStatefulWidget {
   const SchoolAdminAttendanceScreen({super.key});
@@ -42,7 +39,8 @@ class _SchoolAdminAttendanceScreenState
     final attendanceState = ref.watch(schoolAdminAttendanceProvider);
     final classesState = ref.watch(schoolAdminClassesProvider);
     final studentsState = ref.watch(schoolAdminStudentsProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
+    final scheme = Theme.of(context).colorScheme;
 
     // Sync entries whenever students change
     if (studentsState.students.isNotEmpty && _entries.isEmpty) {
@@ -63,90 +61,216 @@ class _SchoolAdminAttendanceScreenState
       }
     }
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
-      body: Padding(
-        padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
+    // Compute summary counts
+    final presentCount =
+        _entries.values.where((e) => e.status == 'PRESENT').length;
+    final absentCount =
+        _entries.values.where((e) => e.status == 'ABSENT').length;
+    final lateCount =
+        _entries.values.where((e) => e.status == 'LATE').length;
+
+    return Padding(
+      padding: EdgeInsets.all(isWide ? 24.0 : 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ────────────────────────────────────────────────────────
+          if (isWide)
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Expanded(
-                  child: Text(
-                    'Mark Attendance',
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineSmall
-                        ?.copyWith(fontWeight: FontWeight.bold),
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mark Attendance',
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    AppSpacing.vGapXs,
+                    Text(
+                      'Mark daily student attendance by class and section',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
                 ),
+                const Spacer(),
+                _DateSelector(selectedDate: attendanceState.selectedDate),
+                AppSpacing.hGapSm,
+                SizedBox(
+                  width: 180,
+                  child: _ClassSelector(classes: classesState.classes),
+                ),
+                if (attendanceState.selectedClassId != null) ...[
+                  AppSpacing.hGapSm,
+                  SizedBox(
+                    width: 140,
+                    child: _SectionSelector(
+                      classId: attendanceState.selectedClassId!,
+                      classes: classesState.classes,
+                    ),
+                  ),
+                ],
+                AppSpacing.hGapSm,
                 TextButton.icon(
                   onPressed: () =>
                       context.go('/school-admin/attendance/report'),
-                  icon: const Icon(Icons.calendar_month, size: 18),
+                  icon: const Icon(Icons.calendar_month,
+                      size: AppIconSize.sm),
                   label: const Text('Monthly Report'),
                 ),
               ],
-            ),
-            AppSpacing.vGapLg,
-
-            // Selectors: class, section, date
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
+            )
+          else
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _ClassSelector(classes: classesState.classes),
-                if (attendanceState.selectedClassId != null)
+                Text(
+                  'Mark Attendance',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                AppSpacing.vGapSm,
+                Row(
+                  children: [
+                    Expanded(
+                      child: _DateSelector(
+                          selectedDate: attendanceState.selectedDate),
+                    ),
+                    AppSpacing.hGapSm,
+                    Expanded(
+                      child: _ClassSelector(classes: classesState.classes),
+                    ),
+                  ],
+                ),
+                if (attendanceState.selectedClassId != null) ...[
+                  AppSpacing.vGapSm,
                   _SectionSelector(
                     classId: attendanceState.selectedClassId!,
                     classes: classesState.classes,
                   ),
-                _DateSelector(selectedDate: attendanceState.selectedDate),
+                ],
+                if (_entries.isNotEmpty) ...[
+                  AppSpacing.vGapSm,
+                  Row(
+                    children: [
+                      _SummaryChip(
+                          label: 'Present',
+                          count: presentCount,
+                          color: AppColors.success500),
+                      AppSpacing.hGapXs,
+                      _SummaryChip(
+                          label: 'Absent',
+                          count: absentCount,
+                          color: AppColors.error500),
+                      AppSpacing.hGapXs,
+                      _SummaryChip(
+                          label: 'Late',
+                          count: lateCount,
+                          color: AppColors.warning500),
+                    ],
+                  ),
+                ],
               ],
             ),
-            AppSpacing.vGapLg,
+          AppSpacing.vGapLg,
 
-            if (attendanceState.errorMessage != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Theme.of(context)
-                      .colorScheme
-                      .errorContainer
-                      .withValues(alpha: 0.4),
-                  borderRadius: AppRadius.brMd,
-                ),
-                child: Text(attendanceState.errorMessage!,
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: 13)),
+          if (attendanceState.errorMessage != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: AppSpacing.paddingMd,
+              decoration: BoxDecoration(
+                color: scheme.errorContainer.withValues(alpha: 0.4),
+                borderRadius: AppRadius.brMd,
               ),
+              child: Text(
+                attendanceState.errorMessage!,
+                style: TextStyle(color: scheme.error, fontSize: 13),
+              ),
+            ),
 
-            // Attendance grid
-            if (attendanceState.selectedSectionId == null)
-              const Expanded(
-                child: Center(
-                  child: Text(
-                    'Select a class and section to mark attendance',
-                    style: TextStyle(color: AppColors.neutral400),
+          // ── Attendance grid ───────────────────────────────────────────────
+          if (attendanceState.selectedSectionId == null)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.people_outline,
+                        size: AppIconSize.xl4,
+                        color: scheme.onSurfaceVariant),
+                    AppSpacing.vGapMd,
+                    Text(
+                      'Select a class and section to start attendance',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (attendanceState.isLoading || studentsState.isLoading)
+            const Expanded(child: AppLoaderScreen())
+          else if (studentsState.students.isEmpty)
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.people_outline,
+                        size: AppIconSize.xl4,
+                        color: scheme.onSurfaceVariant),
+                    AppSpacing.vGapMd,
+                    Text(
+                      'No students in this section',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            // ── Summary chips (wide only) ─────────────────────────────────
+            if (isWide)
+              Row(
+                children: [
+                  _SummaryChip(
+                      label: 'Present',
+                      count: presentCount,
+                      color: AppColors.success500),
+                  AppSpacing.hGapXs,
+                  _SummaryChip(
+                      label: 'Absent',
+                      count: absentCount,
+                      color: AppColors.error500),
+                  AppSpacing.hGapXs,
+                  _SummaryChip(
+                      label: 'Late',
+                      count: lateCount,
+                      color: AppColors.warning500),
+                  const Spacer(),
+                  _QuickMarkRow(
+                    onMarkAll: (status) {
+                      setState(() {
+                        for (final e in _entries.values) {
+                          e.status = status;
+                        }
+                      });
+                    },
                   ),
-                ),
+                ],
               )
-            else if (attendanceState.isLoading || studentsState.isLoading)
-              const Expanded(
-                  child: Center(child: CircularProgressIndicator()))
-            else if (studentsState.students.isEmpty)
-              const Expanded(
-                child: Center(
-                  child: Text('No students in this section',
-                      style: TextStyle(color: AppColors.neutral400)),
-                ),
-              )
-            else ...[
-              // Quick select row
+            else
               _QuickMarkRow(
                 onMarkAll: (status) {
                   setState(() {
@@ -156,54 +280,55 @@ class _SchoolAdminAttendanceScreenState
                   });
                 },
               ),
-              AppSpacing.vGapSm,
-              Expanded(
-                child: Card(
-                  child: ListView.separated(
-                    itemCount: studentsState.students.length,
-                    separatorBuilder: (ctx, i) => const Divider(height: 1),
-                    itemBuilder: (ctx, i) {
-                      final student = studentsState.students[i];
-                      final entry = _entries[student.id] ??
-                          AttendanceEntry(
-                            studentId: student.id,
-                            studentName: student.fullName,
-                            rollNo: student.rollNo,
-                          );
-                      return _AttendanceRow(
-                        entry: entry,
-                        onStatusChange: (status) {
-                          setState(() {
-                            _entries[student.id] = entry..status = status;
-                          });
-                        },
-                      );
-                    },
-                  ),
+            AppSpacing.vGapSm,
+            Expanded(
+              child: Card(
+                child: ListView.separated(
+                  itemCount: studentsState.students.length,
+                  separatorBuilder: (ctx, i) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) {
+                    final student = studentsState.students[i];
+                    final entry = _entries[student.id] ??
+                        AttendanceEntry(
+                          studentId: student.id,
+                          studentName: student.fullName,
+                          rollNo: student.rollNo,
+                        );
+                    return _AttendanceRow(
+                      entry: entry,
+                      onStatusChange: (status) {
+                        setState(() {
+                          _entries[student.id] = entry..status = status;
+                        });
+                      },
+                    );
+                  },
                 ),
               ),
-              AppSpacing.vGapMd,
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: attendanceState.isSaving ? null : _saveAttendance,
-                  icon: attendanceState.isSaving
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Icon(Icons.save),
-                  label: Text(attendanceState.isSaving
-                      ? 'Saving...'
-                      : 'Save Attendance'),
-                  style: FilledButton.styleFrom(backgroundColor: _accent),
-                ),
+            ),
+            AppSpacing.vGapMd,
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed:
+                    attendanceState.isSaving ? null : _saveAttendance,
+                icon: attendanceState.isSaving
+                    ? SizedBox(
+                        width: AppIconSize.md,
+                        height: AppIconSize.md,
+                        child: CircularProgressIndicator(
+                          strokeWidth: AppBorderWidth.medium,
+                          color: scheme.onPrimary,
+                        ),
+                      )
+                    : const Icon(Icons.save, size: AppIconSize.md),
+                label: Text(attendanceState.isSaving
+                    ? 'Saving...'
+                    : 'Save Attendance'),
               ),
-            ],
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -221,8 +346,43 @@ class _SchoolAdminAttendanceScreenState
         .read(schoolAdminAttendanceProvider.notifier)
         .saveAttendance(records);
     if (ok && mounted) {
-      AppSnackbar.success(context, AppStrings.attendanceSaved);
+      AppToast.showSuccess(context, AppStrings.attendanceSaved);
     }
+  }
+}
+
+// ── Summary Chip ───────────────────────────────────────────────────────────────
+
+class _SummaryChip extends StatelessWidget {
+  const _SummaryChip({
+    required this.label,
+    required this.count,
+    required this.color,
+  });
+  final String label;
+  final int count;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: AppRadius.brFull,
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        '$label: $count',
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+      ),
+    );
   }
 }
 
@@ -235,21 +395,35 @@ class _ClassSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(schoolAdminAttendanceProvider);
-    return DropdownButton<String?>(
-      value: state.selectedClassId,
-      hint: const Text('Select Class'),
-      underline: const SizedBox.shrink(),
-      items: [
-        for (final c in classes)
-          DropdownMenuItem<String?>(value: c.id, child: Text(c.name)),
-      ],
-      onChanged: (v) {
-        if (v == null) return;
-        ref.read(schoolAdminAttendanceProvider.notifier).setClass(v);
-        ref
-            .read(schoolAdminStudentsProvider.notifier)
-            .setClassFilter(v);
-      },
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: BoxDecoration(
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: AppRadius.brMd,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: state.selectedClassId,
+          hint: const Text('Class', style: TextStyle(fontSize: 13)),
+          isDense: true,
+          isExpanded: true,
+          items: [
+            for (final c in classes)
+              DropdownMenuItem<String?>(
+                  value: c.id,
+                  child: Text(c.name, style: const TextStyle(fontSize: 13))),
+          ],
+          onChanged: (v) {
+            if (v == null) return;
+            ref.read(schoolAdminAttendanceProvider.notifier).setClass(v);
+            ref
+                .read(schoolAdminStudentsProvider.notifier)
+                .setClassFilter(v);
+          },
+        ),
+      ),
     );
   }
 }
@@ -262,27 +436,43 @@ class _SectionSelector extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final attendanceState = ref.watch(schoolAdminAttendanceProvider);
+    final scheme = Theme.of(context).colorScheme;
     final cls = classes.firstWhere(
       (c) => c.id == classId,
       orElse: () => null,
     );
     if (cls == null) return const SizedBox.shrink();
     final sections = cls.sections as List;
-    return DropdownButton<String?>(
-      value: attendanceState.selectedSectionId,
-      hint: const Text('Select Section'),
-      underline: const SizedBox.shrink(),
-      items: [
-        for (final s in sections)
-          DropdownMenuItem<String?>(value: s.id, child: Text(s.name)),
-      ],
-      onChanged: (v) {
-        if (v == null) return;
-        ref.read(schoolAdminAttendanceProvider.notifier).setSection(v);
-        ref
-            .read(schoolAdminStudentsProvider.notifier)
-            .setSectionFilter(v);
-      },
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      decoration: BoxDecoration(
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: AppRadius.brMd,
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String?>(
+          value: attendanceState.selectedSectionId,
+          hint: const Text('Section', style: TextStyle(fontSize: 13)),
+          isDense: true,
+          isExpanded: true,
+          items: [
+            for (final s in sections)
+              DropdownMenuItem<String?>(
+                  value: s.id,
+                  child: Text(s.name, style: const TextStyle(fontSize: 13))),
+          ],
+          onChanged: (v) {
+            if (v == null) return;
+            ref
+                .read(schoolAdminAttendanceProvider.notifier)
+                .setSection(v);
+            ref
+                .read(schoolAdminStudentsProvider.notifier)
+                .setSectionFilter(v);
+          },
+        ),
+      ),
     );
   }
 }
@@ -315,8 +505,8 @@ class _DateSelector extends ConsumerWidget {
               .setDate(formatted);
         }
       },
-      icon: const Icon(Icons.calendar_today, size: 16),
-      label: Text(selectedDate),
+      icon: const Icon(Icons.calendar_today, size: AppIconSize.sm),
+      label: Text(selectedDate, style: const TextStyle(fontSize: 13)),
     );
   }
 }
@@ -330,30 +520,36 @@ class _QuickMarkRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text('Mark all as:',
             style: Theme.of(context).textTheme.bodySmall),
         AppSpacing.hGapSm,
-        _quickBtn('Present', 'PRESENT', AppColors.success500),
+        _quickBtn(context, 'Present', 'PRESENT', AppColors.success500),
         AppSpacing.hGapXs,
-        _quickBtn('Absent', 'ABSENT', AppColors.error500),
+        _quickBtn(context, 'Absent', 'ABSENT', AppColors.error500),
         AppSpacing.hGapXs,
-        _quickBtn('Late', 'LATE', AppColors.warning500),
+        _quickBtn(context, 'Late', 'LATE', AppColors.warning500),
       ],
     );
   }
 
-  Widget _quickBtn(String label, String status, Color color) {
+  Widget _quickBtn(
+      BuildContext context, String label, String status, Color color) {
     return OutlinedButton(
       onPressed: () => onMarkAll(status),
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color.withValues(alpha: 0.5)),
-        padding: EdgeInsets.symmetric(horizontal: 10, vertical: AppSpacing.xs),
+        padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md, vertical: AppSpacing.xs),
         minimumSize: Size.zero,
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.brSm),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12)),
+      child: Text(label,
+          style: const TextStyle(
+              fontSize: 12, fontWeight: FontWeight.w500)),
     );
   }
 }
@@ -375,17 +571,22 @@ class _AttendanceRow extends StatelessWidget {
       dense: true,
       leading: CircleAvatar(
         radius: 16,
-        backgroundColor: _statusColor(entry.status).withValues(alpha: 0.15),
+        backgroundColor:
+            _statusColor(entry.status).withValues(alpha: 0.15),
         child: Text(
           entry.rollNo?.toString() ?? '#',
           style: TextStyle(
-              fontSize: 11,
-              color: _statusColor(entry.status),
-              fontWeight: FontWeight.bold),
+            fontSize: 11,
+            color: _statusColor(entry.status),
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
-      title: Text(entry.studentName,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+      title: Text(
+        entry.studentName,
+        style: const TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w500),
+      ),
       trailing: SegmentedButton<String>(
         segments: const [
           ButtonSegment(

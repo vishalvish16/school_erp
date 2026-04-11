@@ -2,9 +2,8 @@
  * Teacher Repository — all Prisma queries for the teacher portal.
  * Every query is scoped to schoolId from req.teacher.schoolId — no cross-school access possible.
  */
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 // ── Dashboard ──────────────────────────────────────────────────────────────────
 

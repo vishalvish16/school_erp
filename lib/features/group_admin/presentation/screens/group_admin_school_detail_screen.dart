@@ -5,10 +5,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/services/group_admin_service.dart';
 import '../../../../models/group_admin/group_admin_models.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
 import '../../../../core/constants/app_strings.dart';
 
 final _schoolDetailProvider = FutureProvider.autoDispose
@@ -30,7 +30,7 @@ class GroupAdminSchoolDetailScreen extends ConsumerWidget {
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(_schoolDetailProvider(schoolId)),
       child: asyncDetail.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => AppLoaderScreen(),
         error: (err, _) => Center(
           child: Padding(
             padding: AppSpacing.paddingXl,
@@ -64,6 +64,15 @@ class GroupAdminSchoolDetailScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Back button
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => context.go('/group-admin/schools'),
+                      ),
+                    ],
+                  ),
                   // 1. Header card
                   _SectionCard(
                     children: [

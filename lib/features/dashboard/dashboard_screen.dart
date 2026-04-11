@@ -9,8 +9,6 @@ import 'package:intl/intl.dart';
 import '../../design_system/design_system.dart';
 import '../../core/constants/app_strings.dart';
 import 'dashboard_provider.dart';
-import '../../design_system/tokens/app_colors.dart';
-import '../../design_system/tokens/app_spacing.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -44,7 +42,7 @@ class DashboardScreen extends ConsumerWidget {
           padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
           sliver: ref.watch(dashboardDataProvider).when(
             loading: () => const SliverToBoxAdapter(
-              child: Center(child: CircularProgressIndicator()),
+              child: AppLoaderScreen(),
             ),
             error: (error, stack) => SliverToBoxAdapter(
               child: Center(child: Text('${AppStrings.errorPrefix}$error')),

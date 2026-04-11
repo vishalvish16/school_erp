@@ -4,14 +4,12 @@
 //          Shows per-school counts of students, teachers, total users.
 // =============================================================================
 
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/group_admin_service.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../../shared/widgets/list_table_view.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
 import '../../../../core/constants/app_strings.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -41,7 +39,8 @@ class _GroupAdminStudentsScreenState
   Widget build(BuildContext context) {
     final asyncData = ref.watch(_studentStatsProvider);
     final isNarrow = MediaQuery.of(context).size.width < 600;
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
+    final isWide =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     final padding = isNarrow ? 16.0 : 24.0;
 
     return RefreshIndicator(
@@ -84,12 +83,7 @@ class _GroupAdminStudentsScreenState
               // Content
               Expanded(
                 child: asyncData.when(
-                  loading: () => Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: padding),
-                      child: const ShimmerListLoadingWidget(itemCount: 8),
-                    ),
-                  ),
+                  loading: () => AppLoaderScreen(),
                   error: (err, _) => Center(
                     child: Padding(
                       padding: EdgeInsets.all(padding),

@@ -5,10 +5,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/services/staff_service.dart';
 import '../../../../models/staff/staff_notice_model.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
 
 const Color _accent = AppColors.secondary400;
 
@@ -30,6 +30,10 @@ class StaffNoticeDetailScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/staff/notices'),
+        ),
         title: const Text('Notice'),
         backgroundColor: Theme.of(context).colorScheme.surface,
         foregroundColor: Theme.of(context).colorScheme.onSurface,
@@ -37,7 +41,7 @@ class StaffNoticeDetailScreen extends ConsumerWidget {
       ),
       body: asyncNotice.when(
         loading: () =>
-            const Center(child: CircularProgressIndicator()),
+            AppLoaderScreen(),
         error: (err, _) => Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

@@ -33,6 +33,12 @@ router.get('/timetable', ctrl.getTimetable);
 router.get('/notices',     ctrl.getNotices);
 router.get('/notices/:id', ctrl.getNoticeById);
 
+// ── FCM ──────────────────────────────────────────────────────────────────────
+router.post('/fcm/register', ctrl.registerFcmToken);
+
+// ── Transport (live driver tracking) ────────────────────────────────────────
+router.get('/transport/live', ctrl.getLiveDrivers);
+
 // ── Documents ─────────────────────────────────────────────────────────────────
 router.get('/documents', ctrl.getDocuments);
 

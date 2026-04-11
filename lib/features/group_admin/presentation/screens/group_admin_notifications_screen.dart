@@ -5,10 +5,11 @@
 // =============================================================================
 
 import 'package:flutter/material.dart';
+import '../../../../design_system/design_system.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/group_admin_service.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
+
 import '../../../../core/constants/app_strings.dart';
 
 class GroupAdminNotificationsScreen extends ConsumerStatefulWidget {
@@ -165,10 +166,7 @@ class _GroupAdminNotificationsScreenState
               AppSpacing.vGapLg,
               if (_loading)
                 Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: padding),
-                    child: const ShimmerListLoadingWidget(itemCount: 8),
-                  ),
+                  child: AppLoaderScreen(),
                 )
               else if (_error != null)
                 Expanded(

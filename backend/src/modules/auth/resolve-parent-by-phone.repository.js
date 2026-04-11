@@ -2,11 +2,10 @@
  * Resolve Parent by phone — find or create Parent for parent portal login.
  * Used when user_type === 'parent' in resolve-user-by-phone.
  */
-import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import * as parentOtpStore from './parent-otp.store.js';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 /** Normalize phone to E.164: +91 + 10 digits */
 export function normalizePhone(phone) {
@@ -48,32 +47,38 @@ export async function resolveParentByPhone(phone, schoolId = null) {
 
     const digits = normalizedPhone.replace(/\D/g, '').slice(-10);
 
-    // 1. Look up Parent first: schoolId + normalized phone
+    // 1. Look up Parent first: try normalized + raw variants (school admin may have stored "9876543210")
     let parent = null;
     let school = null;
+    const phoneVariants = [normalizedPhone];
+    if (digits.length === 10) phoneVariants.push(digits);
+
+    const parentWhere = (sid) => ({
+        ...(sid && { schoolId: sid }),
+        OR: phoneVariants.map((p) => ({ phone: p })),
+        deletedAt: null,
+        isActive: true,
+    });
+
+    const findParent = async (sid) => {
+        const candidates = await prisma.parent.findMany({
+            where: parentWhere(sid),
+            include: { school: true, _count: { select: { links: true } } },
+        });
+        if (candidates.length === 0) return null;
+        // Prefer parent with linked children (avoids duplicate-parent scenario)
+        candidates.sort((a, b) => (b._count?.links ?? 0) - (a._count?.links ?? 0));
+        const { _count, ...p } = candidates[0];
+        return p;
+    };
 
     if (schoolId) {
-        parent = await prisma.parent.findFirst({
-            where: {
-                schoolId,
-                phone: normalizedPhone,
-                deletedAt: null,
-                isActive: true,
-            },
-            include: { school: true },
-        });
+        parent = await findParent(schoolId);
         if (parent) school = parent.school;
     }
 
     if (!parent) {
-        parent = await prisma.parent.findFirst({
-            where: {
-                phone: normalizedPhone,
-                deletedAt: null,
-                isActive: true,
-            },
-            include: { school: true },
-        });
+        parent = await findParent(null);
         if (parent) school = parent.school;
     }
 
@@ -106,6 +111,7 @@ export async function resolveParentByPhone(phone, schoolId = null) {
             },
             otp_session_id: otpSessionId,
             masked_phone: maskPhone(normalizedPhone),
+            ...(process.env.NODE_ENV !== 'production' && { dev_otp: otpCode }),
         };
     }
 
@@ -203,5 +209,6 @@ export async function resolveParentByPhone(phone, schoolId = null) {
         },
         otp_session_id: otpSessionId,
         masked_phone: maskPhone(normalizedPhone),
+        ...(process.env.NODE_ENV !== 'production' && { dev_otp: otpCode }),
     };
 }

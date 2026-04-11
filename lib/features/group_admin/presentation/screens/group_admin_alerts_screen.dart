@@ -8,8 +8,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/group_admin_service.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 
 // ── Provider ──────────────────────────────────────────────────────────────────
@@ -44,7 +42,7 @@ class GroupAdminAlertsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncData = ref.watch(_alertsProvider);
     final isNarrow = MediaQuery.of(context).size.width < 600;
-    final padding = isNarrow ? 16.0 : 24.0;
+    final padding = isNarrow ? AppSpacing.lg : AppSpacing.xl;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(_alertsProvider),
@@ -84,11 +82,11 @@ class GroupAdminAlertsScreen extends ConsumerWidget {
                 ),
                 FilledButton.icon(
                   onPressed: () => _showAlertDialog(context, ref),
-                  icon: const Icon(Icons.add, size: 18),
+                  icon: const Icon(Icons.add, size: AppIconSize.sm),
                   label: const Text(AppStrings.newAlert),
                   style: FilledButton.styleFrom(
                     backgroundColor: _accent,
-                    foregroundColor: Colors.white,
+                    foregroundColor: AppColors.lightSurface,
                   ),
                 ),
               ],

@@ -56,7 +56,9 @@ import '../features/school_admin/presentation/screens/school_admin_non_teaching_
 import '../features/school_admin/presentation/screens/school_admin_non_teaching_roles_screen.dart';
 import '../features/school_admin/presentation/screens/school_admin_non_teaching_attendance_screen.dart';
 import '../features/school_admin/presentation/screens/school_admin_non_teaching_leaves_screen.dart';
+import '../features/school_admin/presentation/screens/school_admin_transport_screen.dart';
 import '../features/auth/staff_login_screen.dart';
+import '../features/auth/teacher_login_screen.dart';
 import '../features/auth/driver_login_screen.dart';
 import '../features/teacher/presentation/teacher_shell.dart';
 import '../features/teacher/presentation/screens/teacher_dashboard_screen.dart';
@@ -86,6 +88,7 @@ import '../features/driver/presentation/driver_shell.dart';
 import '../features/driver/presentation/screens/driver_dashboard_screen.dart';
 import '../features/driver/presentation/screens/driver_profile_screen.dart';
 import '../features/driver/presentation/screens/driver_change_password_screen.dart';
+import '../features/driver/presentation/screens/driver_live_location_screen.dart';
 import '../features/auth/parent_login_screen.dart';
 import '../features/parent/presentation/parent_shell.dart';
 import '../features/parent/presentation/screens/parent_dashboard_screen.dart';
@@ -96,6 +99,13 @@ import '../features/parent/presentation/screens/parent_child_attendance_screen.d
 import '../features/parent/presentation/screens/parent_child_fees_screen.dart';
 import '../features/parent/presentation/screens/parent_notices_screen.dart';
 import '../features/parent/presentation/screens/parent_notice_detail_screen.dart';
+import '../features/parent/presentation/screens/parent_child_bus_screen.dart';
+import '../features/parent/presentation/screens/parent_profile_update_form_screen.dart';
+import '../features/parent/presentation/screens/parent_profile_requests_screen.dart';
+import '../features/parent/presentation/screens/parent_notifications_screen.dart';
+import '../features/parent/presentation/screens/parent_change_password_screen.dart';
+import '../features/school_admin/presentation/screens/school_admin_profile_requests_screen.dart';
+import '../features/school_admin/presentation/screens/school_admin_profile_request_detail_screen.dart';
 import '../features/student/presentation/student_shell.dart';
 import '../features/student/presentation/screens/student_dashboard_screen.dart';
 import '../features/student/presentation/screens/student_profile_screen.dart';
@@ -106,6 +116,7 @@ import '../features/student/presentation/screens/student_notices_screen.dart';
 import '../features/student/presentation/screens/student_notice_detail_screen.dart';
 import '../features/student/presentation/screens/student_documents_screen.dart';
 import '../features/student/presentation/screens/student_change_password_screen.dart';
+import '../features/student/presentation/screens/student_transport_screen.dart';
 import '../features/auth/school_setup_screen.dart';
 import '../features/auth/auth_guard_provider.dart';
 import '../features/dashboard/dashboard_screen.dart';
@@ -128,6 +139,7 @@ import '../features/super_admin/presentation/screens/super_admin_change_password
 import '../features/super_admin/presentation/screens/super_admin_profile_screen.dart';
 import '../features/super_admin/presentation/screens/super_admin_infra_screen.dart';
 import '../features/super_admin/presentation/screens/super_admin_notifications_screen.dart';
+import '../features/super_admin/presentation/screens/super_admin_theme_screen.dart';
 import '../shared/layouts/admin_layout.dart';
 import '../design_system/tokens/app_spacing.dart';
 
@@ -180,6 +192,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           loc == '/login' ||
           loc.startsWith('/login/group') ||
           loc.startsWith('/login/school') ||
+          loc.startsWith('/login/teacher') ||
           loc.startsWith('/login/staff') ||
           loc.startsWith('/login/driver') ||
           loc.startsWith('/login/parent') ||
@@ -219,7 +232,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           }
           // Protect teacher routes
           if (isTeacherRoute) {
-            return '/login/staff';
+            return '/login/teacher';
           }
           // Protect staff routes
           if (isStaffRoute) {
@@ -334,6 +347,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login/school',
         builder: (context, state) => const SchoolAdminLoginScreen(),
+      ),
+      GoRoute(
+        path: '/login/teacher',
+        builder: (context, state) => const TeacherLoginScreen(),
       ),
       GoRoute(
         path: '/login/staff',
@@ -481,6 +498,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/super-admin/profile',
             builder: (context, state) => const SuperAdminProfileScreen(),
+          ),
+          GoRoute(
+            path: '/super-admin/theme',
+            builder: (context, state) => const SuperAdminThemeScreen(),
           ),
         ],
       ),
@@ -693,6 +714,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) =>
                 const SchoolAdminNonTeachingLeavesScreen(),
           ),
+          // Profile Update Requests
+          GoRoute(
+            path: '/school-admin/profile-requests',
+            builder: (context, state) =>
+                const SchoolAdminProfileRequestsScreen(),
+          ),
+          GoRoute(
+            path: '/school-admin/profile-requests/:id',
+            builder: (context, state) =>
+                SchoolAdminProfileRequestDetailScreen(
+              requestId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/school-admin/transport',
+            builder: (context, state) =>
+                const SchoolAdminTransportScreen(),
+          ),
         ],
       ),
 
@@ -804,6 +843,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/student/change-password',
             builder: (context, state) => const StudentChangePasswordScreen(),
           ),
+          GoRoute(
+            path: '/student/transport',
+            builder: (context, state) => const StudentTransportScreen(),
+          ),
         ],
       ),
 
@@ -871,6 +914,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/staff/payslip',
             builder: (context, state) => const StaffPayslipScreen(),
           ),
+          // Profile Update Requests (reuses school admin screens)
+          GoRoute(
+            path: '/staff/profile-requests',
+            builder: (context, state) =>
+                const SchoolAdminProfileRequestsScreen(basePath: '/staff'),
+          ),
+          GoRoute(
+            path: '/staff/profile-requests/:id',
+            builder: (context, state) =>
+                SchoolAdminProfileRequestDetailScreen(
+              requestId: state.pathParameters['id']!,
+              basePath: '/staff',
+            ),
+          ),
         ],
       ),
 
@@ -893,6 +950,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/driver/change-password',
             builder: (context, state) => const DriverChangePasswordScreen(),
+          ),
+          GoRoute(
+            path: '/driver/live-location',
+            builder: (context, state) => const DriverLiveLocationScreen(),
           ),
         ],
       ),
@@ -946,6 +1007,32 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => ParentNoticeDetailScreen(
               noticeId: state.pathParameters['id']!,
             ),
+          ),
+          GoRoute(
+            path: '/parent/children/:id/bus',
+            builder: (context, state) => ParentChildBusScreen(
+              studentId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/parent/children/:id/update-profile',
+            builder: (context, state) => ParentProfileUpdateFormScreen(
+              studentId: state.pathParameters['id']!,
+            ),
+          ),
+          GoRoute(
+            path: '/parent/profile-requests',
+            builder: (context, state) =>
+                const ParentProfileRequestsScreen(),
+          ),
+          GoRoute(
+            path: '/parent/notifications',
+            builder: (context, state) =>
+                const ParentNotificationsScreen(),
+          ),
+          GoRoute(
+            path: '/parent/change-password',
+            builder: (context, state) => const ParentChangePasswordScreen(),
           ),
         ],
       ),

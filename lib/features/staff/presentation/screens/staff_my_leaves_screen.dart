@@ -10,9 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/services/school_admin_service.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/school_admin/non_teaching_leave_model.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
 import '../../../../core/constants/app_strings.dart';
 
 const Color _accent = AppColors.secondary400;
@@ -229,10 +227,7 @@ class _StaffMyLeavesScreenState extends ConsumerState<StaffMyLeavesScreen>
 
   Widget _buildContent() {
     if (_loading) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      );
+      return AppLoaderScreen();
     }
 
     if (_error != null) {

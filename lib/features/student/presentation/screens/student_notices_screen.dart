@@ -105,8 +105,8 @@ class _StudentNoticesScreenState extends ConsumerState<StudentNoticesScreen> {
                         final id = n['id'] ?? '';
                         final title = n['title'] ?? '';
                         final body = n['body'] ?? n['content'] ?? '';
-                        final isPinned = n['is_pinned'] as bool? ?? false;
-                        final publishedAt = n['published_at'] as String?;
+                        final isPinned = n['is_pinned'] as bool? ?? n['isPinned'] as bool? ?? false;
+                        final publishedAt = (n['published_at'] ?? n['publishedAt'])?.toString();
                         return Card(
                           child: InkWell(
                             onTap: () => context.go('/student/notices/$id'),

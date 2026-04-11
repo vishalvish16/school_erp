@@ -2,9 +2,8 @@
  * Non-Teaching Staff Repository — all Prisma queries.
  * Every query is scoped to schoolId from JWT — no cross-school access possible.
  */
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 // ── Roles ──────────────────────────────────────────────────────────────────
 

@@ -24,16 +24,19 @@ import {
     groupAdminResetPasswordSchema,
     qrLoginSchema,
     resolveUserByPhoneSchema,
-    verifyParentOtpSchema
+    verifyParentOtpSchema,
+    verifyStudentOtpSchema
 } from './auth.validation.js';
 import { verifyAccessToken } from '../../middleware/auth.middleware.js';
 import { resolveUserByPhoneController } from './resolve-user-by-phone.controller.js';
 import { verifyParentOtpController } from './verify-parent-otp.controller.js';
+import { verifyStudentOtpController } from './verify-student-otp.controller.js';
 
 const router = Router();
 
 router.post('/resolve-user-by-phone', validate(resolveUserByPhoneSchema), resolveUserByPhoneController);
 router.post('/verify-parent-otp', validate(verifyParentOtpSchema), verifyParentOtpController);
+router.post('/verify-student-otp', validate(verifyStudentOtpSchema), verifyStudentOtpController);
 router.post('/login', validate(loginSchema), loginController);
 router.post('/super-admin/verify-2fa', validate(verify2faSchema), verify2faController);
 router.post('/group-admin/login', validate(groupAdminLoginSchema), groupAdminLoginController);

@@ -7,14 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/parent/attendance_entry_model.dart';
 import '../../data/parent_child_attendance_provider.dart';
 import '../../data/parent_child_detail_provider.dart';
-
-const Color _accent = AppColors.success500;
 
 class ParentChildAttendanceScreen extends ConsumerStatefulWidget {
   const ParentChildAttendanceScreen({super.key, required this.studentId});
@@ -43,102 +39,101 @@ class _ParentChildAttendanceScreenState
     final asyncAttendance = ref.watch(
       parentChildAttendanceProvider((studentId: widget.studentId, month: _month)),
     );
-    final isWide = MediaQuery.of(context).size.width >= 768;
-    final padding = isWide ? 24.0 : 16.0;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      body: Padding(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  onPressed: () => context.go('/parent/children/${widget.studentId}'),
-                  icon: const Icon(Icons.arrow_back),
-                  tooltip: AppStrings.back,
-                ),
-                AppSpacing.hGapSm,
-                Expanded(
-                  child: asyncChild.when(
-                    loading: () => const Text(AppStrings.childAttendance),
-                    error: (_, __) => const Text(AppStrings.childAttendance),
-                    data: (c) => Text(
-                      c != null
-                          ? '${AppStrings.childAttendance} — ${c.fullName}'
-                          : AppStrings.childAttendance,
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
+    return Padding(
+      padding: EdgeInsets.all(isWide ? AppSpacing.xl : AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => context.go('/parent/children/${widget.studentId}'),
+                icon: const Icon(Icons.arrow_back),
+                tooltip: AppStrings.back,
+              ),
+              AppSpacing.hGapSm,
+              Expanded(
+                child: asyncChild.when(
+                  loading: () => Text(AppStrings.childAttendance,
+                      style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  error: (_, __) => Text(AppStrings.childAttendance,
+                      style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
+                  data: (c) => Text(
+                    c != null
+                        ? '${AppStrings.childAttendance} — ${c.fullName}'
+                        : AppStrings.childAttendance,
+                    style: textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
-                ),
-              ],
-            ),
-            AppSpacing.vGapMd,
-
-            Row(
-              children: [
-                DropdownButton<String>(
-                  value: _month,
-                  items: _buildMonthItems(),
-                  onChanged: (v) {
-                    if (v != null) setState(() => _month = v);
-                  },
-                ),
-              ],
-            ),
-            AppSpacing.vGapLg,
-
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async => ref.invalidate(
-                  parentChildAttendanceProvider(
-                    (studentId: widget.studentId, month: _month),
-                  ),
-                ),
-                child: asyncAttendance.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (err, _) => _ErrorView(
-                    error: err.toString().replaceAll('Exception: ', ''),
-                    onRetry: () => ref.invalidate(
-                      parentChildAttendanceProvider(
-                        (studentId: widget.studentId, month: _month),
-                      ),
-                    ),
-                  ),
-                  data: (list) {
-                    if (list.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.event_busy,
-                                size: 48,
-                                color: Theme.of(context).colorScheme.outline),
-                            AppSpacing.vGapMd,
-                            Text(
-                              AppStrings.noAttendanceThisMonth,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                    return ListView.builder(
-                      itemCount: list.length,
-                      itemBuilder: (_, i) => _AttendanceTile(entry: list[i]),
-                    );
-                  },
                 ),
               ),
+            ],
+          ),
+          AppSpacing.vGapMd,
+
+          Row(
+            children: [
+              DropdownButton<String>(
+                value: _month,
+                items: _buildMonthItems(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _month = v);
+                },
+              ),
+            ],
+          ),
+          AppSpacing.vGapLg,
+
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async => ref.invalidate(
+                parentChildAttendanceProvider(
+                  (studentId: widget.studentId, month: _month),
+                ),
+              ),
+              child: asyncAttendance.when(
+                loading: () => const Center(
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
+                ),
+                error: (err, _) => _ErrorView(
+                  error: err.toString().replaceAll('Exception: ', ''),
+                  onRetry: () => ref.invalidate(
+                    parentChildAttendanceProvider(
+                      (studentId: widget.studentId, month: _month),
+                    ),
+                  ),
+                ),
+                data: (list) {
+                  if (list.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.event_busy,
+                              size: AppIconSize.xl4, color: scheme.outline),
+                          SizedBox(height: AppSpacing.lg),
+                          Text(
+                            AppStrings.noAttendanceThisMonth,
+                            style: textTheme.titleMedium?.copyWith(
+                                color: scheme.onSurfaceVariant),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    itemCount: list.length,
+                    itemBuilder: (_, i) => _AttendanceTile(entry: list[i]),
+                  );
+                },
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -176,24 +171,37 @@ class _AttendanceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
     final isPresent = entry.status == 'PRESENT' || entry.status == 'LATE';
     final isHoliday = entry.status == 'HOLIDAY';
+
+    final Color bgColor;
+    final Color fgColor;
+    final Color chipBg;
+    if (isHoliday) {
+      bgColor = AppColors.warning500.withValues(alpha: 0.20);
+      fgColor = AppColors.warning600;
+      chipBg = AppColors.warning100;
+    } else if (isPresent) {
+      bgColor = AppColors.success500.withValues(alpha: 0.20);
+      fgColor = AppColors.success500;
+      chipBg = AppColors.success100;
+    } else {
+      bgColor = AppColors.error500.withValues(alpha: 0.20);
+      fgColor = AppColors.error600;
+      chipBg = AppColors.error100;
+    }
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
         leading: CircleAvatar(
           radius: 18,
-          backgroundColor: isHoliday
-              ? AppColors.warning500.withValues(alpha: 0.2)
-              : (isPresent
-                  ? _accent.withValues(alpha: 0.2)
-                  : AppColors.error500.withValues(alpha: 0.2)),
+          backgroundColor: bgColor,
           child: Icon(
             isHoliday ? Icons.beach_access : (isPresent ? Icons.check : Icons.close),
-            color: isHoliday
-                ? AppColors.warning600
-                : (isPresent ? _accent : AppColors.error600),
-            size: 20,
+            color: fgColor,
+            size: AppIconSize.md,
           ),
         ),
         title: Text(_formatDate(entry.date)),
@@ -203,11 +211,9 @@ class _AttendanceTile extends StatelessWidget {
         trailing: Chip(
           label: Text(
             entry.status,
-            style: const TextStyle(fontSize: 11),
+            style: textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
-          backgroundColor: isHoliday
-              ? AppColors.warning100
-              : (isPresent ? AppColors.success100 : AppColors.error100),
+          backgroundColor: chipBg,
         ),
       ),
     );
@@ -230,18 +236,28 @@ class _ErrorView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.error_outline,
-              size: 48, color: Theme.of(context).colorScheme.error),
-          AppSpacing.vGapMd,
-          Text(error, textAlign: TextAlign.center),
-          AppSpacing.vGapMd,
-          FilledButton(
-              onPressed: onRetry, child: const Text(AppStrings.retry)),
-        ],
+      child: Padding(
+        padding: EdgeInsets.all(AppSpacing.xl2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: AppIconSize.xl4, color: scheme.error),
+            SizedBox(height: AppSpacing.lg),
+            Text(error,
+                style: textTheme.titleMedium?.copyWith(color: scheme.onSurfaceVariant),
+                textAlign: TextAlign.center),
+            SizedBox(height: AppSpacing.xl),
+            FilledButton.icon(
+              icon: Icon(Icons.refresh, size: AppIconSize.md),
+              label: const Text(AppStrings.retry),
+              onPressed: onRetry,
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -5,13 +5,11 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
 void _showComingSoon(BuildContext context, String setting) {
-  AppSnackbar.info(context, '$setting — coming soon');
+  AppSnackbar.info(context, AppStrings.settingComingSoon(setting));
 }
 
 class SchoolAdminSettingsScreen extends StatelessWidget {
@@ -19,9 +17,10 @@ class SchoolAdminSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
-      body: Padding(
+      body: SingleChildScrollView(
         padding: AppSpacing.paddingXl,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,6 +33,10 @@ class SchoolAdminSettingsScreen extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
             AppSpacing.vGapXl,
+
+            // ── PREFERENCES group ───────────────────────────────────────────
+            _SectionHeader(label: AppStrings.settingsGroupPreferences),
+            AppSpacing.vGapSm,
             Card(
               child: Column(
                 children: [
@@ -41,50 +44,89 @@ class SchoolAdminSettingsScreen extends StatelessWidget {
                     icon: Icons.notifications,
                     title: AppStrings.notificationPreferences,
                     subtitle: AppStrings.notifPrefSubtitle,
-                    onTap: () => _showComingSoon(context, AppStrings.notificationPreferences),
+                    onTap: () => _showComingSoon(
+                        context, AppStrings.notificationPreferences),
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
                     icon: Icons.language,
                     title: AppStrings.language,
                     subtitle: AppStrings.englishDefault,
-                    onTap: () => _showComingSoon(context, AppStrings.language),
+                    onTap: () =>
+                        _showComingSoon(context, AppStrings.language),
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
                     icon: Icons.dark_mode,
                     title: AppStrings.theme,
                     subtitle: AppStrings.systemDefault,
-                    onTap: () => _showComingSoon(context, AppStrings.theme),
+                    onTap: () =>
+                        _showComingSoon(context, AppStrings.theme),
                   ),
-                  const Divider(height: 1),
+                ],
+              ),
+            ),
+            AppSpacing.vGapXl,
+
+            // ── SCHOOL group ────────────────────────────────────────────────
+            _SectionHeader(label: AppStrings.settingsGroupSchool),
+            AppSpacing.vGapSm,
+            Card(
+              child: Column(
+                children: [
                   _SettingsTile(
                     icon: Icons.school,
                     title: AppStrings.academicYearSetting,
                     subtitle: AppStrings.currentAcademicYear,
-                    onTap: () => _showComingSoon(context, AppStrings.academicYearSetting),
+                    onTap: () => _showComingSoon(
+                        context, AppStrings.academicYearSetting),
                   ),
                   const Divider(height: 1),
                   _SettingsTile(
                     icon: Icons.backup,
                     title: AppStrings.dataExport,
                     subtitle: AppStrings.dataExportSubtitle,
-                    onTap: () => _showComingSoon(context, AppStrings.dataExport),
+                    onTap: () =>
+                        _showComingSoon(context, AppStrings.dataExport),
                   ),
                 ],
               ),
             ),
             AppSpacing.vGapLg,
+
             Center(
               child: Text(
                 AppStrings.additionalSettingsComingSoon,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color:
-                          Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: scheme.onSurfaceVariant,
                     ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Section header ────────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.xs),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+          color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
         ),
       ),
     );

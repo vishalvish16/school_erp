@@ -225,7 +225,7 @@ class GroupAdminProfileModel {
         ? Map<String, dynamic>.from(j['group'] as Map)
         : null;
 
-    String? _str(dynamic m, List<String> keys) {
+    String? str(dynamic m, List<String> keys) {
       if (m == null) return null;
       for (final k in keys) {
         final v = m[k];
@@ -234,8 +234,8 @@ class GroupAdminProfileModel {
       return null;
     }
 
-    String _strReq(dynamic m, List<String> keys, String fallback) {
-      final s = _str(m, keys);
+    String strReq(dynamic m, List<String> keys, String fallback) {
+      final s = str(m, keys);
       return s != null && s.isNotEmpty ? s : fallback;
     }
 
@@ -244,40 +244,40 @@ class GroupAdminProfileModel {
 
     return GroupAdminProfileModel(
       userId: u != null
-          ? _strReq(u, ['id', 'user_id'], '')
+          ? strReq(u, ['id', 'user_id'], '')
           : (j['user_id']?.toString() ?? j['id']?.toString() ?? ''),
       email: u != null
-          ? _strReq(u, ['email'], '')
+          ? strReq(u, ['email'], '')
           : (j['email']?.toString() ?? ''),
       firstName: u != null
-          ? _str(u, ['firstName', 'first_name'])
+          ? str(u, ['firstName', 'first_name'])
           : j['first_name']?.toString(),
       lastName: u != null
-          ? _str(u, ['lastName', 'last_name'])
+          ? str(u, ['lastName', 'last_name'])
           : j['last_name']?.toString(),
       phone: u != null
-          ? _str(u, ['phone'])
+          ? str(u, ['phone'])
           : j['phone']?.toString(),
       lastLogin: _parseDateTime(
         u != null ? u['lastLogin'] ?? u['last_login'] : j['last_login'],
       ),
       avatarUrl: u != null
-          ? _str(u, ['avatarUrl', 'avatar_url'])
+          ? str(u, ['avatarUrl', 'avatar_url'])
           : (j['avatar_url']?.toString() ?? j['avatarUrl']?.toString()),
       groupId: g != null
-          ? _strReq(g, ['id', 'group_id'], '')
+          ? strReq(g, ['id', 'group_id'], '')
           : (j['group_id']?.toString() ?? ''),
       groupName: g != null
-          ? _strReq(g, ['name', 'group_name'], '')
+          ? strReq(g, ['name', 'group_name'], '')
           : (j['group_name']?.toString() ?? j['name']?.toString() ?? ''),
       groupSlug: g != null
-          ? _str(g, ['slug', 'group_slug'])
+          ? str(g, ['slug', 'group_slug'])
           : (j['group_slug']?.toString() ?? j['slug']?.toString()),
       groupCountry: g != null
-          ? _str(g, ['country', 'group_country'])
+          ? str(g, ['country', 'group_country'])
           : (j['group_country']?.toString() ?? j['country']?.toString()),
       groupLogoUrl: g != null
-          ? _str(g, ['logoUrl', 'logo_url', 'group_logo_url'])
+          ? str(g, ['logoUrl', 'logo_url', 'group_logo_url'])
           : (j['group_logo_url']?.toString() ?? j['logo_url']?.toString()),
     );
   }

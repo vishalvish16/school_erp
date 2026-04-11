@@ -1,10 +1,11 @@
 /**
  * Resolve user by phone — find school(s) for parent/student
  */
-import { PrismaClient } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import * as parentResolve from './resolve-parent-by-phone.repository.js';
+import * as parentOtpStore from './parent-otp.store.js';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 const toStr = (v) => (v == null ? null : String(v));
 
@@ -35,10 +36,10 @@ export const resolveUserByPhone = async (phone, userType, schoolId = null) => {
                 select: {
                     id: true,
                     name: true,
-                    schoolCode: true,
+                    code: true,
                     city: true,
                     state: true,
-                    isActive: true,
+                    status: true,
                     subscriptionEnd: true
                 }
             },
@@ -51,7 +52,7 @@ export const resolveUserByPhone = async (phone, userType, schoolId = null) => {
     // Filter by subscription active
     const now = new Date();
     const validUsers = users.filter(
-        (u) => u.school && u.school.isActive && (!u.school.subscriptionEnd || u.school.subscriptionEnd >= now)
+        (u) => u.school && u.school.status === 'ACTIVE' && (!u.school.subscriptionEnd || u.school.subscriptionEnd >= now)
     );
 
     if (!validUsers.length) return null;
@@ -69,33 +70,45 @@ export const resolveUserByPhone = async (phone, userType, schoolId = null) => {
     const schoolPayload = {
         id: toStr(first.school.id),
         name: first.school.name,
-        code: first.school.schoolCode,
+        code: first.school.code,
         city: first.school.city || '',
         state: first.school.state || '',
         board: '',
         type: 'school',
         logo_url: null,
-        is_active: first.school.isActive
+        is_active: first.school.status === 'ACTIVE'
     };
 
     const userName = [first.firstName, first.lastName].filter(Boolean).join(' ') || first.email;
+    const maskedPhone = first.phone ? '*'.repeat(Math.max(0, first.phone.length - 4)) + first.phone.slice(-4) : '****';
 
-    // TODO: Send OTP — integrate with smart-login OTP flow
-    // For now return stub otp_session_id
-    const otpSessionId = `otp_${Date.now()}_${first.id}`;
-    const maskedPhone = first.phone ? first.phone.slice(-4).padStart(first.phone.length, '*') : '****';
+    // Create real OTP session (reuse parent OTP store, differentiated by userType)
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const otpSessionId = randomUUID();
+    parentOtpStore.set(otpSessionId, {
+        userId: first.id,
+        schoolId: first.schoolId,
+        phone: first.phone || phone,
+        otpCode,
+        expiresAt: new Date(Date.now() + 2 * 60 * 1000),
+        attempts: 0,
+        userType: 'student',
+    });
+    console.log(`[DEV] Student OTP for ${first.phone || phone}: ${otpCode}`);
 
     if (usersToUse.length === 1) {
         return {
+            school: schoolPayload,
             schools: [schoolPayload],
             user: {
                 id: toStr(first.id),
                 name: userName,
-                role: first.role?.name || 'User',
+                role: first.role?.name || 'Student',
                 school_id: toStr(first.schoolId)
             },
             otp_session_id: otpSessionId,
-            masked_phone: maskedPhone
+            masked_phone: maskedPhone,
+            ...(process.env.NODE_ENV !== 'production' && { dev_otp: otpCode }),
         };
     }
 
@@ -103,25 +116,27 @@ export const resolveUserByPhone = async (phone, userType, schoolId = null) => {
     const schools = usersToUse.map((u) => ({
         id: toStr(u.school.id),
         name: u.school.name,
-        code: u.school.schoolCode,
+        code: u.school.code,
         city: u.school.city || '',
         state: u.school.state || '',
         board: '',
         type: 'school',
         logo_url: null,
-        is_active: u.school.isActive
+        is_active: u.school.status === 'ACTIVE'
     }));
 
     return {
+        school: schoolPayload,
         schools: [...new Map(schools.map((s) => [s.id, s])).values()],
         user: {
             id: toStr(first.id),
             name: userName,
-            role: first.role?.name || 'User',
+            role: first.role?.name || 'Student',
             school_id: toStr(first.schoolId)
         },
         otp_session_id: otpSessionId,
-        masked_phone: maskedPhone
+        masked_phone: maskedPhone,
+        ...(process.env.NODE_ENV !== 'production' && { dev_otp: otpCode }),
     };
 };
 

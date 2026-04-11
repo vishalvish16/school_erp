@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/teacher/attendance_model.dart';
 import '../providers/teacher_attendance_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
+
 
 const Color _accent = AppColors.success500;
 
@@ -86,7 +86,7 @@ class _TeacherAttendanceScreenState
                         style: TextStyle(
                             color: Theme.of(context).colorScheme.error)),
                     data: (sections) => DropdownButtonFormField<String>(
-                      value: attState.selectedSection?.sectionId,
+                      initialValue: attState.selectedSection?.sectionId,
                       decoration: const InputDecoration(
                         labelText: AppStrings.selectSection,
                         border: OutlineInputBorder(),
@@ -179,8 +179,8 @@ class _TeacherAttendanceScreenState
                 ),
               )
             else if (attState.isLoading)
-              const Expanded(
-                  child: Center(child: CircularProgressIndicator()))
+              Expanded(
+                  child: AppLoaderScreen())
             else ...[
               // Summary bar
               _SummaryBar(summary: notifier.liveSummary),

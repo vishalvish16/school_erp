@@ -3,16 +3,15 @@
 // =============================================================================
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/school_admin/school_notice_model.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+import '../../../../shared/widgets/app_toast.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
+
 import '../providers/school_admin_notices_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 const Color _accent = AppColors.success500;
 
@@ -63,9 +62,9 @@ class _SchoolAdminNoticesScreenState
   Widget build(BuildContext context) {
     final state = ref.watch(schoolAdminNoticesProvider);
     final cs = Theme.of(context).colorScheme;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = MediaQuery.sizeOf(context).width;
     final isNarrow = screenWidth < 600;
-    final isWide = kIsWeb || screenWidth >= 768;
+    final isWide = screenWidth >= AppBreakpoints.tablet;
     final pad = isNarrow ? 16.0 : 24.0;
 
     return RefreshIndicator(
@@ -102,54 +101,51 @@ class _SchoolAdminNoticesScreenState
             ),
 
             // ── Search / Filters ──
-            Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: pad, vertical: AppSpacing.md),
-                child: Card(
-                  child: Padding(
-                    padding: AppSpacing.paddingMd,
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 220,
-                          child: TextField(
-                            controller: _searchCtrl,
-                            decoration: InputDecoration(
-                              hintText: AppStrings.searchNotices,
-                              prefixIcon:
-                                  const Icon(Icons.search, size: 20),
-                              suffixIcon: _searchCtrl.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 18),
-                                      onPressed: _clearFilters,
-                                    )
-                                  : null,
-                              isDense: true,
-                              border: OutlineInputBorder(
-                                borderRadius: AppRadius.brMd,
-                              ),
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: AppSpacing.md,
-                                vertical: AppSpacing.sm,
-                              ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: pad, vertical: AppSpacing.md),
+              child: Card(
+                child: Padding(
+                  padding: AppSpacing.paddingMd,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            hintText: AppStrings.searchNotices,
+                            prefixIcon:
+                                const Icon(Icons.search, size: 20),
+                            suffixIcon: _searchCtrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: _clearFilters,
+                                  )
+                                : null,
+                            isDense: true,
+                            border: OutlineInputBorder(
+                              borderRadius: AppRadius.brMd,
                             ),
-                            onChanged: (v) {
-                              setState(() {});
-                              _onSearchChanged(v);
-                            },
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.sm,
+                            ),
                           ),
+                          onChanged: (v) {
+                            setState(() {});
+                            _onSearchChanged(v);
+                          },
                         ),
-                        if (_hasActiveFilters)
-                          TextButton.icon(
-                            onPressed: _clearFilters,
-                            icon: const Icon(Icons.filter_alt_off, size: 18),
-                            label: Text(AppStrings.clearFilters),
-                          ),
-                      ],
-                    ),
+                      ),
+                      const Spacer(),
+                      if (_hasActiveFilters)
+                        TextButton.icon(
+                          onPressed: _clearFilters,
+                          icon: const Icon(Icons.filter_alt_off, size: 18),
+                          label: Text(AppStrings.clearFilters),
+                        ),
+                    ],
                   ),
                 ),
               ),
@@ -177,7 +173,7 @@ class _SchoolAdminNoticesScreenState
 
   Widget _buildContent(dynamic state, ColorScheme cs) {
     if (state.isLoading) {
-      return const ShimmerListLoadingWidget(itemCount: 8);
+      return AppLoaderScreen();
     }
 
     if (state.errorMessage != null) {
@@ -286,7 +282,7 @@ class _SchoolAdminNoticesScreenState
                   ),
                   AppSpacing.vGapMd,
                   DropdownButtonFormField<String?>(
-                    value: targetRole,
+                    initialValue: targetRole,
                     decoration: InputDecoration(
                         labelText: AppStrings.targetAudience,
                         border: const OutlineInputBorder()),
@@ -366,7 +362,7 @@ class _SchoolAdminNoticesScreenState
         .read(schoolAdminNoticesProvider.notifier)
         .deleteNotice(notice.id);
     if (context.mounted) {
-      AppSnackbar.success(context, AppStrings.noticeDeleted);
+      AppToast.showSuccess(context, AppStrings.noticeDeleted);
     }
   }
 }
@@ -400,30 +396,36 @@ class _NoticeCard extends StatelessWidget {
                   child: Text(
                     notice.title,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 15),
+                        fontWeight: FontWeight.w600, fontSize: 15),
                   ),
                 ),
-                PopupMenuButton<String>(
-                  itemBuilder: (ctx) => [
+                HoverPopupMenu<String>(
+                  icon: const Icon(Icons.more_vert, size: 20),
+                  itemBuilder: (_) => [
                     PopupMenuItem(
-                        value: 'edit',
-                        child: ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.edit),
-                            title: Text(AppStrings.edit))),
+                      value: 'edit',
+                      child: ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.edit_outlined),
+                        title: Text(AppStrings.edit),
+                      ),
+                    ),
                     PopupMenuItem(
-                        value: 'delete',
-                        child: ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.delete, color: AppColors.error500),
-                            title: Text(AppStrings.delete,
-                                style: const TextStyle(color: AppColors.error500)))),
+                      value: 'delete',
+                      child: ListTile(
+                        dense: true,
+                        leading: const Icon(Icons.delete_outline,
+                            color: AppColors.error500),
+                        title: Text(AppStrings.delete,
+                            style: const TextStyle(
+                                color: AppColors.error500)),
+                      ),
+                    ),
                   ],
                   onSelected: (v) {
                     if (v == 'edit') onEdit();
                     if (v == 'delete') onDelete();
                   },
-                  child: const Icon(Icons.more_vert, size: 18),
                 ),
               ],
             ),

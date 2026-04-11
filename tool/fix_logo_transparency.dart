@@ -33,10 +33,6 @@ void main() {
   }
 
   final out = img.encodePng(image);
-  if (out == null) {
-    print('Error: Could not encode image');
-    exit(1);
-  }
 
   file.writeAsBytesSync(out);
   print('Fixed transparency in $logoPath');

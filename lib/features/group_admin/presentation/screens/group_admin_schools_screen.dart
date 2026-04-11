@@ -9,9 +9,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/services/group_admin_service.dart';
 import '../../../../models/group_admin/group_admin_models.dart';
 import '../../../../widgets/common/searchable_dropdown_form_field.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
+import '../../../../design_system/design_system.dart';
 import '../../../../core/constants/app_strings.dart';
 
 // ── State ──────────────────────────────────────────────────────────────────
@@ -144,7 +143,7 @@ class _GroupAdminSchoolsScreenState
     final state = ref.watch(_schoolsProvider);
     final cs = Theme.of(context).colorScheme;
     final isNarrow = MediaQuery.of(context).size.width < 600;
-    final padding = isNarrow ? 16.0 : 24.0;
+    final padding = isNarrow ? AppSpacing.lg : AppSpacing.xl;
 
     return RefreshIndicator(
       onRefresh: () => ref.read(_schoolsProvider.notifier).load(),
@@ -156,8 +155,8 @@ class _GroupAdminSchoolsScreenState
             Padding(
               padding: EdgeInsets.fromLTRB(padding, padding, padding, 0),
               child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
+                spacing: AppSpacing.md,
+                runSpacing: AppSpacing.md,
                 alignment: WrapAlignment.spaceBetween,
                 children: [
                   Text(
@@ -179,10 +178,8 @@ class _GroupAdminSchoolsScreenState
                 child: Card(
                   child: Padding(
                     padding: AppSpacing.paddingMd,
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      crossAxisAlignment: WrapCrossAlignment.center,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         SizedBox(
                           width: 220,
@@ -191,15 +188,15 @@ class _GroupAdminSchoolsScreenState
                             decoration: InputDecoration(
                               hintText: AppStrings.searchSchools,
                               prefixIcon:
-                                  const Icon(Icons.search, size: 20),
-                              border: const OutlineInputBorder(),
+                                  Icon(Icons.search, size: AppIconSize.md),
+                              border: OutlineInputBorder(borderRadius: AppRadius.brMd),
                               isDense: true,
                               contentPadding: EdgeInsets.symmetric(
                                   horizontal: AppSpacing.md, vertical: AppSpacing.sm),
                               suffixIcon: state.search.isNotEmpty
                                   ? IconButton(
-                                      icon: const Icon(Icons.clear,
-                                          size: 18),
+                                      icon: Icon(Icons.clear,
+                                          size: AppIconSize.sm),
                                       onPressed: () {
                                         _searchController.clear();
                                         ref
@@ -215,6 +212,7 @@ class _GroupAdminSchoolsScreenState
                                 .setSearch,
                           ),
                         ),
+                        SizedBox(width: AppSpacing.md),
                         SizedBox(
                           width: 140,
                           child: SearchableDropdownFormField<String>.valueItems(
@@ -226,9 +224,9 @@ class _GroupAdminSchoolsScreenState
                               MapEntry('subscriptionEnd', 'Expiry'),
                             ],
                             hintText: AppStrings.sortBy,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: AppStrings.sortBy,
-                              border: OutlineInputBorder(),
+                              border: OutlineInputBorder(borderRadius: AppRadius.brMd),
                               isDense: true,
                               contentPadding: EdgeInsets.symmetric(
                                   horizontal: AppSpacing.md, vertical: AppSpacing.sm),
@@ -242,12 +240,13 @@ class _GroupAdminSchoolsScreenState
                             },
                           ),
                         ),
+                        SizedBox(width: AppSpacing.sm),
                         IconButton(
                           icon: Icon(
                             state.sortOrder == 'asc'
                                 ? Icons.arrow_upward
                                 : Icons.arrow_downward,
-                            size: 20,
+                            size: AppIconSize.md,
                           ),
                           tooltip: state.sortOrder == 'asc'
                               ? 'Ascending'
@@ -262,11 +261,12 @@ class _GroupAdminSchoolsScreenState
                                 );
                           },
                         ),
+                        const Spacer(),
                         if (_hasActiveFilters)
                           TextButton.icon(
                             onPressed: _clearFilters,
-                            icon: const Icon(Icons.filter_alt_off,
-                                size: 18),
+                            icon: Icon(Icons.filter_alt_off,
+                                size: AppIconSize.sm),
                             label: const Text(AppStrings.clearFilters),
                           ),
                       ],
@@ -302,11 +302,11 @@ class _GroupAdminSchoolsScreenState
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.error_outline, size: 48, color: cs.error),
+                Icon(Icons.error_outline, size: AppIconSize.xl3, color: cs.error),
                 AppSpacing.vGapMd,
                 Text(
                   state.error!,
-                  style: TextStyle(color: cs.error),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.error),
                   textAlign: TextAlign.center,
                 ),
                 AppSpacing.vGapLg,
@@ -323,7 +323,7 @@ class _GroupAdminSchoolsScreenState
     }
 
     if (state.isLoading) {
-      return const ShimmerListLoadingWidget(itemCount: 8);
+      return AppLoaderScreen();
     }
 
     if (state.schools.isEmpty) {
@@ -331,7 +331,7 @@ class _GroupAdminSchoolsScreenState
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.school_outlined, size: 64, color: cs.outline),
+            Icon(Icons.school_outlined, size: AppIconSize.xl4, color: cs.outline),
             AppSpacing.vGapLg,
             Text(
               state.search.isNotEmpty
@@ -368,15 +368,13 @@ class _SchoolTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusColor = _statusColor(school.status);
     final planColor = _planColor(school.subscriptionPlan);
-    final daysRemaining = school.subscriptionEnd != null
-        ? school.subscriptionEnd!.difference(DateTime.now()).inDays
-        : null;
+    final daysRemaining = school.subscriptionEnd?.difference(DateTime.now()).inDays;
     final isExpiringSoon =
         daysRemaining != null && daysRemaining < 30 && daysRemaining >= 0;
     final isExpired = daysRemaining != null && daysRemaining < 0;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
         leading: SizedBox(
           width: 40,
@@ -400,7 +398,7 @@ class _SchoolTile extends StatelessWidget {
         ),
         title: Text(
           school.name,
-          style: const TextStyle(fontWeight: FontWeight.w600),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
@@ -414,7 +412,7 @@ class _SchoolTile extends StatelessWidget {
           children: [
             Container(
               padding:
-                  EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: 2),
+                  EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.xs),
               decoration: BoxDecoration(
                 color: planColor.withValues(alpha: 0.15),
                 borderRadius: AppRadius.brXs,
@@ -422,8 +420,7 @@ class _SchoolTile extends StatelessWidget {
               ),
               child: Text(
                 school.subscriptionPlan,
-                style: TextStyle(
-                  fontSize: 11,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: planColor,
                   fontWeight: FontWeight.w600,
                 ),
@@ -437,8 +434,7 @@ class _SchoolTile extends StatelessWidget {
                     : isExpiringSoon
                         ? '$daysRemaining d left'
                         : _formatDate(school.subscriptionEnd!),
-                style: TextStyle(
-                  fontSize: 11,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   color: isExpired
                       ? AppColors.error500
                       : isExpiringSoon
@@ -459,7 +455,7 @@ class _SchoolTile extends StatelessWidget {
       case 'ACTIVE':
         return AppColors.success500;
       case 'SUSPENDED':
-        return Colors.amber;
+        return AppColors.warning500;
       default:
         return AppColors.error500;
     }
@@ -470,7 +466,7 @@ class _SchoolTile extends StatelessWidget {
       case 'PREMIUM':
         return AppColors.secondary500;
       case 'STANDARD':
-        return Colors.teal;
+        return AppColors.success500;
       default:
         return AppColors.neutral400;
     }

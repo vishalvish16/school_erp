@@ -13,6 +13,7 @@ class StaffStudentsState {
   final List<StaffStudentModel> students;
   final List<Map<String, dynamic>> classes;
   final bool isLoading;
+  final bool isLoadingMore;
   final String? errorMessage;
   final int currentPage;
   final int totalPages;
@@ -25,6 +26,7 @@ class StaffStudentsState {
     this.students = const [],
     this.classes = const [],
     this.isLoading = false,
+    this.isLoadingMore = false,
     this.errorMessage,
     this.currentPage = 1,
     this.totalPages = 1,
@@ -38,6 +40,7 @@ class StaffStudentsState {
     List<StaffStudentModel>? students,
     List<Map<String, dynamic>>? classes,
     bool? isLoading,
+    bool? isLoadingMore,
     String? errorMessage,
     int? currentPage,
     int? totalPages,
@@ -52,6 +55,7 @@ class StaffStudentsState {
         students: students ?? this.students,
         classes: classes ?? this.classes,
         isLoading: isLoading ?? this.isLoading,
+        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         currentPage: currentPage ?? this.currentPage,
         totalPages: totalPages ?? this.totalPages,
@@ -72,7 +76,7 @@ class StaffStudentsNotifier extends StateNotifier<StaffStudentsState> {
   StaffStudentsNotifier(this._service) : super(const StaffStudentsState());
 
   Future<void> loadStudents({int page = 1}) async {
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(isLoading: true, isLoadingMore: false, clearError: true);
     try {
       final response = await _service.getStudents(
         page: page,
@@ -80,26 +84,13 @@ class StaffStudentsNotifier extends StateNotifier<StaffStudentsState> {
         search: state.searchQuery.isEmpty ? null : state.searchQuery,
         classId: state.filterClassId,
       );
-      final dataWrapper = response['data'];
-      List<dynamic> rawList = [];
-      Map<String, dynamic> pagination = {};
-      if (dataWrapper is Map) {
-        rawList = (dataWrapper['data'] as List?) ?? [];
-        pagination =
-            (dataWrapper['pagination'] as Map<String, dynamic>?) ?? {};
-      } else if (dataWrapper is List) {
-        rawList = dataWrapper;
-      }
-      final students = rawList
-          .map((e) =>
-              StaffStudentModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      final parsed = _parseList(response);
       state = state.copyWith(
-        students: students,
+        students: parsed.students,
         isLoading: false,
-        currentPage: (pagination['page'] as num?)?.toInt() ?? page,
-        totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
-        total: (pagination['total'] as num?)?.toInt() ?? students.length,
+        currentPage: parsed.page ?? page,
+        totalPages: parsed.totalPages,
+        total: parsed.total,
       );
     } catch (e) {
       state = state.copyWith(
@@ -107,6 +98,59 @@ class StaffStudentsNotifier extends StateNotifier<StaffStudentsState> {
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
     }
+  }
+
+  Future<void> loadMoreStudents() async {
+    if (state.isLoading || state.isLoadingMore) return;
+    if (state.students.isEmpty) return;
+    if (state.students.length >= state.total && state.total > 0) return;
+    final nextPage = state.currentPage + 1;
+    if (nextPage > state.totalPages) return;
+    state = state.copyWith(isLoadingMore: true, clearError: true);
+    try {
+      final response = await _service.getStudents(
+        page: nextPage,
+        limit: state.pageSize,
+        search: state.searchQuery.isEmpty ? null : state.searchQuery,
+        classId: state.filterClassId,
+      );
+      final parsed = _parseList(response);
+      state = state.copyWith(
+        students: [...state.students, ...parsed.students],
+        isLoadingMore: false,
+        currentPage: parsed.page ?? nextPage,
+        totalPages: parsed.totalPages,
+        total: parsed.total,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingMore: false,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+    }
+  }
+
+  _ParsedStaffStudents _parseList(Map<String, dynamic> response) {
+    final dataWrapper = response['data'];
+    List<dynamic> rawList = [];
+    Map<String, dynamic> pagination = {};
+    if (dataWrapper is Map) {
+      rawList = (dataWrapper['data'] as List?) ?? [];
+      pagination =
+          (dataWrapper['pagination'] as Map<String, dynamic>?) ?? {};
+    } else if (dataWrapper is List) {
+      rawList = dataWrapper;
+    }
+    final students = rawList
+        .map((e) =>
+            StaffStudentModel.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return _ParsedStaffStudents(
+      students: students,
+      page: (pagination['page'] as num?)?.toInt(),
+      totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
+      total: (pagination['total'] as num?)?.toInt() ?? students.length,
+    );
   }
 
   Future<void> loadClasses() async {
@@ -147,3 +191,17 @@ final staffStudentsProvider =
     StateNotifierProvider<StaffStudentsNotifier, StaffStudentsState>((ref) {
   return StaffStudentsNotifier(ref.read(staffServiceProvider));
 });
+
+class _ParsedStaffStudents {
+  const _ParsedStaffStudents({
+    required this.students,
+    this.page,
+    required this.totalPages,
+    required this.total,
+  });
+
+  final List<StaffStudentModel> students;
+  final int? page;
+  final int totalPages;
+  final int total;
+}

@@ -3,12 +3,13 @@
 // PURPOSE: Enterprise SaaS Topbar with Global Search & Profile Management
 // =============================================================================
 
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../design_system/design_system.dart';
 import '../../core/constants/app_strings.dart';
 import '../../features/auth/auth_guard_provider.dart';
-import '../../design_system/tokens/app_spacing.dart';
 
 class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
   const AdminTopbar({
@@ -26,13 +27,24 @@ class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+        child: Container(
       height: 64,
       decoration: BoxDecoration(
-        color: scheme.surface,
+        color: isDark
+            ? scheme.surface.withValues(alpha: 0.88)
+            : Colors.white.withValues(alpha: 0.15),
         border: Border(
-          bottom: BorderSide(color: scheme.outlineVariant, width: 1),
+          bottom: BorderSide(
+            color: isDark
+                ? scheme.outlineVariant
+                : Colors.white.withValues(alpha: 0.3),
+            width: 1,
+          ),
         ),
       ),
       padding: AppSpacing.paddingHLg,
@@ -118,7 +130,9 @@ class AdminTopbar extends StatelessWidget implements PreferredSizeWidget {
           ),
         ],
       ),
-    );
+        ),   // closes Container
+      ),     // closes BackdropFilter
+    );       // closes ClipRect
   }
 }
 

@@ -6,15 +6,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/constants/app_strings.dart';
 import '../../../../core/services/school_admin_service.dart';
+import '../../../../shared/widgets/app_toast.dart';
 import '../../../../design_system/design_system.dart';
 import '../../../../models/school_admin/non_teaching_staff_model.dart';
 import '../providers/school_admin_non_teaching_staff_provider.dart';
 import '../providers/school_admin_non_teaching_roles_provider.dart';
 import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
-
-const Color _accent = AppColors.success500;
 
 const List<String> _genders = ['MALE', 'FEMALE', 'OTHER'];
 const List<String> _employeeTypes = [
@@ -112,7 +112,7 @@ class _SchoolAdminNonTeachingStaffFormScreenState
       _populateForm(staff);
     } catch (e) {
       if (mounted) {
-        AppSnackbar.error(context, 'Failed to load staff: ${e.toString().replaceAll('Exception: ', '')}');
+        AppToast.showError(context, 'Failed to load staff: ${e.toString().replaceAll('Exception: ', '')}');
       }
     } finally {
       if (mounted) setState(() => _isLoadingDetail = false);
@@ -183,7 +183,7 @@ class _SchoolAdminNonTeachingStaffFormScreenState
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     if (_selectedRoleId == null) {
-      AppSnackbar.warning(context, 'Please select a role');
+      AppToast.showWarning(context, 'Please select a role');
       return;
     }
     setState(() => _isSaving = true);
@@ -231,26 +231,23 @@ class _SchoolAdminNonTeachingStaffFormScreenState
     if (mounted) setState(() => _isSaving = false);
 
     if (ok && mounted) {
-      AppSnackbar.success(context, _isEdit ? 'Staff updated' : 'Staff member added');
+      AppToast.showSuccess(context, _isEdit ? 'Staff updated' : 'Staff member added');
       context.go('/school-admin/non-teaching-staff');
     } else if (mounted) {
       final err = ref.read(nonTeachingStaffProvider).errorMessage;
-      AppSnackbar.error(context, err ?? 'An error occurred');
+      AppToast.showError(context, err ?? AppStrings.anErrorOccurred);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final rolesState = ref.watch(nonTeachingRolesProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
+    final isWide = MediaQuery.sizeOf(context).width >= 768;
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.surface,
         title: Text(_isEdit ? 'Edit Staff' : 'Add Non-Teaching Staff'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+        leading: BackButton(
           onPressed: () => context.go('/school-admin/non-teaching-staff'),
         ),
         actions: [
@@ -263,15 +260,15 @@ class _SchoolAdminNonTeachingStaffFormScreenState
                   child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else
-            TextButton(
+            FilledButton(
               onPressed: _submit,
-              child: Text(_isEdit ? 'Update' : 'Save',
-                  style: const TextStyle(color: _accent)),
+              child: Text(_isEdit ? 'Update' : 'Save'),
             ),
+          AppSpacing.hGapSm,
         ],
       ),
       body: _isLoadingDetail
-          ? const Center(child: CircularProgressIndicator())
+          ? AppLoaderScreen()
           : Form(
               key: _formKey,
               child: SingleChildScrollView(
@@ -286,7 +283,7 @@ class _SchoolAdminNonTeachingStaffFormScreenState
                           'Role',
                           [
                             DropdownButtonFormField<String>(
-                              value: _selectedRoleId,
+                              initialValue: _selectedRoleId,
                               decoration: const InputDecoration(
                                 labelText: 'Role *',
                                 border: OutlineInputBorder(),
@@ -346,7 +343,7 @@ class _SchoolAdminNonTeachingStaffFormScreenState
                             ),
                             AppSpacing.vGapMd,
                             DropdownButtonFormField<String>(
-                              value: _gender,
+                              initialValue: _gender,
                               decoration: const InputDecoration(
                                   labelText: 'Gender *',
                                   border: OutlineInputBorder()),
@@ -365,7 +362,7 @@ class _SchoolAdminNonTeachingStaffFormScreenState
                                   _dateOfBirth,
                                   () => _pickDate(true)),
                               DropdownButtonFormField<String?>(
-                                value: _bloodGroup,
+                                initialValue: _bloodGroup,
                                 decoration: const InputDecoration(
                                     labelText: 'Blood Group',
                                     border: OutlineInputBorder()),
@@ -431,7 +428,7 @@ class _SchoolAdminNonTeachingStaffFormScreenState
                               _datePicker('Join Date', _joinDate,
                                   () => _pickDate(false)),
                               DropdownButtonFormField<String>(
-                                value: _employeeType,
+                                initialValue: _employeeType,
                                 decoration: const InputDecoration(
                                     labelText: 'Employee Type *',
                                     border: OutlineInputBorder()),
@@ -477,25 +474,44 @@ class _SchoolAdminNonTeachingStaffFormScreenState
                         ),
                         AppSpacing.vGapXl,
 
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _isSaving ? null : _submit,
-                            style: FilledButton.styleFrom(
-                                backgroundColor: _accent,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14)),
-                            child: _isSaving
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white))
-                                : Text(_isEdit ? 'Update Staff' : 'Add Staff',
-                                    style: const TextStyle(fontSize: 16)),
+                        if (isWide)
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              OutlinedButton(
+                                onPressed: _isSaving
+                                    ? null
+                                    : () => context.go('/school-admin/non-teaching-staff'),
+                                child: Text(AppStrings.cancel),
+                              ),
+                              AppSpacing.hGapSm,
+                              FilledButton(
+                                onPressed: _isSaving ? null : _submit,
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2))
+                                    : Text(_isEdit ? 'Update Staff' : 'Add Staff'),
+                              ),
+                            ],
+                          )
+                        else
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _isSaving ? null : _submit,
+                              style: FilledButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(vertical: 14)),
+                              child: _isSaving
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2))
+                                  : Text(_isEdit ? 'Update Staff' : 'Add Staff',
+                                      style: const TextStyle(fontSize: 16)),
+                            ),
                           ),
-                        ),
                         AppSpacing.vGapXl,
                       ],
                     ),
@@ -513,9 +529,15 @@ class _SchoolAdminNonTeachingStaffFormScreenState
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 15)),
+            Text(
+              title.toUpperCase(),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.2,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
             AppSpacing.vGapMd,
             ...children,
           ],

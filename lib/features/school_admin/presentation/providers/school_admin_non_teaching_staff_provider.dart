@@ -10,10 +10,12 @@ import '../../../../models/school_admin/non_teaching_staff_model.dart';
 class NonTeachingStaffState {
   final List<NonTeachingStaffModel> staff;
   final bool isLoading;
+  final bool isLoadingMore;
   final String? errorMessage;
   final int currentPage;
   final int totalPages;
   final int total;
+  final int pageSize;
   final String searchQuery;
   final String? categoryFilter;
   final String? employeeTypeFilter;
@@ -23,10 +25,12 @@ class NonTeachingStaffState {
   const NonTeachingStaffState({
     this.staff = const [],
     this.isLoading = false,
+    this.isLoadingMore = false,
     this.errorMessage,
     this.currentPage = 1,
     this.totalPages = 1,
     this.total = 0,
+    this.pageSize = 15,
     this.searchQuery = '',
     this.categoryFilter,
     this.employeeTypeFilter,
@@ -37,10 +41,12 @@ class NonTeachingStaffState {
   NonTeachingStaffState copyWith({
     List<NonTeachingStaffModel>? staff,
     bool? isLoading,
+    bool? isLoadingMore,
     String? errorMessage,
     int? currentPage,
     int? totalPages,
     int? total,
+    int? pageSize,
     String? searchQuery,
     String? categoryFilter,
     String? employeeTypeFilter,
@@ -54,10 +60,12 @@ class NonTeachingStaffState {
       NonTeachingStaffState(
         staff: staff ?? this.staff,
         isLoading: isLoading ?? this.isLoading,
+        isLoadingMore: isLoadingMore ?? this.isLoadingMore,
         errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
         currentPage: currentPage ?? this.currentPage,
         totalPages: totalPages ?? this.totalPages,
         total: total ?? this.total,
+        pageSize: pageSize ?? this.pageSize,
         searchQuery: searchQuery ?? this.searchQuery,
         categoryFilter:
             clearCategory ? null : (categoryFilter ?? this.categoryFilter),
@@ -79,11 +87,16 @@ class NonTeachingStaffNotifier
 
   Future<void> loadStaff({bool refresh = false}) async {
     if (state.isLoading) return;
-    state = state.copyWith(isLoading: true, clearError: true);
+    state = state.copyWith(
+      isLoading: true,
+      isLoadingMore: false,
+      clearError: true,
+    );
     try {
       final page = refresh ? 1 : state.currentPage;
       final response = await _service.getNonTeachingStaffList(
         page: page,
+        limit: state.pageSize,
         search: state.searchQuery.isEmpty ? null : state.searchQuery,
         category: state.categoryFilter,
         employeeType: state.employeeTypeFilter,
@@ -115,6 +128,60 @@ class NonTeachingStaffNotifier
         errorMessage: _safeErrorMessage(e),
       );
     }
+  }
+
+  Future<void> loadMoreStaff() async {
+    if (state.isLoading || state.isLoadingMore) return;
+    if (state.staff.isEmpty) return;
+    if (state.staff.length >= state.total && state.total > 0) return;
+    final nextPage = state.currentPage + 1;
+    if (nextPage > state.totalPages) return;
+    state = state.copyWith(isLoadingMore: true, clearError: true);
+    try {
+      final response = await _service.getNonTeachingStaffList(
+        page: nextPage,
+        limit: state.pageSize,
+        search: state.searchQuery.isEmpty ? null : state.searchQuery,
+        category: state.categoryFilter,
+        employeeType: state.employeeTypeFilter,
+        isActive: state.isActiveFilter,
+      );
+      List<dynamic> rawList = [];
+      Map<String, dynamic> pagination = {};
+      final dataWrapper = response['data'];
+      if (dataWrapper is Map) {
+        rawList = (dataWrapper['data'] as List?) ?? [];
+        pagination =
+            (dataWrapper['pagination'] as Map<String, dynamic>?) ?? {};
+      } else if (dataWrapper is List) {
+        rawList = dataWrapper;
+      }
+      final newStaff = rawList
+          .map((e) => NonTeachingStaffModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final seen = <String>{};
+      final merged = [...state.staff, ...newStaff]
+          .where((s) => seen.add(s.id))
+          .toList();
+      state = state.copyWith(
+        staff: merged,
+        isLoadingMore: false,
+        currentPage: (pagination['page'] as num?)?.toInt() ?? nextPage,
+        totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
+        total: (pagination['total'] as num?)?.toInt() ?? merged.length,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingMore: false,
+        errorMessage: _safeErrorMessage(e),
+      );
+    }
+  }
+
+  void setPageSize(int size) {
+    if (size == state.pageSize) return;
+    state = state.copyWith(pageSize: size, currentPage: 1);
+    loadStaff(refresh: true);
   }
 
   void setSearch(String query) {

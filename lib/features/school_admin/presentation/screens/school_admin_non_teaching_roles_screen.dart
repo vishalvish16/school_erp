@@ -5,12 +5,13 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
+import '../../../../shared/widgets/app_toast.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
 import '../providers/school_admin_non_teaching_roles_provider.dart';
 import '../../../../models/school_admin/non_teaching_staff_role_model.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+
 
 const Color _accent = AppColors.success500;
 
@@ -53,7 +54,7 @@ class _SchoolAdminNonTeachingRolesScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(nonTeachingRolesProvider);
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -78,6 +79,10 @@ class _SchoolAdminNonTeachingRolesScreenState
                   alignment: WrapAlignment.spaceBetween,
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.go('/school-admin/non-teaching-staff'),
+                    ),
                     Text(
                       'Roles & Categories',
                       style: Theme.of(context)
@@ -129,10 +134,7 @@ class _SchoolAdminNonTeachingRolesScreenState
 
   Widget _buildContent(NonTeachingRolesState state) {
     if (state.isLoading) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      );
+      return AppLoaderScreen();
     }
 
     if (state.errorMessage != null &&
@@ -287,7 +289,7 @@ class _SchoolAdminNonTeachingRolesScreenState
                     ),
                     AppSpacing.vGapMd,
                     DropdownButtonFormField<String>(
-                      value: category,
+                      initialValue: category,
                       decoration: const InputDecoration(
                         labelText: 'Category *',
                         border: OutlineInputBorder(),
@@ -352,7 +354,7 @@ class _SchoolAdminNonTeachingRolesScreenState
                           final err = ref
                               .read(nonTeachingRolesProvider)
                               .errorMessage;
-                          AppSnackbar.error(ctx, err ?? 'An error occurred');
+                          AppToast.showError(ctx, err ?? 'An error occurred');
                         }
                       }
                     },
@@ -549,28 +551,51 @@ class _RoleCard extends StatelessWidget {
             ),
             if (!isSystem) ...[
               AppSpacing.hGapSm,
-              IconButton(
-                icon: const Icon(Icons.edit_outlined, size: 18),
-                onPressed: onEdit,
-                tooltip: 'Edit',
-              ),
               Switch(
                 value: role.isActive,
                 onChanged: (_) => onToggle?.call(),
-                activeColor: _accent,
+                activeThumbColor: _accent,
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.delete_outline,
-                  size: 18,
-                  color: role.staffCount > 0
-                      ? AppColors.neutral400
-                      : AppColors.error500,
-                ),
-                onPressed: role.staffCount > 0 ? null : onDelete,
-                tooltip: role.staffCount > 0
-                    ? 'Reassign staff first'
-                    : 'Delete',
+              HoverPopupMenu<String>(
+                icon: const Icon(Icons.more_vert, size: 20),
+                itemBuilder: (_) => [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.edit_outlined),
+                      title: const Text('Edit'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    enabled: role.staffCount == 0,
+                    value: 'delete',
+                    child: ListTile(
+                      dense: true,
+                      enabled: role.staffCount == 0,
+                      leading: Icon(
+                        Icons.delete_outline,
+                        color: role.staffCount > 0
+                            ? AppColors.neutral400
+                            : AppColors.error500,
+                      ),
+                      title: Text(
+                        role.staffCount > 0
+                            ? 'Reassign staff first'
+                            : 'Delete',
+                        style: TextStyle(
+                          color: role.staffCount > 0
+                              ? AppColors.neutral400
+                              : AppColors.error500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                onSelected: (v) {
+                  if (v == 'edit') onEdit?.call();
+                  if (v == 'delete' && role.staffCount == 0) onDelete?.call();
+                },
               ),
             ] else ...[
               AppSpacing.hGapSm,

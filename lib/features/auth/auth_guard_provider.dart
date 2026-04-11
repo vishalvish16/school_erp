@@ -6,6 +6,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/services/notice_socket_service.dart';
 
 /// Provider to access the AuthGuardNotifier
 final authGuardProvider =
@@ -159,6 +160,30 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
     return payload?['portal_type']?.toString();
   }
 
+  /// Get school_id from JWT (for parent/student portals)
+  String? getSchoolId() {
+    final token = state.accessToken;
+    if (token == null) return null;
+    final payload = _decodePayload(token);
+    return payload?['school_id']?.toString();
+  }
+
+  /// Get parent_id from JWT (for parent portal)
+  String? getParentId() {
+    final token = state.accessToken;
+    if (token == null) return null;
+    final payload = _decodePayload(token);
+    return payload?['parent_id']?.toString();
+  }
+
+  /// Get studentId from JWT (for student portal)
+  String? getStudentId() {
+    final token = state.accessToken;
+    if (token == null) return null;
+    final payload = _decodePayload(token);
+    return payload?['studentId']?.toString();
+  }
+
   /// Exposes current authentication status synchronously
   bool isAuthenticated() {
     return state.isAuthenticated;
@@ -191,6 +216,7 @@ class AuthGuardNotifier extends StateNotifier<AuthGuardState> {
 
   /// Destroys the current session and purges sensitive local data
   Future<void> clearSession() async {
+    NoticeSocketService.disconnect();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('access_token');
     await prefs.remove('staff_designation');

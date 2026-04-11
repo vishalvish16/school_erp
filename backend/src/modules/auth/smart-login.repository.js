@@ -2,9 +2,8 @@
  * Smart Login Repository — raw SQL for registered_devices, auth_sessions, otp_verifications
  * Updated to use UUID user IDs matching the actual database
  */
-import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+import prisma from '../../config/prisma.js';
 
 /** Find group by slug or id */
 export const findGroupBySlugOrId = async (slugOrId) => {

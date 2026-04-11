@@ -12,7 +12,8 @@ class SubscriptionHistoryModal extends StatefulWidget {
   const SubscriptionHistoryModal({super.key, required this.history});
 
   @override
-  State<SubscriptionHistoryModal> createState() => _SubscriptionHistoryModalState();
+  State<SubscriptionHistoryModal> createState() =>
+      _SubscriptionHistoryModalState();
 }
 
 class _SubscriptionHistoryModalState extends State<SubscriptionHistoryModal> {
@@ -63,13 +64,21 @@ class _SubscriptionHistoryModalState extends State<SubscriptionHistoryModal> {
       _sortAscending,
     );
 
+    final useCards =
+        MediaQuery.sizeOf(context).width < AppBreakpoints.tablet;
+    final scrollHeight = MediaQuery.sizeOf(context).height * 0.55;
+
     return Dialog(
-      insetPadding: EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xl),
+      insetPadding:
+          EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.xl),
       shape: RoundedRectangleBorder(borderRadius: AppRadius.brXl2),
       child: Container(
-        width: MediaQuery.of(context).size.width > 900
+        width: MediaQuery.sizeOf(context).width > 900
             ? 800
-            : MediaQuery.of(context).size.width * 0.95,
+            : MediaQuery.sizeOf(context).width * 0.95,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.88,
+        ),
         padding: AppSpacing.paddingXl,
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -93,63 +102,123 @@ class _SubscriptionHistoryModalState extends State<SubscriptionHistoryModal> {
               ],
             ),
             AppSpacing.vGapXl,
-            Flexible(
-              child: Container(
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.neutral400.withOpacity(0.2)),
-                  borderRadius: AppRadius.brLg,
-                ),
-                child: SingleChildScrollView(
-                  child: ReusableDataTable(
-                    columns: const [
-                      AppStrings.tablePlan,
-                      AppStrings.tableBilling,
-                      AppStrings.tableStartDate,
-                      AppStrings.tableEndDate,
-                      AppStrings.tableStatus,
-                      AppStrings.tableCreatedAt,
-                    ],
-                    sortableColumns: const [0, 1, 2, 3, 4, 5],
-                    sortColumnIndex: _sortColumnIndex,
-                    sortAscending: _sortAscending,
-                    onSort: (col, asc) => setState(() {
-                      _sortColumnIndex = col;
-                      _sortAscending = asc;
-                    }),
-                    rows: sortedHistory.map((h) {
-                      return DataRow(
-                        cells: [
-                          DataCell(
-                            Text(
-                              h.planName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
+            SizedBox(
+              height: scrollHeight,
+              child: useCards
+                  ? ListView.separated(
+                      itemCount: sortedHistory.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final h = sortedHistory[index];
+                        return Card(
+                          margin: EdgeInsets.zero,
+                          child: Padding(
+                            padding: AppSpacing.paddingMd,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        h.planName,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    StatusBadge(status: h.status),
+                                  ],
+                                ),
+                                AppSpacing.vGapSm,
+                                _HistoryRow(
+                                  label: AppStrings.tableBilling,
+                                  value: h.billingCycle,
+                                ),
+                                _HistoryRow(
+                                  label: AppStrings.tableStartDate,
+                                  value: DateFormat('MMM dd, yyyy')
+                                      .format(h.startDate),
+                                ),
+                                _HistoryRow(
+                                  label: AppStrings.tableEndDate,
+                                  value: DateFormat('MMM dd, yyyy')
+                                      .format(h.endDate),
+                                ),
+                                _HistoryRow(
+                                  label: AppStrings.tableCreatedAt,
+                                  value: DateFormat('MMM dd, yyyy HH:mm')
+                                      .format(h.createdAt),
+                                ),
+                              ],
                             ),
                           ),
-                          DataCell(Text(h.billingCycle)),
-                          DataCell(
-                            Text(
-                              DateFormat('MMM dd, yyyy').format(h.startDate),
-                            ),
-                          ),
-                          DataCell(
-                            Text(DateFormat('MMM dd, yyyy').format(h.endDate)),
-                          ),
-                          DataCell(StatusBadge(status: h.status)),
-                          DataCell(
-                            Text(
-                              DateFormat(
-                                'MMM dd, yyyy HH:mm',
-                              ).format(h.createdAt),
-                            ),
-                          ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ),
+                        );
+                      },
+                    )
+                  : Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: AppColors.neutral400.withValues(alpha: 0.2),
+                        ),
+                        borderRadius: AppRadius.brLg,
+                      ),
+                      child: SingleChildScrollView(
+                        child: ReusableDataTable(
+                          columns: const [
+                            AppStrings.tablePlan,
+                            AppStrings.tableBilling,
+                            AppStrings.tableStartDate,
+                            AppStrings.tableEndDate,
+                            AppStrings.tableStatus,
+                            AppStrings.tableCreatedAt,
+                          ],
+                          sortableColumns: const [0, 1, 2, 3, 4, 5],
+                          sortColumnIndex: _sortColumnIndex,
+                          sortAscending: _sortAscending,
+                          onSort: (col, asc) => setState(() {
+                            _sortColumnIndex = col;
+                            _sortAscending = asc;
+                          }),
+                          rows: sortedHistory.map((h) {
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(
+                                    h.planName,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(Text(h.billingCycle)),
+                                DataCell(
+                                  Text(
+                                    DateFormat('MMM dd, yyyy')
+                                        .format(h.startDate),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    DateFormat('MMM dd, yyyy').format(h.endDate),
+                                  ),
+                                ),
+                                DataCell(StatusBadge(status: h.status)),
+                                DataCell(
+                                  Text(
+                                    DateFormat(
+                                      'MMM dd, yyyy HH:mm',
+                                    ).format(h.createdAt),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
             ),
             AppSpacing.vGapLg,
             Align(
@@ -161,6 +230,38 @@ class _SubscriptionHistoryModalState extends State<SubscriptionHistoryModal> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 13)),
+          ),
+        ],
       ),
     );
   }

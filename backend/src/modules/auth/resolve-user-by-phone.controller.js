@@ -37,7 +37,8 @@ export const resolveUserByPhoneController = async (req, res, next) => {
                 school,
                 user: result.user,
                 otp_session_id: result.otp_session_id,
-                masked_phone: result.masked_phone
+                masked_phone: result.masked_phone,
+                ...(result.dev_otp && { dev_otp: result.dev_otp }),
             });
         }
 
@@ -47,7 +48,8 @@ export const resolveUserByPhoneController = async (req, res, next) => {
                 schools: result.schools,
                 user: result.user,
                 otp_session_id: result.otp_session_id,
-                masked_phone: result.masked_phone
+                masked_phone: result.masked_phone,
+                ...(result.dev_otp && { dev_otp: result.dev_otp }),
             });
         }
 

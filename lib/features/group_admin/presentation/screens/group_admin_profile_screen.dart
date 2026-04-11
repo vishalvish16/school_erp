@@ -10,8 +10,8 @@ import '../../../../core/config/api_config.dart';
 import '../../../../features/auth/auth_guard_provider.dart';
 import '../../../../models/group_admin/group_admin_models.dart';
 import '../providers/group_admin_profile_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../design_system/design_system.dart';
+
 import '../../../../core/constants/app_strings.dart';
 
 class GroupAdminProfileScreen extends ConsumerWidget {
@@ -32,9 +32,9 @@ class GroupAdminProfileScreen extends ConsumerWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: asyncProfile.when(
-              loading: () => const Padding(
+              loading: () => Padding(
                 padding: EdgeInsets.all(48),
-                child: Center(child: CircularProgressIndicator()),
+                child: AppLoaderScreen(),
               ),
               error: (err, _) => Padding(
                 padding: AppSpacing.paddingXl,
@@ -291,7 +291,7 @@ class _ProfileAvatar extends StatelessWidget {
         width: radius * 2,
         height: radius * 2,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => CircleAvatar(
+        errorBuilder: (_, _, _) => CircleAvatar(
           radius: radius,
           backgroundColor: AppColors.warning300,
           child: Text(

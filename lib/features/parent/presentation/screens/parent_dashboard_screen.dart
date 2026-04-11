@@ -7,14 +7,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../models/parent/notice_summary_model.dart';
 import '../../../../models/parent/parent_dashboard_model.dart';
+import '../../../../shared/widgets/metric_stat_card.dart';
 import '../../data/parent_dashboard_provider.dart';
-
-const Color _accent = AppColors.success500;
 
 class ParentDashboardScreen extends ConsumerWidget {
   const ParentDashboardScreen({super.key});
@@ -22,19 +19,19 @@ class ParentDashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncDashboard = ref.watch(parentDashboardProvider);
-    final isWide = MediaQuery.of(context).size.width >= 768;
-    final padding = isWide ? 24.0 : 16.0;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
+    final isNarrow = MediaQuery.sizeOf(context).width < 600;
 
     return RefreshIndicator(
       onRefresh: () async => ref.invalidate(parentDashboardProvider),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.all(padding),
+        padding: EdgeInsets.all(isWide ? AppSpacing.xl : AppSpacing.lg),
         child: asyncDashboard.when(
           loading: () => const Center(
             child: Padding(
-              padding: EdgeInsets.all(64),
-              child: CircularProgressIndicator(),
+              padding: EdgeInsets.all(AppSpacing.xl5),
+              child: CircularProgressIndicator(strokeWidth: 2.5),
             ),
           ),
           error: (err, _) => _ErrorCard(
@@ -55,14 +52,12 @@ class ParentDashboardScreen extends ConsumerWidget {
               Text(
                 AppStrings.parentDashboardSubtitle,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurfaceVariant,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
               ),
               AppSpacing.vGapXl,
 
-              _buildStatsGrid(context, dashboard, isWide),
+              _buildStatsRow(context, dashboard, isWide, isNarrow),
               AppSpacing.vGapXl,
 
               if (dashboard.recentNotices.isNotEmpty) ...[
@@ -76,69 +71,61 @@ class ParentDashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsGrid(
-      BuildContext context, ParentDashboardModel dashboard, bool isWide) {
-    final cards = [
-      _StatCard(
-        icon: Icons.family_restroom,
-        value: '${dashboard.childrenCount}',
-        label: AppStrings.childrenCount,
-        color: _accent,
-        onTap: () => context.go('/parent/children'),
-      ),
-      _StatCard(
-        icon: Icons.event_available,
-        value: '${dashboard.todaysPresent}',
-        label: AppStrings.presentCount,
-        color: AppColors.success600,
-        onTap: () => context.go('/parent/children'),
-      ),
-      _StatCard(
-        icon: Icons.event_busy,
-        value: '${dashboard.todaysAbsent}',
-        label: AppStrings.absentCount,
-        color: AppColors.warning500,
-        onTap: () => context.go('/parent/children'),
-      ),
-      _StatCard(
-        icon: Icons.receipt_long,
-        value: AppStrings.viewFeesPerChild,
-        label: AppStrings.childFees,
-        color: AppColors.info500,
-        onTap: () => context.go('/parent/children'),
-      ),
+  Widget _buildStatsRow(
+      BuildContext context, ParentDashboardModel dashboard, bool isWide, bool isNarrow) {
+    final items = [
+      _StatData(Icons.family_restroom, '${dashboard.childrenCount}', AppStrings.childrenCount, AppColors.primary500),
+      _StatData(Icons.event_available, '${dashboard.todaysPresent}', AppStrings.presentCount, AppColors.success500),
+      _StatData(Icons.event_busy, '${dashboard.todaysAbsent}', AppStrings.absentCount, AppColors.warning500),
+      _StatData(Icons.receipt_long, AppStrings.viewFeesPerChild, AppStrings.childFees, AppColors.info500),
     ];
 
-    if (isWide) {
+    if (!isNarrow) {
       return Row(
-        children: cards
-            .map((c) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: c,
-                  ),
-                ))
-            .toList(),
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0) SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: MetricStatCard(
+                icon: items[i].icon,
+                value: items[i].value,
+                label: items[i].label,
+                color: items[i].color,
+                onTap: () => context.go('/parent/children'),
+              ),
+            ),
+          ],
+        ],
       );
     }
-    return Column(
-      children: [
-        Row(children: [
-          Expanded(child: cards[0]),
-          AppSpacing.hGapMd,
-          Expanded(child: cards[1]),
-        ]),
-        AppSpacing.vGapMd,
-        Row(children: [
-          Expanded(child: cards[2]),
-          AppSpacing.hGapMd,
-          Expanded(child: cards[3]),
-        ]),
-      ],
+
+    // Narrow: horizontal scroll strip
+    return SizedBox(
+      height: 118,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        separatorBuilder: (_, __) => SizedBox(width: AppSpacing.md),
+        itemCount: items.length,
+        itemBuilder: (_, i) => SizedBox(
+          width: 148,
+          child: MetricStatCard(
+            compact: true,
+            icon: items[i].icon,
+            value: items[i].value,
+            label: items[i].label,
+            color: items[i].color,
+            onTap: () => context.go('/parent/children'),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildRecentNotices(BuildContext context, List<NoticeSummaryModel> notices) {
+    final textTheme = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -146,10 +133,7 @@ class ParentDashboardScreen extends ConsumerWidget {
           children: [
             Text(
               AppStrings.recentNotices,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const Spacer(),
             TextButton(
@@ -171,17 +155,16 @@ class ParentDashboardScreen extends ConsumerWidget {
                 dense: true,
                 leading: CircleAvatar(
                   radius: 16,
-                  backgroundColor: _accent.withValues(alpha: 0.15),
-                  child: Icon(Icons.campaign, size: 18, color: _accent),
+                  backgroundColor: scheme.primary.withValues(alpha: 0.15),
+                  child: Icon(Icons.campaign, size: AppIconSize.sm, color: scheme.primary),
                 ),
                 title: Text(
                   n.title,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w600),
+                  style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 subtitle: Text(
                   n.body.length > 80 ? '${n.body.substring(0, 80)}...' : n.body,
-                  style: Theme.of(context).textTheme.bodySmall,
+                  style: textTheme.bodySmall,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -195,64 +178,12 @@ class ParentDashboardScreen extends ConsumerWidget {
   }
 }
 
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.icon,
-    required this.value,
-    required this.label,
-    required this.color,
-    this.onTap,
-  });
-
+class _StatData {
+  const _StatData(this.icon, this.value, this.label, this.color);
   final IconData icon;
   final String value;
   final String label;
   final Color color;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final content = Padding(
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: color, size: 26),
-          AppSpacing.vGapSm,
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-    return Card(
-      child: onTap != null
-          ? InkWell(
-              onTap: onTap,
-              borderRadius: AppRadius.brLg,
-              child: content,
-            )
-          : content,
-    );
-  }
 }
 
 class _ErrorCard extends StatelessWidget {
@@ -263,23 +194,29 @@ class _ErrorCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(AppSpacing.xl2),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: Theme.of(context).colorScheme.error),
-            AppSpacing.vGapLg,
+            Icon(Icons.error_outline, size: AppIconSize.xl4, color: scheme.error),
+            SizedBox(height: AppSpacing.lg),
             Text(AppStrings.couldNotLoadDashboard,
-                style: Theme.of(context).textTheme.titleMedium),
-            AppSpacing.vGapSm,
+                style: textTheme.titleMedium?.copyWith(color: scheme.onSurfaceVariant)),
+            SizedBox(height: AppSpacing.sm),
             Text(error,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                 textAlign: TextAlign.center),
-            AppSpacing.vGapLg,
-            FilledButton(
-                onPressed: onRetry, child: const Text(AppStrings.retry)),
+            SizedBox(height: AppSpacing.xl),
+            FilledButton.icon(
+              icon: Icon(Icons.refresh, size: AppIconSize.md),
+              label: const Text(AppStrings.retry),
+              onPressed: onRetry,
+            ),
           ],
         ),
       ),

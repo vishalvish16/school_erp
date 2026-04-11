@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/api_config.dart';
 import '../network/dio_client.dart';
 import '../../models/parent/parent_models.dart';
+import '../../models/parent/parent_notification_model.dart';
 
 class ParentService {
   ParentService(this._dio);
@@ -37,8 +38,10 @@ class ParentService {
     final raw = res.data;
     dynamic list;
     if (raw is Map) {
-      list = raw['children'] ?? raw['data'];
+      final data = raw['data'];
+      list = raw['children'] ?? (data is Map ? data['children'] : null) ?? data;
       if (list is Map && list['data'] is List) list = list['data'];
+      if (list is Map && list['children'] is List) list = list['children'];
     }
     if (list is! List) return [];
     return list
@@ -77,8 +80,10 @@ class ParentService {
     final raw = res.data;
     dynamic list;
     if (raw is Map) {
-      list = raw['attendances'] ?? raw['data'];
+      final data = raw['data'];
+      list = raw['attendances'] ?? (data is Map ? data['attendances'] : null) ?? data;
       if (list is Map && list['data'] is List) list = list['data'];
+      if (list is Map && list['attendances'] is List) list = list['attendances'];
     }
     if (list is! List) return [];
     return list
@@ -144,7 +149,8 @@ class ParentService {
     final raw = res.data;
     if (raw is! Map) return {'notices': [], 'pagination': {}};
 
-    final noticesRaw = raw['notices'] ?? raw['data'];
+    final data = raw['data'];
+    final noticesRaw = raw['notices'] ?? (data is Map ? data['notices'] : null) ?? data;
     List<NoticeSummaryModel> notices = [];
     if (noticesRaw is List) {
       notices = noticesRaw
@@ -155,8 +161,9 @@ class ParentService {
     }
 
     Map<String, dynamic> pagination = {};
-    if (raw['pagination'] is Map) {
-      pagination = Map<String, dynamic>.from(raw['pagination'] as Map);
+    final pagRaw = raw['pagination'] ?? (data is Map ? data['pagination'] : null);
+    if (pagRaw is Map) {
+      pagination = Map<String, dynamic>.from(pagRaw);
     }
 
     return {'notices': notices, 'pagination': pagination};
@@ -175,6 +182,121 @@ class ParentService {
     }
   }
 
+  // ── Bus Location ──────────────────────────────────────────────────────────
+  Future<BusLocationModel> getChildBusLocation(String studentId) async {
+    final res = await _dio.get('${ApiConfig.parentChildren}/$studentId/bus');
+    final data = res.data is Map ? res.data['data'] ?? res.data : res.data;
+    return BusLocationModel.fromJson(data is Map<String, dynamic> ? data : {});
+  }
+
+  // ── Attendance Summary ───────────────────────────────────────────────────
+  Future<AttendanceSummaryModel> getChildAttendanceSummary(
+    String studentId, {
+    String? month,
+  }) async {
+    final q = <String, dynamic>{};
+    if (month != null) q['month'] = month;
+    final res = await _dio.get(
+      '${ApiConfig.parentChildren}/$studentId/attendance/summary',
+      queryParameters: q.isEmpty ? null : q,
+    );
+    final raw = res.data;
+    final data = raw is Map ? (raw['data'] ?? raw) : {};
+    return AttendanceSummaryModel.fromJson(
+      data is Map<String, dynamic> ? data : {},
+    );
+  }
+
+  // ── Timetable ──────────────────────────────────────────────────────────────
+  Future<List<TimetableSlotModel>> getChildTimetable(String studentId) async {
+    final res = await _dio.get(
+      '${ApiConfig.parentChildren}/$studentId/timetable',
+    );
+    final raw = res.data;
+    final data = raw is Map ? (raw['data'] ?? raw) : {};
+    final list = data is Map ? (data['slots'] ?? data['timetable'] ?? []) : [];
+    if (list is! List) return [];
+    return list
+        .map((e) =>
+            TimetableSlotModel.fromJson(e is Map<String, dynamic> ? e : {}))
+        .toList();
+  }
+
+  // ── Documents ──────────────────────────────────────────────────────────────
+  Future<List<StudentDocumentModel>> getChildDocuments(
+      String studentId) async {
+    final res = await _dio.get(
+      '${ApiConfig.parentChildren}/$studentId/documents',
+    );
+    final raw = res.data;
+    final data = raw is Map ? (raw['data'] ?? raw) : {};
+    final list =
+        data is Map ? (data['documents'] ?? data['data'] ?? []) : [];
+    if (list is! List) return [];
+    return list
+        .map((e) =>
+            StudentDocumentModel.fromJson(e is Map<String, dynamic> ? e : {}))
+        .toList();
+  }
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  Future<Map<String, dynamic>> getNotifications({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final res = await _dio.get(
+      ApiConfig.parentNotifications,
+      queryParameters: {'page': page, 'limit': limit},
+    );
+    final raw = res.data;
+    if (raw is! Map) return {'data': [], 'pagination': {}};
+
+    final data = raw['data'];
+    final list = data is Map ? (data['data'] ?? data) : raw['data'];
+    final notifications = list is List
+        ? list
+            .map((e) => ParentNotificationModel.fromJson(
+                  e is Map<String, dynamic> ? e : {},
+                ))
+            .toList()
+        : <ParentNotificationModel>[];
+
+    final pagination = (data is Map ? data['pagination'] : raw['pagination'])
+        as Map<String, dynamic>?;
+
+    return {
+      'data': notifications,
+      'pagination': pagination ?? {},
+    };
+  }
+
+  Future<int> getUnreadNotificationCount() async {
+    final res = await _dio.get(ApiConfig.parentNotificationsUnreadCount);
+    final raw = res.data;
+    if (raw is Map) {
+      final data = raw['data'];
+      if (data is Map && data['count'] != null) {
+        return (data['count'] as num).toInt();
+      }
+    }
+    return 0;
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await _dio.put('${ApiConfig.parentNotifications}/$id/read');
+  }
+
+  // ── Change Password ────────────────────────────────────────────────────────
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _dio.post(ApiConfig.parentChangePassword, data: {
+      'current_password': currentPassword,
+      'new_password': newPassword,
+    });
+  }
+
   // ── Auth (parent login) ────────────────────────────────────────────────────
   Future<Map<String, dynamic>> resolveUserByPhone({
     required String phone,
@@ -184,7 +306,12 @@ class ParentService {
       ApiConfig.resolveUserByPhone,
       data: {'phone': phone, 'user_type': userType},
     );
-    return res.data is Map<String, dynamic> ? res.data : {};
+    final data = res.data;
+    if (data is Map && data['data'] != null) {
+      return data['data'] as Map<String, dynamic>;
+    }
+    if (data is Map<String, dynamic>) return data;
+    return {};
   }
 
   Future<Map<String, dynamic>> verifyParentOtp({
@@ -202,7 +329,35 @@ class ParentService {
         'school_id': schoolId,
       },
     );
-    return res.data is Map<String, dynamic> ? res.data : {};
+    final data = res.data;
+    if (data is Map && data['data'] != null) {
+      return data['data'] as Map<String, dynamic>;
+    }
+    if (data is Map<String, dynamic>) return data;
+    return {};
+  }
+
+  Future<Map<String, dynamic>> verifyStudentOtp({
+    required String otpSessionId,
+    required String otp,
+    required String phone,
+    required String schoolId,
+  }) async {
+    final res = await _dio.post(
+      ApiConfig.verifyStudentOtp,
+      data: {
+        'otp_session_id': otpSessionId,
+        'otp': otp,
+        'phone': phone,
+        'school_id': schoolId,
+      },
+    );
+    final data = res.data;
+    if (data is Map && data['data'] != null) {
+      return data['data'] as Map<String, dynamic>;
+    }
+    if (data is Map<String, dynamic>) return data;
+    throw Exception('Unexpected response format');
   }
 }
 

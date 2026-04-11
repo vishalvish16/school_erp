@@ -1,22 +1,22 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../design_system/design_system.dart';
+import '../../../../shared/widgets/list_pagination_bar.dart';
 import '../../../../shared/widgets/list_table_view.dart';
+import '../../../../shared/widgets/mobile_infinite_scroll.dart';
 import '../../../../shared/widgets/reusable_data_table.dart';
 import '../../../../utils/download_file.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
 import '../../../../widgets/common/searchable_dropdown_form_field.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../subscription/provider/plan_provider.dart';
 import '../../domain/models/school_model.dart';
 import '../../domain/models/pagination_model.dart';
 import '../viewmodels/schools_viewmodel.dart';
 import 'add_edit_school_screen.dart';
 import 'platform_school_detail_page.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class SchoolsScreen extends ConsumerStatefulWidget {
   const SchoolsScreen({super.key});
@@ -37,6 +37,7 @@ class _SchoolsScreenState extends ConsumerState<SchoolsScreen> {
   int _pageSize = 15;
   int _totalPages = 1;
   int _total = 0;
+  bool _mobileLoadingMore = false;
   static const _pageSizeOptions = [10, 15, 25, 50];
 
   static const _sortFieldMap = {
@@ -206,7 +207,8 @@ class _SchoolsScreenState extends ConsumerState<SchoolsScreen> {
     final state = ref.watch(schoolsViewModelProvider);
     final vm = ref.read(schoolsViewModelProvider.notifier);
     final isNarrow = MediaQuery.of(context).size.width < 600;
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
+    final isWide =
+        MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
     final hPad = isNarrow ? 16.0 : 24.0;
 
     return RefreshIndicator(
@@ -385,10 +387,7 @@ class _SchoolsScreenState extends ConsumerState<SchoolsScreen> {
     bool isWide,
   ) {
     return state.when(
-      loading: () => const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      ),
+      loading: () => AppLoaderScreen(),
       error: (e, _) => Card(
         child: Padding(
           padding: AppSpacing.paddingXl,
@@ -462,7 +461,7 @@ class _SchoolsScreenState extends ConsumerState<SchoolsScreen> {
         if (isWide) {
           return _buildDesktopTable(sortedSchools, sortCol, sortAsc, vm);
         }
-        return _buildMobileList(sortedSchools);
+        return _buildMobileList(sortedSchools, vm);
       },
     );
   }
@@ -651,23 +650,72 @@ class _SchoolsScreenState extends ConsumerState<SchoolsScreen> {
     );
   }
 
-  Widget _buildMobileList(List<SchoolModel> schools) {
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 8),
-            itemCount: schools.length,
-            itemBuilder: (_, i) => _buildMobileCard(schools[i]),
-          ),
-        ),
-        if (schools.isNotEmpty)
-          Card(child: _buildPaginationRow()),
-      ],
+  Widget _buildMobileList(List<SchoolModel> schools, SchoolsViewModel vm) {
+    return MobileInfiniteScrollList(
+      itemCount: schools.length,
+      itemBuilder: (_, i) => _buildMobileCard(schools[i]),
+      hasMore: vm.hasMorePages,
+      isLoadingMore: _mobileLoadingMore,
+      onLoadMore: () async {
+        if (_mobileLoadingMore || !vm.hasMorePages) return;
+        setState(() => _mobileLoadingMore = true);
+        try {
+          await vm.loadMore();
+        } finally {
+          if (mounted) setState(() => _mobileLoadingMore = false);
+        }
+      },
+      loadingLabel: 'Loading more schools…',
     );
   }
 
+  String _formatSchoolStatusLabel(String raw) {
+    if (raw.isEmpty) {
+      return '—';
+    }
+    return raw.length > 1
+        ? raw[0].toUpperCase() + raw.substring(1).toLowerCase()
+        : raw.toUpperCase();
+  }
+
+  void _onMobileSchoolMenu(SchoolModel school, String value) {
+    switch (value) {
+      case 'edit':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => AddEditSchoolScreen(school: school),
+          ),
+        );
+        break;
+      case 'suspend':
+        _showSuspendOrActivateDialog(
+          context,
+          school.id,
+          school.name,
+          false,
+        );
+        break;
+      case 'activate':
+        _showSuspendOrActivateDialog(
+          context,
+          school.id,
+          school.name,
+          true,
+        );
+        break;
+    }
+  }
+
   Widget _buildMobileCard(SchoolModel school) {
+    final cs = Theme.of(context).colorScheme;
+    final smallMuted = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: cs.onSurfaceVariant,
+        );
+    final statusLabel = _formatSchoolStatusLabel(school.status);
+    final cityLine = (school.city ?? '').trim();
+    final isSuspended = school.status.toUpperCase() == 'SUSPENDED';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -684,109 +732,162 @@ class _SchoolsScreenState extends ConsumerState<SchoolsScreen> {
         child: Padding(
           padding: AppSpacing.paddingLg,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    child: Text(school.name.isNotEmpty
-                        ? school.name[0].toUpperCase()
-                        : '?'),
+                  Expanded(
+                    child: Text(
+                      school.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
                   ),
-                  AppSpacing.hGapMd,
+                  HoverPopupMenu<String>(
+                    icon: const Icon(Icons.more_vert, size: 22),
+                    padding: EdgeInsets.zero,
+                    onSelected: (v) => _onMobileSchoolMenu(school, v),
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.edit_outlined, size: 20),
+                          title: Text(AppStrings.edit),
+                        ),
+                      ),
+                      if (isSuspended)
+                        PopupMenuItem<String>(
+                          value: 'activate',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.play_circle_outlined,
+                                size: 20),
+                            title: Text(AppStrings.activate),
+                          ),
+                        )
+                      else
+                        PopupMenuItem<String>(
+                          value: 'suspend',
+                          child: ListTile(
+                            dense: true,
+                            leading: Icon(Icons.block, color: AppColors.error500),
+                            title: Text(
+                              AppStrings.suspend,
+                              style: const TextStyle(color: AppColors.error500),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                [
+                  school.schoolCode,
+                  if ((school.state ?? '').trim().isNotEmpty)
+                    school.state!.trim(),
+                ].join(' · '),
+                style: smallMuted,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(school.name,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600)),
+                        if (cityLine.isNotEmpty) ...[
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: 16,
+                                color: cs.onSurfaceVariant,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  cityLine,
+                                  style: smallMuted,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                        ],
                         Text(
-                          '${school.city ?? ''} • ${school.schoolCode}',
-                          style:
-                              Theme.of(context).textTheme.bodySmall,
+                          'ID: ${school.schoolCode}',
+                          style: smallMuted,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Students: ${school.studentCount} · Faculty: ${school.teacherCount}',
+                          style: smallMuted,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
-                  Chip(
-                    label: Text(school.status),
-                    backgroundColor: _statusColor(school.status),
-                  ),
-                ],
-              ),
-              AppSpacing.vGapSm,
-              Wrap(
-                spacing: 8,
-                runSpacing: 4,
-                children: [
-                  Text(
-                    'Plan: ${school.planName ?? '—'}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'Students: ${school.maxStudents ?? 0}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  Text(
-                    'Exp: ${school.subscriptionEnd != null ? DateFormat('MMM dd, yyyy').format(school.subscriptionEnd!) : '—'}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-              AppSpacing.vGapSm,
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.remove_red_eye,
-                        size: 20, color: AppColors.success500),
-                    tooltip: AppStrings.tooltipViewDetails,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => PlatformSchoolDetailPage(
-                              schoolId: school.id),
-                        ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.edit,
-                        size: 20, color: AppColors.secondary500),
-                    tooltip: AppStrings.tooltipEditSchool,
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              AddEditSchoolScreen(school: school),
-                        ),
-                      );
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      school.status.toUpperCase() == 'SUSPENDED'
-                          ? Icons.play_circle
-                          : Icons.block,
-                      size: 20,
-                      color:
-                          school.status.toUpperCase() == 'SUSPENDED'
-                              ? AppColors.success500
-                              : AppColors.error500,
-                    ),
-                    tooltip: school.status.toUpperCase() == 'SUSPENDED'
-                        ? AppStrings.tooltipActivateSchool
-                        : AppStrings.tooltipSuspendSchool,
-                    onPressed: () => _showSuspendOrActivateDialog(
-                      context,
-                      school.id,
-                      school.name,
-                      school.status.toUpperCase() == 'SUSPENDED',
-                    ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Wrap(
+                        alignment: WrapAlignment.end,
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          Chip(
+                            label: Text(
+                              school.planName ?? '—',
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            side: BorderSide(color: cs.outlineVariant),
+                            backgroundColor: cs.surfaceContainerHighest
+                                .withValues(alpha: 0.5),
+                          ),
+                          Chip(
+                            label: Text(statusLabel),
+                            visualDensity: VisualDensity.compact,
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            backgroundColor: _statusColor(school.status),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Expiry: ${school.subscriptionEnd != null ? DateFormat('MMM dd, yyyy').format(school.subscriptionEnd!) : '—'}',
+                        style: smallMuted,
+                        textAlign: TextAlign.end,
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -798,128 +899,14 @@ class _SchoolsScreenState extends ConsumerState<SchoolsScreen> {
   }
 
   Widget _buildPaginationRow() {
-    final cs = Theme.of(context).colorScheme;
-    final start = _total == 0 ? 0 : ((_page - 1) * _pageSize) + 1;
-    final end = (_page * _pageSize).clamp(0, _total);
-
-    Widget pageButton(String label,
-        {required int page, bool active = false}) {
-      final enabled =
-          page != _page && page >= 1 && page <= _totalPages;
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Material(
-          color: active ? cs.primary : Colors.transparent,
-          borderRadius: AppRadius.brSm,
-          child: InkWell(
-            borderRadius: AppRadius.brSm,
-            onTap: enabled ? () => _goToPage(page) : null,
-            child: Container(
-              constraints:
-                  const BoxConstraints(minWidth: 32, minHeight: 32),
-              alignment: Alignment.center,
-              padding: AppSpacing.paddingHSm,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      active ? FontWeight.w600 : FontWeight.w400,
-                  color: active
-                      ? cs.onPrimary
-                      : enabled
-                          ? cs.onSurface
-                          : cs.onSurface.withValues(alpha: 0.35),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    List<Widget> pageNumbers() {
-      final pages = <Widget>[];
-      const maxVisible = 5;
-      int rangeStart =
-          (_page - (maxVisible ~/ 2)).clamp(1, _totalPages);
-      int rangeEnd =
-          (rangeStart + maxVisible - 1).clamp(1, _totalPages);
-      if (rangeEnd - rangeStart < maxVisible - 1) {
-        rangeStart =
-            (rangeEnd - maxVisible + 1).clamp(1, _totalPages);
-      }
-      for (int i = rangeStart; i <= rangeEnd; i++) {
-        pages.add(pageButton('$i', page: i, active: i == _page));
-      }
-      return pages;
-    }
-
-    final textStyle = Theme.of(context).textTheme.bodySmall!;
-    final mutedStyle =
-        textStyle.copyWith(color: cs.onSurfaceVariant);
-
-    return Container(
-      decoration: BoxDecoration(
-        border:
-            Border(top: BorderSide(color: AppColors.neutral300)),
-      ),
-      padding: EdgeInsets.symmetric(
-          horizontal: AppSpacing.lg, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text('Showing $start to $end of $_total entries',
-              style: mutedStyle),
-          AppSpacing.hGapXl,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('Show', style: mutedStyle),
-              const SizedBox(width: 6),
-              Container(
-                height: 28,
-                padding:
-                    AppSpacing.paddingHSm,
-                decoration: BoxDecoration(
-                  border:
-                      Border.all(color: AppColors.neutral400),
-                  borderRadius: AppRadius.brXs,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _pageSize,
-                    isDense: true,
-                    icon: const Icon(Icons.arrow_drop_down,
-                        size: 18),
-                    style: textStyle.copyWith(
-                        color: cs.onSurface),
-                    items: _pageSizeOptions
-                        .map((n) => DropdownMenuItem(
-                            value: n, child: Text('$n')))
-                        .toList(),
-                    onChanged: _onPageSizeChanged,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text('entries', style: mutedStyle),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              pageButton('First', page: 1),
-              pageButton('Previous', page: _page - 1),
-              ...pageNumbers(),
-              pageButton('Next', page: _page + 1),
-              pageButton('Last', page: _totalPages),
-            ],
-          ),
-        ],
-      ),
+    return ListPaginationBar(
+      currentPage: _page,
+      totalPages: _totalPages,
+      totalEntries: _total,
+      pageSize: _pageSize,
+      pageSizeOptions: _pageSizeOptions,
+      onPageSizeChanged: _onPageSizeChanged,
+      onGoToPage: _goToPage,
     );
   }
 

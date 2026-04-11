@@ -9,8 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../design_system/design_system.dart';
 import '../../data/models/plan_model.dart';
 import '../../provider/plan_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
 
 class PlanDialog extends ConsumerStatefulWidget {
   final PlanModel? plan;

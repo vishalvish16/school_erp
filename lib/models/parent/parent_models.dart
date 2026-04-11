@@ -12,3 +12,7 @@ export 'fee_structure_summary_model.dart';
 export 'notice_summary_model.dart';
 export 'notice_detail_model.dart';
 export 'parent_dashboard_model.dart';
+export 'bus_location_model.dart';
+export 'attendance_summary_model.dart';
+export 'timetable_slot_model.dart';
+export 'student_document_model.dart';

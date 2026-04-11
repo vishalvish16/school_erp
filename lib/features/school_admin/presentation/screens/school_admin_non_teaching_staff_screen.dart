@@ -4,18 +4,21 @@
 // =============================================================================
 
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../models/school_admin/non_teaching_staff_model.dart';
 import '../../../../design_system/design_system.dart';
-import '../../../../widgets/common/shimmer_loading_widget.dart';
+
 import '../../../../widgets/common/searchable_dropdown_form_field.dart';
+import '../../../../widgets/common/hover_popup_menu.dart';
+import '../../../../shared/widgets/list_pagination_bar.dart';
 import '../../../../shared/widgets/list_table_view.dart';
+import '../../../../shared/widgets/list_screen_mobile_toolbar.dart';
+import '../../../../shared/widgets/mobile_infinite_scroll.dart';
 import '../providers/school_admin_non_teaching_staff_provider.dart';
-import '../../../../design_system/tokens/app_colors.dart';
-import '../../../../design_system/tokens/app_spacing.dart';
+import '../../../../core/constants/app_strings.dart';
+import '../../../../shared/widgets/app_toast.dart';
 
 const List<String> _categories = [
   'FINANCE',
@@ -37,7 +40,6 @@ class _SchoolAdminNonTeachingStaffScreenState
     extends ConsumerState<SchoolAdminNonTeachingStaffScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounceTimer;
-  int _pageSize = 15;
   static const _pageSizeOptions = [10, 15, 25, 50];
 
   @override
@@ -74,269 +76,314 @@ class _SchoolAdminNonTeachingStaffScreenState
   }
 
   void _onPageSizeChanged(int? value) {
-    if (value == null || value == _pageSize) return;
-    setState(() => _pageSize = value);
-    ref.read(nonTeachingStaffProvider.notifier).goToPage(1);
+    if (value == null) return;
+    ref.read(nonTeachingStaffProvider.notifier).setPageSize(value);
+  }
+
+  void _clearFilters() {
+    _searchCtrl.clear();
+    ref.read(nonTeachingStaffProvider.notifier).setSearch('');
+    ref.read(nonTeachingStaffProvider.notifier).setCategoryFilter(null);
+    ref.read(nonTeachingStaffProvider.notifier).setActiveFilter(null);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(nonTeachingStaffProvider);
-    final isWide = kIsWeb || MediaQuery.of(context).size.width >= 768;
-    final isNarrow = MediaQuery.of(context).size.width < 600;
+    final isWide = MediaQuery.sizeOf(context).width >= AppBreakpoints.tablet;
 
     return RefreshIndicator(
       onRefresh: () async {
         ref.read(nonTeachingStaffProvider.notifier).goToPage(1);
         await ref.read(nonTeachingStaffProvider.notifier).loadStaff();
       },
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Header
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                  isNarrow ? 16 : 24,
-                  isNarrow ? 16 : 24,
-                  isNarrow ? 16 : 24,
-                  16,
-                ),
-                child: Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text(
-                      'Non-Teaching Staff',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    FilledButton.icon(
-                      onPressed: () =>
-                          context.go('/school-admin/non-teaching-staff/new'),
-                      icon: const Icon(Icons.add, size: 20),
-                      label: const Text('Add Staff'),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Search + Filters
-              Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: isNarrow ? 16 : 24),
-                  child: Card(
-                    child: Padding(
-                      padding: AppSpacing.paddingMd,
-                      child: Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 220,
-                            child: TextField(
-                              controller: _searchCtrl,
-                              decoration: InputDecoration(
-                                hintText: 'Search by name or employee no...',
-                                prefixIcon:
-                                    const Icon(Icons.search, size: 20),
-                                suffixIcon: _searchCtrl.text.isNotEmpty
-                                    ? IconButton(
-                                        icon: const Icon(Icons.clear,
-                                            size: 18),
-                                        onPressed: () {
-                                          _searchCtrl.clear();
-                                          ref
-                                              .read(nonTeachingStaffProvider
-                                                  .notifier)
-                                              .setSearch('');
-                                        },
-                                      )
-                                    : null,
-                                border: const OutlineInputBorder(),
-                                isDense: true,
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.md, vertical: 10),
-                              ),
-                              onSubmitted: (_) {
-                                ref
-                                    .read(
-                                        nonTeachingStaffProvider.notifier)
-                                    .setSearch(_searchCtrl.text);
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 140,
-                            child: SearchableDropdownFormField<String?>
-                                .valueItems(
-                              value: state.categoryFilter,
-                              valueItems: [
-                                const MapEntry(null, 'All Categories'),
-                                for (final c in _categories)
-                                  MapEntry<String?, String>(
-                                      c, _categoryLabel(c)),
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Category',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                                isDense: true,
-                              ),
-                              onChanged: (v) {
-                                ref
-                                    .read(
-                                        nonTeachingStaffProvider.notifier)
-                                    .setCategoryFilter(v);
-                              },
-                            ),
-                          ),
-                          SizedBox(
-                            width: 140,
-                            child: SearchableDropdownFormField<bool?>
-                                .valueItems(
-                              value: state.isActiveFilter,
-                              valueItems: const [
-                                MapEntry(null, 'All'),
-                                MapEntry(true, 'Active'),
-                                MapEntry(false, 'Inactive'),
-                              ],
-                              decoration: const InputDecoration(
-                                labelText: 'Status',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                    horizontal: AppSpacing.md, vertical: AppSpacing.sm),
-                                isDense: true,
-                              ),
-                              onChanged: (v) {
-                                ref
-                                    .read(
-                                        nonTeachingStaffProvider.notifier)
-                                    .setActiveFilter(v);
-                              },
-                            ),
-                          ),
-                          TextButton.icon(
-                            icon: const Icon(Icons.filter_alt_off,
-                                size: 18),
-                            label: const Text('Clear filters'),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              ref
-                                  .read(nonTeachingStaffProvider.notifier)
-                                  .setSearch('');
-                              ref
-                                  .read(nonTeachingStaffProvider.notifier)
-                                  .setCategoryFilter(null);
-                              ref
-                                  .read(nonTeachingStaffProvider.notifier)
-                                  .setActiveFilter(null);
-                            },
-                          ),
-                        ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (isWide) ...[
+            // ── Wide header ────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppStrings.nonTeachingStaff,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                    ),
+                      Text(
+                        'Manage support and administrative staff',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextButton.icon(
+                        onPressed: () {},
+                        icon: const Icon(Icons.download_outlined, size: AppIconSize.md),
+                        label: Text(AppStrings.export),
+                      ),
+                      AppSpacing.hGapSm,
+                      FilledButton.icon(
+                        onPressed: () =>
+                            context.go('/school-admin/non-teaching-staff/new'),
+                        icon: const Icon(Icons.add, size: AppIconSize.md),
+                        label: Text(AppStrings.addStaff),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // ── Wide filter card ───────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Card(
+                child: Padding(
+                  padding: AppSpacing.paddingMd,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        child: TextField(
+                          controller: _searchCtrl,
+                          decoration: InputDecoration(
+                            hintText: AppStrings.searchByNameEmpNo,
+                            prefixIcon: const Icon(Icons.search, size: AppIconSize.md),
+                            suffixIcon: _searchCtrl.text.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: () {
+                                      _searchCtrl.clear();
+                                      ref
+                                          .read(nonTeachingStaffProvider.notifier)
+                                          .setSearch('');
+                                    },
+                                  )
+                                : null,
+                            border: const OutlineInputBorder(),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md, vertical: 10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 140,
+                        child: SearchableDropdownFormField<String?>.valueItems(
+                          value: state.categoryFilter,
+                          valueItems: [
+                            const MapEntry(null, 'All Categories'),
+                            for (final c in _categories)
+                              MapEntry<String?, String>(c, _categoryLabel(c)),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: 'Category',
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                            isDense: true,
+                          ),
+                          onChanged: (v) => ref
+                              .read(nonTeachingStaffProvider.notifier)
+                              .setCategoryFilter(v),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 140,
+                        child: SearchableDropdownFormField<bool?>.valueItems(
+                          value: state.isActiveFilter,
+                          valueItems: const [
+                            MapEntry(null, 'All'),
+                            MapEntry(true, 'Active'),
+                            MapEntry(false, 'Inactive'),
+                          ],
+                          decoration: InputDecoration(
+                            labelText: AppStrings.status,
+                            border: const OutlineInputBorder(),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                            isDense: true,
+                          ),
+                          onChanged: (v) => ref
+                              .read(nonTeachingStaffProvider.notifier)
+                              .setActiveFilter(v),
+                        ),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        icon: const Icon(Icons.filter_alt_off, size: 18),
+                        label: Text(AppStrings.clearFilters),
+                        onPressed: _clearFilters,
+                      ),
+                    ],
                   ),
                 ),
               ),
-
-              AppSpacing.vGapLg,
-
-              // Content
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                      isNarrow ? 16 : 24,
-                      0,
-                      isNarrow ? 16 : 24,
-                      isNarrow ? 16 : 24,
-                    ),
-                    child: _buildContent(state, isWide),
+            ),
+            AppSpacing.vGapLg,
+          ] else ...[
+            // ── Narrow header ──────────────────────────────────────────────
+            ListScreenMobileHeader(
+              title: AppStrings.nonTeachingStaff,
+              primaryLabel: AppStrings.addStaff,
+              onPrimary: () => context.go('/school-admin/non-teaching-staff/new'),
+              onExport: () {},
+            ),
+            // ── Narrow filter strip ────────────────────────────────────────
+            ListScreenMobileFilterStrip(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListScreenMobilePillSearchField(
+                    controller: _searchCtrl,
+                    hintText: AppStrings.searchByNameEmpNo,
+                    onChanged: (v) {
+                      _debounceTimer?.cancel();
+                      _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+                        if (mounted) {
+                          ref.read(nonTeachingStaffProvider.notifier).setSearch(v);
+                        }
+                      });
+                    },
+                    onClear: () {
+                      _searchCtrl.clear();
+                      ref.read(nonTeachingStaffProvider.notifier).setSearch('');
+                    },
                   ),
-                ),
+                  AppSpacing.vGapMd,
+                  ListScreenMobileFilterRow(
+                    children: [
+                      SearchableDropdownFormField<String?>.valueItems(
+                        value: state.categoryFilter,
+                        valueItems: [
+                          const MapEntry(null, 'All Categories'),
+                          for (final c in _categories)
+                            MapEntry<String?, String>(c, _categoryLabel(c)),
+                        ],
+                        decoration: listScreenMobileFilterFieldDecoration(context),
+                        onChanged: (v) => ref
+                            .read(nonTeachingStaffProvider.notifier)
+                            .setCategoryFilter(v),
+                      ),
+                      SearchableDropdownFormField<bool?>.valueItems(
+                        value: state.isActiveFilter,
+                        valueItems: const [
+                          MapEntry(null, 'All'),
+                          MapEntry(true, 'Active'),
+                          MapEntry(false, 'Inactive'),
+                        ],
+                        decoration: listScreenMobileFilterFieldDecoration(context),
+                        onChanged: (v) => ref
+                            .read(nonTeachingStaffProvider.notifier)
+                            .setActiveFilter(v),
+                      ),
+                      ListScreenMobileMoreFiltersButton(
+                        onPressed: _clearFilters,
+                        showActiveDot: _searchCtrl.text.isNotEmpty ||
+                            state.categoryFilter != null ||
+                            state.isActiveFilter != null,
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ],
+
+          // ── Content ──────────────────────────────────────────────────────
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                isWide ? 24 : 16,
+                0,
+                isWide ? 24 : 16,
+                isWide ? 24 : 16,
+              ),
+              child: _buildContent(state, isWide),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildContent(dynamic state, bool isWide) {
+  Widget _buildContent(NonTeachingStaffState state, bool isWide) {
     if (state.isLoading && state.staff.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: ShimmerListLoadingWidget(itemCount: 8),
-      );
+      return AppLoaderScreen();
     }
     if (state.errorMessage != null && state.staff.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: AppSpacing.paddingXl,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline,
-                  size: 48,
-                  color: Theme.of(context).colorScheme.error),
-              AppSpacing.vGapLg,
-              Text(state.errorMessage!, textAlign: TextAlign.center),
-              AppSpacing.vGapLg,
-              FilledButton(
-                onPressed: () =>
-                    ref.read(nonTeachingStaffProvider.notifier).loadStaff(),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+      final scheme = Theme.of(context).colorScheme;
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: AppIconSize.xl4, color: scheme.error),
+            AppSpacing.vGapLg,
+            Text(AppStrings.genericError,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    )),
+            AppSpacing.vGapSm,
+            Text(state.errorMessage!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                textAlign: TextAlign.center),
+            AppSpacing.vGapXl,
+            FilledButton.icon(
+              onPressed: () => ref.read(nonTeachingStaffProvider.notifier).loadStaff(),
+              icon: const Icon(Icons.refresh),
+              label: Text(AppStrings.retry),
+            ),
+          ],
         ),
       );
     }
     if (state.staff.isEmpty) {
+      final hasFilters = _searchCtrl.text.isNotEmpty ||
+          state.categoryFilter != null ||
+          state.isActiveFilter != null;
       return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(48),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.badge_outlined,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.outline),
-              AppSpacing.vGapLg,
-              Text(
-                _searchCtrl.text.isNotEmpty
-                    ? "No results for '${_searchCtrl.text}'"
-                    : 'No staff found',
-                style: Theme.of(context).textTheme.titleMedium,
-                textAlign: TextAlign.center,
-              ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.badge_outlined,
+                size: AppIconSize.xl4,
+                color: Theme.of(context).colorScheme.outline),
+            AppSpacing.vGapLg,
+            Text(
+              'No staff found',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            if (hasFilters) ...[
               AppSpacing.vGapSm,
-              TextButton(
-                onPressed: () {
-                  _searchCtrl.clear();
-                  ref
-                      .read(nonTeachingStaffProvider.notifier)
-                      .setSearch('');
-                  ref
-                      .read(nonTeachingStaffProvider.notifier)
-                      .setCategoryFilter(null);
-                  ref
-                      .read(nonTeachingStaffProvider.notifier)
-                      .setActiveFilter(null);
-                },
-                child: const Text('Clear filters'),
+              TextButton.icon(
+                onPressed: _clearFilters,
+                icon: const Icon(Icons.filter_alt_off, size: AppIconSize.md),
+                label: Text(AppStrings.clearFilters),
               ),
             ],
-          ),
+          ],
         ),
       );
     }
@@ -353,8 +400,8 @@ class _SchoolAdminNonTeachingStaffScreenState
     60.0,  // Actions
   ];
 
-  Widget _buildStaffList(dynamic state, bool isWide) {
-    final staff = state.staff as List<NonTeachingStaffModel>;
+  Widget _buildStaffList(NonTeachingStaffState state, bool isWide) {
+    final staff = state.staff;
     if (isWide) {
       return Card(
         child: Column(
@@ -382,18 +429,17 @@ class _SchoolAdminNonTeachingStaffScreenState
         ),
       );
     }
-    return Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 8),
-            itemCount: staff.length,
-            itemBuilder: (ctx, i) => _buildMobileCard(staff[i]),
-          ),
-        ),
-        if (staff.isNotEmpty)
-          Card(child: _buildPaginationRow()),
-      ],
+    final hasMore = state.total > 0 &&
+        staff.length < state.total &&
+        state.currentPage < state.totalPages;
+    return MobileInfiniteScrollList(
+      itemCount: staff.length,
+      itemBuilder: (ctx, i) => _buildMobileCard(staff[i]),
+      onLoadMore: () =>
+          ref.read(nonTeachingStaffProvider.notifier).loadMoreStaff(),
+      hasMore: hasMore,
+      isLoadingMore: state.isLoadingMore,
+      loadingLabel: 'Loading more staff…',
     );
   }
 
@@ -439,56 +485,68 @@ class _SchoolAdminNonTeachingStaffScreenState
       DataCell(_TypeChip(
           label: s.employeeTypeLabel, color: s.employeeTypeColor)),
       DataCell(_ActiveBadge(isActive: s.isActive)),
-      DataCell(PopupMenuButton<String>(
-        itemBuilder: (ctx) => [
-          const PopupMenuItem(
+      DataCell(
+        HoverPopupMenu<String>(
+          icon: const Icon(Icons.more_vert, size: AppIconSize.md),
+          padding: EdgeInsets.zero,
+          onSelected: (v) {
+            if (v == 'view') context.go('/school-admin/non-teaching-staff/${s.id}');
+            if (v == 'edit') context.go('/school-admin/non-teaching-staff/${s.id}/edit');
+            if (v == 'toggle') _confirmToggle(context, s);
+            if (v == 'delete') _confirmDelete(context, s);
+          },
+          itemBuilder: (ctx) => [
+            PopupMenuItem<String>(
               value: 'view',
               child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.visibility),
-                  title: Text('View'))),
-          const PopupMenuItem(
+                dense: true,
+                leading: const Icon(Icons.visibility_outlined, size: AppIconSize.md),
+                title: Text(AppStrings.view),
+              ),
+            ),
+            PopupMenuItem<String>(
               value: 'edit',
               child: ListTile(
-                  dense: true,
-                  leading: Icon(Icons.edit),
-                  title: Text('Edit'))),
-          PopupMenuItem(
+                dense: true,
+                leading: const Icon(Icons.edit_outlined, size: AppIconSize.md),
+                title: Text(AppStrings.edit),
+              ),
+            ),
+            PopupMenuItem<String>(
               value: 'toggle',
               child: ListTile(
-                  dense: true,
-                  leading: Icon(s.isActive
-                      ? Icons.block
-                      : Icons.check_circle),
-                  title: Text(
-                      s.isActive ? 'Deactivate' : 'Activate'))),
-          const PopupMenuItem(
+                dense: true,
+                leading: Icon(
+                  s.isActive ? Icons.block_outlined : Icons.check_circle_outline,
+                  size: AppIconSize.md,
+                ),
+                title: Text(s.isActive ? 'Deactivate' : 'Activate'),
+              ),
+            ),
+            PopupMenuItem<String>(
               value: 'delete',
               child: ListTile(
-                  dense: true,
-                  leading:
-                      Icon(Icons.delete, color: AppColors.error500),
-                  title: Text('Delete',
-                      style: TextStyle(color: AppColors.error500)))),
-        ],
-        onSelected: (v) {
-          if (v == 'view') {
-            context.go('/school-admin/non-teaching-staff/${s.id}');
-          }
-          if (v == 'edit') {
-            context.go('/school-admin/non-teaching-staff/${s.id}/edit');
-          }
-          if (v == 'toggle') _confirmToggle(context, s);
-          if (v == 'delete') _confirmDelete(context, s);
-        },
-        child: const Icon(Icons.more_vert, size: 18),
-      )),
+                dense: true,
+                leading: const Icon(Icons.delete_outline,
+                    size: AppIconSize.md, color: AppColors.error500),
+                title: Text(AppStrings.delete,
+                    style: const TextStyle(color: AppColors.error500)),
+              ),
+            ),
+          ],
+        ),
+      ),
     ]);
   }
 
   Widget _buildMobileCard(NonTeachingStaffModel s) {
+    final cs = Theme.of(context).colorScheme;
+    final smallMuted = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: cs.onSurfaceVariant,
+        );
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      clipBehavior: Clip.hardEdge,
       child: InkWell(
         onTap: () => context.go('/school-admin/non-teaching-staff/${s.id}'),
         borderRadius: AppRadius.brLg,
@@ -498,57 +556,93 @@ class _SchoolAdminNonTeachingStaffScreenState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CircleAvatar(
-                    backgroundColor:
-                        s.role?.categoryColor.withValues(alpha: 0.2) ??
-                            AppColors.neutral200,
+                  Expanded(
                     child: Text(
-                      s.initials,
-                      style: TextStyle(
-                        color: s.role?.categoryColor ?? AppColors.neutral400,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                      s.fullName,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  AppSpacing.hGapMd,
+                  HoverPopupMenu<String>(
+                    icon: const Icon(Icons.more_vert, size: 22),
+                    padding: EdgeInsets.zero,
+                    onSelected: (v) {
+                      if (v == 'edit') {
+                        context.go('/school-admin/non-teaching-staff/${s.id}/edit');
+                      }
+                      if (v == 'toggle') _confirmToggle(context, s);
+                      if (v == 'delete') _confirmDelete(context, s);
+                    },
+                    itemBuilder: (ctx) => [
+                      PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.edit_outlined, size: AppIconSize.md),
+                          title: Text(AppStrings.edit),
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'toggle',
+                        child: ListTile(
+                          dense: true,
+                          leading: Icon(
+                            s.isActive ? Icons.block_outlined : Icons.check_circle_outline,
+                            size: AppIconSize.md,
+                          ),
+                          title: Text(s.isActive ? 'Deactivate' : 'Activate'),
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.delete_outline,
+                              size: AppIconSize.md, color: AppColors.error500),
+                          title: Text(AppStrings.delete,
+                              style: const TextStyle(color: AppColors.error500)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              SizedBox(height: AppSpacing.xs),
+              Text(s.employeeNo, style: smallMuted),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Wrap(
+                      spacing: AppSpacing.sm,
+                      runSpacing: 4,
                       children: [
-                        Text(s.fullName,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600)),
-                        Text(s.employeeNo,
-                            style: TextStyle(
-                              fontFamily: 'monospace',
-                              fontSize: 12,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurfaceVariant,
-                            )),
+                        if (s.role != null)
+                          _CategoryChip(
+                              label: s.role!.displayName,
+                              color: s.role!.categoryColor),
+                        _TypeChip(
+                            label: s.employeeTypeLabel,
+                            color: s.employeeTypeColor),
                       ],
                     ),
                   ),
+                  AppSpacing.hGapSm,
                   _ActiveBadge(isActive: s.isActive),
                 ],
               ),
-              if (s.role != null) ...[
-                AppSpacing.vGapSm,
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  children: [
-                    _CategoryChip(
-                        label: s.role!.displayName,
-                        color: s.role!.categoryColor),
-                    _TypeChip(
-                        label: s.employeeTypeLabel,
-                        color: s.employeeTypeColor),
-                  ],
-                ),
-              ],
             ],
           ),
         ),
@@ -558,131 +652,14 @@ class _SchoolAdminNonTeachingStaffScreenState
 
   Widget _buildPaginationRow() {
     final state = ref.watch(nonTeachingStaffProvider);
-    final cs = Theme.of(context).colorScheme;
-    final total = state.total;
-    final page = state.currentPage;
-    final totalPages = state.totalPages;
-    final start = total == 0 ? 0 : ((page - 1) * _pageSize) + 1;
-    final end = (page * _pageSize).clamp(0, total);
-
-    Widget pageButton(String label,
-        {required int targetPage, bool active = false}) {
-      final enabled =
-          targetPage != page && targetPage >= 1 && targetPage <= totalPages;
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        child: Material(
-          color: active ? cs.primary : Colors.transparent,
-          borderRadius: AppRadius.brSm,
-          child: InkWell(
-            borderRadius: AppRadius.brSm,
-            onTap: enabled ? () => _goToPage(targetPage) : null,
-            child: Container(
-              constraints:
-                  const BoxConstraints(minWidth: 32, minHeight: 32),
-              alignment: Alignment.center,
-              padding: AppSpacing.paddingHSm,
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      active ? FontWeight.w600 : FontWeight.w400,
-                  color: active
-                      ? cs.onPrimary
-                      : enabled
-                          ? cs.onSurface
-                          : cs.onSurface.withValues(alpha: 0.35),
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    List<Widget> pageNumbers() {
-      final pages = <Widget>[];
-      const maxVisible = 5;
-      int rangeStart = (page - (maxVisible ~/ 2)).clamp(1, totalPages);
-      int rangeEnd =
-          (rangeStart + maxVisible - 1).clamp(1, totalPages);
-      if (rangeEnd - rangeStart < maxVisible - 1) {
-        rangeStart =
-            (rangeEnd - maxVisible + 1).clamp(1, totalPages);
-      }
-      for (int i = rangeStart; i <= rangeEnd; i++) {
-        pages.add(
-            pageButton('$i', targetPage: i, active: i == page));
-      }
-      return pages;
-    }
-
-    final textStyle = Theme.of(context).textTheme.bodySmall!;
-    final mutedStyle =
-        textStyle.copyWith(color: cs.onSurfaceVariant);
-
-    return Container(
-      decoration: BoxDecoration(
-        border:
-            Border(top: BorderSide(color: AppColors.neutral300)),
-      ),
-      padding:
-          EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text('Showing $start to $end of $total entries',
-              style: mutedStyle),
-          AppSpacing.hGapXl,
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Text('Show', style: mutedStyle),
-              const SizedBox(width: 6),
-              Container(
-                height: 28,
-                padding:
-                    AppSpacing.paddingHSm,
-                decoration: BoxDecoration(
-                  border:
-                      Border.all(color: AppColors.neutral400),
-                  borderRadius: AppRadius.brXs,
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<int>(
-                    value: _pageSize,
-                    isDense: true,
-                    icon: const Icon(Icons.arrow_drop_down,
-                        size: 18),
-                    style: textStyle.copyWith(
-                        color: cs.onSurface),
-                    items: _pageSizeOptions
-                        .map((n) => DropdownMenuItem(
-                            value: n, child: Text('$n')))
-                        .toList(),
-                    onChanged: _onPageSizeChanged,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text('entries', style: mutedStyle),
-            ],
-          ),
-          const Spacer(),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              pageButton('First', targetPage: 1),
-              pageButton('Previous', targetPage: page - 1),
-              ...pageNumbers(),
-              pageButton('Next', targetPage: page + 1),
-              pageButton('Last', targetPage: totalPages),
-            ],
-          ),
-        ],
-      ),
+    return ListPaginationBar(
+      currentPage: state.currentPage,
+      totalPages: state.totalPages,
+      totalEntries: state.total,
+      pageSize: state.pageSize,
+      pageSizeOptions: _pageSizeOptions,
+      onPageSizeChanged: _onPageSizeChanged,
+      onGoToPage: _goToPage,
     );
   }
 
@@ -700,7 +677,7 @@ class _SchoolAdminNonTeachingStaffScreenState
         .read(nonTeachingStaffProvider.notifier)
         .toggleStatus(staff.id, !staff.isActive);
     if (context.mounted) {
-      AppSnackbar.success(context, '${staff.fullName} ${action.toLowerCase()}d');
+      AppToast.showSuccess(context, '${staff.fullName} ${action.toLowerCase()}d');
     }
   }
 
@@ -718,7 +695,7 @@ class _SchoolAdminNonTeachingStaffScreenState
         .read(nonTeachingStaffProvider.notifier)
         .deleteStaff(staff.id);
     if (context.mounted) {
-      AppSnackbar.success(context, 'Staff member deleted');
+      AppToast.showSuccess(context, 'Staff member deleted');
     }
   }
 }
