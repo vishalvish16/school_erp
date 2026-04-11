@@ -22,7 +22,9 @@ class ApiConfig {
       defaultValue: '',
     );
     if (fromEnv.isNotEmpty) return fromEnv;
-    if (kIsWeb) return 'localhost';
+    // Web: use 127.0.0.1 — on Windows, "localhost" often resolves to ::1 first; if Node
+    // only listened on IPv4, requests hit a different listener and return 404 HTML.
+    if (kIsWeb) return '127.0.0.1';
     if (Platform.isAndroid) return '10.0.2.2'; // Emulator; use --dart-define for physical device
     return 'localhost';
   }
@@ -177,7 +179,8 @@ class ApiConfig {
   // Enhanced Super Admin group endpoints
   static const String superAdminGroupDetail = '/api/platform/super-admin/groups'; // + /{id}
 
-  // Theme configuration endpoints
+  // Theme configuration endpoints (GET uses public path so login/splash can load tokens)
+  static const String publicPlatformTheme = '/api/public/platform-theme';
   static const String superAdminTheme      = '/api/platform/theme';
   static const String superAdminThemeApply = '/api/platform/theme/apply';
   static const String schoolTheme          = '/api/school/theme';

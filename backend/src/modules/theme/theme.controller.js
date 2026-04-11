@@ -13,6 +13,23 @@ export async function getSuperAdminTheme(req, res, next) {
   }
 }
 
+/** Same theme tokens as getSuperAdminTheme — public shape only (no ids / updatedBy). */
+export async function getPublicSuperAdminTheme(req, res, next) {
+  try {
+    const full = await service.getSuperAdminTheme();
+    const data = full
+      ? {
+          lightTokens: full.lightTokens,
+          darkTokens: full.darkTokens,
+          presetName: full.presetName ?? 'Custom',
+        }
+      : null;
+    return successResponse(res, 200, 'Theme retrieved', data);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function saveSuperAdminTheme(req, res, next) {
   try {
     const { light, dark, presetName } = req.body;

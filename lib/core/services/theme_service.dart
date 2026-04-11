@@ -12,7 +12,7 @@ class ThemeService {
   final Dio _dio;
 
   Future<Map<String, dynamic>?> getSuperAdminTheme() async {
-    final resp = await _dio.get(ApiConfig.superAdminTheme);
+    final resp = await _dio.get(ApiConfig.publicPlatformTheme);
     if (resp.data['success'] == true) {
       return resp.data['data'] as Map<String, dynamic>?;
     }

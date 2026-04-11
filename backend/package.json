@@ -15,6 +15,7 @@
         "pm2:restart": "pm2 restart school-erp-backend",
         "pm2:delete": "pm2 delete school-erp-backend",
         "pm2:logs": "pm2 logs",
+        "pm2:update-daemon": "pm2 update",
         "pm2:status": "pm2 status",
         "seed:staff": "node prisma/seed-staff-credentials.js"
     },

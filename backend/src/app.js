@@ -12,7 +12,7 @@ import { AppError } from './utils/response.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import schoolRoutes from './modules/schools/schools.routes.js';
-import { searchSchools } from './modules/schools/schools.public.controller.js';
+import schoolPublicRoutes from './modules/schools/schools.public.routes.js';
 import subscriptionRoutes from './modules/subscription/subscription.routes.js';
 import plansRoutes from './modules/plans/plans.routes.js';
 import schoolManagementRoutes from './modules/school/school.routes.js';
@@ -28,7 +28,12 @@ import parentRoutes from './modules/parent/parent.routes.js';
 import transportRoutes from './modules/transport/transport.routes.js';
 import studentProfileRequestsSchoolRoutes, { studentPhotoRouter } from './modules/student-profile-requests/student-profile-requests.routes.js';
 import studentProfileRequestsParentRoutes from './modules/student-profile-requests/student-profile-requests-parent.routes.js';
-import { superAdminThemeRouter, schoolThemeRouter, parentThemeRouter } from './modules/theme/theme.routes.js';
+import {
+    publicPlatformThemeRouter,
+    superAdminThemeRouter,
+    schoolThemeRouter,
+    parentThemeRouter,
+} from './modules/theme/theme.routes.js';
 
 const app = express();
 
@@ -64,15 +69,14 @@ app.use((req, res, next) => {
 });
 
 // Public routes — no auth (mobile app school search)
-app.use('/api/public', schoolPublicRoutes);
+app.use('/api/public/schools', schoolPublicRoutes);
+app.use('/api/public/platform-theme', publicPlatformThemeRouter);
 
 // Modular Routes mount point
 const API_PREFIX = '/api/platform';
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/dashboard`, dashboardRoutes);
-// Public school search — separate path, no auth (for mobile app)
-app.get('/api/public/schools/search', searchSchools);
 app.use(`${API_PREFIX}/schools`, schoolRoutes);
 app.use(`${API_PREFIX}/subscriptions`, subscriptionRoutes);
 app.use(`${API_PREFIX}/plans`, plansRoutes);

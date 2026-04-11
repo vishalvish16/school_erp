@@ -1,6 +1,7 @@
 /**
  * Theme Routes
  *
+ * Public (login / splash): GET /api/public/platform-theme — read-only tokens, no auth
  * Super Admin:  GET/PUT /api/platform/theme
  *               POST    /api/platform/theme/apply
  * School portal: GET   /api/school/theme
@@ -11,6 +12,10 @@ import { verifyAccessToken } from '../../middleware/auth.middleware.js';
 import { requireSuperAdmin } from '../../middleware/super-admin-guard.middleware.js';
 import * as ctrl from './theme.controller.js';
 import { validateBody, saveThemeSchema, applyThemeSchema } from './theme.validation.js';
+
+// ── Public platform theme (splash, login, web before session) ───────────────
+export const publicPlatformThemeRouter = express.Router();
+publicPlatformThemeRouter.get('/', ctrl.getPublicSuperAdminTheme);
 
 // ── Super Admin theme routes ──────────────────────────────────────────────────
 export const superAdminThemeRouter = express.Router();

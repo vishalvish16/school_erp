@@ -1,7 +1,10 @@
+// cwd: __dirname keeps logs, watch, and script paths on this backend folder even if
+// `pm2 start` is run from another directory (avoids accidentally serving school_erp).
 module.exports = {
     apps: [
         {
             name: 'school-erp-backend',
+            cwd: __dirname,
             script: 'src/server.js',
             instances: 'max',
             exec_mode: 'cluster',
