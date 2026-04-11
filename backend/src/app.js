@@ -63,6 +63,9 @@ app.use((req, res, next) => {
     next();
 });
 
+// Public routes — no auth (mobile app school search)
+app.use('/api/public', schoolPublicRoutes);
+
 // Modular Routes mount point
 const API_PREFIX = '/api/platform';
 
