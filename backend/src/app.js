@@ -8,6 +8,7 @@ import { AppError } from './utils/response.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import dashboardRoutes from './modules/dashboard/dashboard.routes.js';
 import schoolRoutes from './modules/schools/schools.routes.js';
+import schoolPublicRoutes from './modules/schools/schools.public.routes.js';
 import subscriptionRoutes from './modules/subscription/subscription.routes.js';
 import plansRoutes from './modules/plans/plans.routes.js';
 import schoolManagementRoutes from './modules/school/school.routes.js';
@@ -36,6 +37,9 @@ app.use((req, res, next) => {
     logger.info(`[${req.method}] ${req.url}`);
     next();
 });
+
+// Public routes — no auth (mobile app school search)
+app.use('/api/public', schoolPublicRoutes);
 
 // Modular Routes mount point
 const API_PREFIX = '/api/platform';

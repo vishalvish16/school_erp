@@ -63,6 +63,10 @@ export const getSchools = async (query) => {
     };
 };
 
+export const searchSchoolsPublic = async (q, limit = 10) => {
+    return schoolRepo.searchSchoolsPublic(q, limit);
+};
+
 export const getSchoolById = async (id) => {
     const school = await schoolRepo.getSchoolById(id);
     if (!school) {
